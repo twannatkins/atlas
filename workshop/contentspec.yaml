@@ -1,0 +1,55 @@
+---
+title: "ATLAS — Aligned Three-Layer Architecture for Semantics"
+description: >
+  An open-source FSI semantic layer reference architecture and SageMaker
+  notebook workshop on AWS. Walks an architect from a blank AWS account to
+  a running wealth-signal detection demo with a FIBO-aligned ontology,
+  two-tier Amazon Neptune, and a SHACL-enforced deterministic-vs-probabilistic
+  boundary.
+version: "1.0.0"
+theme: "default"
+
+navigation:
+  - title: "Introduction"
+    path: "00-introduction"
+    weight: 0
+
+  - title: "Prerequisites"
+    path: "00-prerequisites"
+    weight: 5
+
+  - title: "Module 1 — From Business Question to Ontology"
+    path: "01-from-business-question"
+    weight: 10
+
+  - title: "Module 2 — FIBO Alignment and the Extension Ring"
+    path: "02-fibo-alignment"
+    weight: 20
+
+  - title: "Module 3 — Standing Up Two-Tier Neptune"
+    path: "03-two-tier-neptune"
+    weight: 30
+
+  - title: "Module 4 — Three Patterns for Source Connection"
+    path: "04-three-connection-patterns"
+    weight: 40
+
+  - title: "Module 5 — Entity Resolution and the Promotion Path"
+    path: "05-entity-resolution"
+    weight: 50
+
+  - title: "Module 6 — SHACL: Making the Boundary Mechanical"
+    path: "06-shacl-boundary"
+    weight: 60
+
+  - title: "Module 7 — Bedrock at the Edges"
+    path: "07-bedrock-at-edges"
+    weight: 70
+
+  - title: "Module 8 — The Wealth-Signal Demo with Bounded Agent"
+    path: "08-wealth-signal-demo"
+    weight: 80
+
+  - title: "Cleanup"
+    path: "99-cleanup"
+    weight: 99

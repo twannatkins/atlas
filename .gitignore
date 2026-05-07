@@ -1,0 +1,20 @@
+# Private build context — never committed
+.claude-private/
+*.local.md
+
+# Standard
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
+.venv/
+venv/
+.DS_Store
+node_modules/
+
+# Notebook outputs (regenerated on run)
+notebooks/**/output/
+
+# Local infrastructure state
+*.tfstate
+.terraform/

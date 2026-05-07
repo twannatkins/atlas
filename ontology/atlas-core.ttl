@@ -1,0 +1,563 @@
+##############################################################################
+# ATLAS Core Ontology — atlas-core.ttl
+#
+# The 18-class starter ontology shipped with the ATLAS workshop. Every
+# subsequent module builds against this file. Module 1 teaches how to
+# DERIVE an ontology from competency questions; this file is the result of
+# applying that derivation process to the wealth-signal use case. Readers
+# who complete Module 1 should be able to trace every class and property
+# here back to the seven starter competency questions in the workshop spec.
+#
+# FIBO alignment is introduced in Module 2. This file uses rdfs:comment
+# to document anticipated alignment; the binding IRIs are added in
+# ontology/atlas-fibo-alignment.ttl.
+#
+# Ontology IRI: https://github.com/your-org/atlas/ontology#
+# Prefix:       atlas:
+# Version:      0.1.0 (Module 1 baseline)
+# License:      MIT-0
+##############################################################################
+
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+
+##############################################################################
+# Ontology declaration
+##############################################################################
+
+<https://github.com/your-org/atlas/ontology>
+    a owl:Ontology ;
+    rdfs:label "ATLAS Core Ontology"@en ;
+    rdfs:comment
+        "Starter ontology for the ATLAS wealth-signal workshop. 18 classes, approximately 30 properties. FIBO alignment is in atlas-fibo-alignment.ttl. SHACL shapes are in atlas-shapes.ttl (added in Module 6)."@en ;
+    owl:versionInfo "0.1.0" .
+
+
+##############################################################################
+# 1. Customer
+# Derived from CQ1, CQ3, CQ6, CQ7.
+# Anticipated FIBO alignment: fibo-fnd-pty-pty:IndependentParty
+##############################################################################
+
+atlas:Customer
+    a owl:Class ;
+    rdfs:label "Customer"@en ;
+    rdfs:comment
+        "A natural or legal person who holds at least one active account with the institution. The primary subject of wealth-signal detection. Derived from CQ1 ('which Consumer-side customers...') and CQ6 ('why a particular customer was contacted')."@en ;
+    skos:definition
+        "A party recognised by the institution as holding an active in-bank relationship of any type."@en .
+
+
+##############################################################################
+# 2. Account
+# Derived from CQ1, CQ2.
+# Anticipated FIBO alignment: fibo-fbc-pas-fpas:FinancialAccount
+##############################################################################
+
+atlas:Account
+    a owl:Class ;
+    rdfs:label "Account"@en ;
+    rdfs:comment
+        "A financial account held by a Customer at the institution. Accounts are the primary source of in-bank wealth signals. Derived from CQ1 (account balance) and CQ2 (observations)."@en ;
+    skos:definition
+        "A contractual agreement between a Customer and the institution that records financial obligations or holdings."@en .
+
+
+##############################################################################
+# 3. Holding
+# Derived from CQ1, CQ2.
+# Anticipated FIBO alignment: fibo-fbc-fi-ip:InvestmentPosition
+##############################################################################
+
+atlas:Holding
+    a owl:Class ;
+    rdfs:label "Holding"@en ;
+    rdfs:comment
+        "A Customer's position in a financial instrument, observable from in-bank brokerage or retirement account data. Derived from CQ1 (holdings) and CQ2 (observations)."@en ;
+    skos:definition
+        "A recorded position in a security or instrument held within an Account at the institution."@en .
+
+
+##############################################################################
+# 4. Transaction
+# Derived from CQ1, CQ2, CQ7.
+# No direct FIBO equivalent at this granularity; uses extension ring.
+##############################################################################
+
+atlas:Transaction
+    a owl:Class ;
+    rdfs:label "Transaction"@en ;
+    rdfs:comment
+        "A single financial event recorded against an Account — deposit, withdrawal, equity sale, rollover inbound transfer, etc. Transactions are the raw evidence for wealth signals. Derived from CQ1 (transaction pattern) and CQ7 (specific observations)."@en ;
+    skos:definition
+        "A discrete financial event that changes the state of an Account, recorded with a date, amount, and transaction type."@en .
+
+
+##############################################################################
+# 5. Household
+# Derived from CQ3.
+# Anticipated FIBO alignment: fibo-fnd-arr-cls:Classifier (indirectly)
+##############################################################################
+
+atlas:Household
+    a owl:Class ;
+    rdfs:label "Household"@en ;
+    rdfs:comment
+        "A grouping of Customers inferred to share a residential unit, used to compute household-aggregated wealth signals. Derived from CQ3 ('which household relationships...')."@en ;
+    skos:definition
+        "An institution-maintained grouping of Customer records that share a household identifier, used for aggregated-balance wealth-signal computation."@en .
+
+
+##############################################################################
+# 6. WealthSignal
+# Derived from CQ1, CQ2, CQ4.
+# No FIBO equivalent; bank-specific concept in the extension ring.
+##############################################################################
+
+atlas:WealthSignal
+    a owl:Class ;
+    rdfs:label "Wealth Signal"@en ;
+    rdfs:comment
+        "An in-bank observation that indicates a Customer may be eligible for the institution's wealth-management offering. One of five types in the v1.0 taxonomy (large-deposit-pattern, equity-event, retirement-rollover, business-sale-liquidity, household-aggregation). Derived from CQ1 and CQ4."@en ;
+    skos:definition
+        "A typed, dated observation derived from in-bank data that, alone or in combination with other signals, indicates wealth-management eligibility for a Customer."@en .
+
+
+##############################################################################
+# 7. Eligibility
+# Derived from CQ1, CQ4.
+# No FIBO equivalent; bank-specific.
+##############################################################################
+
+atlas:Eligibility
+    a owl:Class ;
+    rdfs:label "Eligibility"@en ;
+    rdfs:comment
+        "An Eligibility instance represents the formal determination that a Customer is a candidate for the wealth-management offering at a point in time. Modelled as a class (not a boolean property) because the eligibility determination has its own identity, date, basis, and reviewer. Derived from CQ1 and CQ4."@en ;
+    skos:definition
+        "A time-stamped determination that a Customer meets the criteria for referral to the wealth-management line of business."@en .
+
+
+##############################################################################
+# 8. Score
+# Derived from CQ2.
+# Component class: PROBABILISTIC-EXPLAINABLE (XGBoost + SHAP).
+##############################################################################
+
+atlas:Score
+    a owl:Class ;
+    rdfs:label "Score"@en ;
+    rdfs:comment
+        "A numeric score produced by the XGBoost model that expresses the probability of wealth-management conversion. Always accompanied by SHAP feature attributions. Component class: PROBABILISTIC-EXPLAINABLE. Derived from CQ2 ('deterministic component of the resulting score versus the probabilistic component')."@en ;
+    skos:definition
+        "A probabilistic-explainable numeric score in [0,1] produced by the SageMaker XGBoost endpoint, with per-record SHAP explanations as a required structural attribute."@en .
+
+
+##############################################################################
+# 9. RoutingDecision
+# Derived from CQ5, CQ6.
+# Component class: DETERMINISTIC (enumerated routes, Step Functions).
+##############################################################################
+
+atlas:RoutingDecision
+    a owl:Class ;
+    rdfs:label "Routing Decision"@en ;
+    rdfs:comment
+        "A decision to route a WealthSignal to a specific downstream handler — advisor queue, suppression list, or escalation path. The set of permissible routes is enumerated in the Step Functions state machine; arbitrary LLM-generated values are prohibited by SHACL shapes. Component class: DETERMINISTIC. Derived from CQ5 ('which steps require human review')."@en ;
+    skos:definition
+        "A recorded routing action selected from a closed, enumerated set of permissible routes defined in the bounded agent state machine."@en .
+
+
+##############################################################################
+# 10. HumanReview
+# Derived from CQ5, CQ6.
+# Component class: DETERMINISTIC (human approval token).
+##############################################################################
+
+atlas:HumanReview
+    a owl:Class ;
+    rdfs:label "Human Review"@en ;
+    rdfs:comment
+        "A record of a human reviewer's decision on a routed wealth lead — approve, decline, or defer — together with the reviewer's comment and the Step Functions task token that triggered the review. Derived from CQ5 and CQ6."@en ;
+    skos:definition
+        "A time-stamped human approval or decline decision linked to a RoutingDecision, recorded with the task token and reviewer identifier."@en .
+
+
+##############################################################################
+# 11. AuditRecord
+# Derived from CQ6, CQ7.
+# Component class: DETERMINISTIC.
+##############################################################################
+
+atlas:AuditRecord
+    a owl:Class ;
+    rdfs:label "Audit Record"@en ;
+    rdfs:comment
+        "A provenance node that links a WealthSignal or RoutingDecision to its source observations. Enables the MRM-required audit trail from signal detection through advisor approval. Derived from CQ6 ('what is the audit trail') and CQ7 ('specific in-bank observations and their dates')."@en ;
+    skos:definition
+        "A PROV-O-attributed record linking a derived graph entity to the source observations and processes that produced it."@en .
+
+
+##############################################################################
+# 12. Advisor
+# Derived from CQ5, CQ6.
+##############################################################################
+
+atlas:Advisor
+    a owl:Class ;
+    rdfs:label "Advisor"@en ;
+    rdfs:comment
+        "A wealth-management advisor who receives routed leads and performs human review. The synthetic advisor persona in the workshop is named 'Alex Morgan.' Derived from CQ5 and CQ6."@en ;
+    skos:definition
+        "A natural person employed by the institution in a wealth-management advisory capacity who reviews and acts on routed wealth signals."@en .
+
+
+##############################################################################
+# 13. WorkflowStep
+# Derived from CQ5.
+##############################################################################
+
+atlas:WorkflowStep
+    a owl:Class ;
+    rdfs:label "Workflow Step"@en ;
+    rdfs:comment
+        "A single step in the bounded agent routing workflow. Each step has a defined predecessor, a defined action, and a defined outcome. The set of steps is enumerated in the state machine. Derived from CQ5 ('which steps in the routing workflow require human review')."@en ;
+    skos:definition
+        "A discrete, enumerated step in the Step Functions state machine that processes a wealth-signal event from detection to advisor delivery."@en .
+
+
+##############################################################################
+# 14. WealthSignalType
+# Derived from CQ1, CQ2.
+# Modelled as a SKOS concept scheme entry, not a class hierarchy.
+##############################################################################
+
+atlas:WealthSignalType
+    a owl:Class ;
+    rdfs:label "Wealth Signal Type"@en ;
+    rdfs:comment
+        "A SKOS concept representing one of the five v1.0 wealth-signal types. Typed as a class so SHACL shapes can enforce that every WealthSignal instance references a type from the closed SKOS concept scheme. Derived from CQ1 and CQ2."@en ;
+    skos:definition
+        "A member of the closed SKOS concept scheme that enumerates the permissible wealth-signal types for v1.0."@en .
+
+
+##############################################################################
+# 15. HouseholdMembership
+# Derived from CQ3.
+##############################################################################
+
+atlas:HouseholdMembership
+    a owl:Class ;
+    rdfs:label "Household Membership"@en ;
+    rdfs:comment
+        "A reified relationship between a Customer and a Household, carrying the evidence for the membership assertion (shared address, beneficiary relationship, etc.) and the confidence score when the membership was inferred probabilistically. Derived from CQ3 ('what is the evidence for household membership')."@en ;
+    skos:definition
+        "A reified, evidence-attributed assertion that a Customer is a member of a Household, with the inference basis recorded as a required structural attribute."@en .
+
+
+##############################################################################
+# 16. DataSource
+# Derived from CQ7.
+# Anticipated FIBO alignment: dcat:Dataset (DCAT).
+##############################################################################
+
+atlas:DataSource
+    a owl:Class ;
+    rdfs:label "Data Source"@en ;
+    rdfs:comment
+        "A DCAT-aligned descriptor for an in-bank data source that contributes observations to the LGD. Each of the three connection-pattern sources (Iceberg, Snowflake Horizon, stream) is a DataSource instance. Derived from CQ7."@en ;
+    skos:definition
+        "A DCAT dataset descriptor identifying an in-bank source system that feeds observations into the Lexical Graph Database."@en .
+
+
+##############################################################################
+# 17. ObservationWindow
+# Derived from CQ1, CQ4.
+##############################################################################
+
+atlas:ObservationWindow
+    a owl:Class ;
+    rdfs:label "Observation Window"@en ;
+    rdfs:comment
+        "A time-bounded window within which transactions and events are evaluated for wealth-signal patterns. The default window in v1.0 is 90 days. Derived from CQ1 ('in the last 90 days') and CQ4 ('what has changed since')."@en ;
+    skos:definition
+        "A closed date interval [startDate, endDate] within which in-bank observations are evaluated for a specific WealthSignalType."@en .
+
+
+##############################################################################
+# 18. PreviousSurfacing
+# Derived from CQ4.
+##############################################################################
+
+atlas:PreviousSurfacing
+    a owl:Class ;
+    rdfs:label "Previous Surfacing"@en ;
+    rdfs:comment
+        "A record that this Customer was previously evaluated as a wealth candidate, including the outcome (approved, declined, deferred) and the date. Used to determine whether new signals represent changed circumstances. Derived from CQ4 ('has this customer been previously surfaced, and what was the outcome')."@en ;
+    skos:definition
+        "A historical record linking a Customer to a prior Eligibility determination, capturing the outcome and the date of the decision."@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+atlas:hasAccount
+    a owl:ObjectProperty ;
+    rdfs:label "has account"@en ;
+    rdfs:domain atlas:Customer ;
+    rdfs:range  atlas:Account ;
+    rdfs:comment "Links a Customer to their Account(s) at the institution."@en .
+
+atlas:hasHolding
+    a owl:ObjectProperty ;
+    rdfs:label "has holding"@en ;
+    rdfs:domain atlas:Account ;
+    rdfs:range  atlas:Holding ;
+    rdfs:comment "Links an Account (brokerage or retirement) to its Holdings."@en .
+
+atlas:hasTransaction
+    a owl:ObjectProperty ;
+    rdfs:label "has transaction"@en ;
+    rdfs:domain atlas:Account ;
+    rdfs:range  atlas:Transaction ;
+    rdfs:comment "Links an Account to a Transaction recorded against it."@en .
+
+atlas:memberOf
+    a owl:ObjectProperty ;
+    rdfs:label "member of"@en ;
+    rdfs:domain atlas:Customer ;
+    rdfs:range  atlas:Household ;
+    rdfs:comment
+        "Links a Customer to their Household. Asserted directly when the membership is derived deterministically (shared address); reified via HouseholdMembership when confidence score is needed."@en .
+
+atlas:hasMembership
+    a owl:ObjectProperty ;
+    rdfs:label "has membership"@en ;
+    rdfs:domain atlas:Customer ;
+    rdfs:range  atlas:HouseholdMembership ;
+    rdfs:comment "Links a Customer to a reified HouseholdMembership with evidence."@en .
+
+atlas:evidencedBy
+    a owl:ObjectProperty ;
+    rdfs:label "evidenced by"@en ;
+    rdfs:domain atlas:WealthSignal ;
+    rdfs:range  atlas:Transaction ;
+    rdfs:comment
+        "Links a WealthSignal to the Transaction(s) that constitute its evidence."@en .
+
+atlas:hasSignalType
+    a owl:ObjectProperty ;
+    rdfs:label "has signal type"@en ;
+    rdfs:domain atlas:WealthSignal ;
+    rdfs:range  atlas:WealthSignalType ;
+    rdfs:comment "Links a WealthSignal instance to its type in the SKOS concept scheme."@en .
+
+atlas:producesSignal
+    a owl:ObjectProperty ;
+    rdfs:label "produces signal"@en ;
+    rdfs:domain atlas:Customer ;
+    rdfs:range  atlas:WealthSignal ;
+    rdfs:comment "Links a Customer to a WealthSignal derived from their in-bank activity."@en .
+
+atlas:hasScore
+    a owl:ObjectProperty ;
+    rdfs:label "has score"@en ;
+    rdfs:domain atlas:WealthSignal ;
+    rdfs:range  atlas:Score ;
+    rdfs:comment
+        "Links a WealthSignal to its probabilistic-explainable Score. The Score carries SHAP attributions as required structural attributes."@en .
+
+atlas:hasEligibility
+    a owl:ObjectProperty ;
+    rdfs:label "has eligibility"@en ;
+    rdfs:domain atlas:Customer ;
+    rdfs:range  atlas:Eligibility ;
+    rdfs:comment "Links a Customer to an Eligibility determination instance."@en .
+
+atlas:triggersRouting
+    a owl:ObjectProperty ;
+    rdfs:label "triggers routing"@en ;
+    rdfs:domain atlas:Eligibility ;
+    rdfs:range  atlas:RoutingDecision ;
+    rdfs:comment "Links an Eligibility determination to the resulting RoutingDecision."@en .
+
+atlas:reviewedBy
+    a owl:ObjectProperty ;
+    rdfs:label "reviewed by"@en ;
+    rdfs:domain atlas:RoutingDecision ;
+    rdfs:range  atlas:HumanReview ;
+    rdfs:comment "Links a RoutingDecision to its HumanReview record."@en .
+
+atlas:conductedBy
+    a owl:ObjectProperty ;
+    rdfs:label "conducted by"@en ;
+    rdfs:domain atlas:HumanReview ;
+    rdfs:range  atlas:Advisor ;
+    rdfs:comment "Links a HumanReview to the Advisor who performed it."@en .
+
+atlas:hasAuditRecord
+    a owl:ObjectProperty ;
+    rdfs:label "has audit record"@en ;
+    rdfs:comment "Links any ATLAS entity to an AuditRecord for provenance tracing."@en .
+
+atlas:withinWindow
+    a owl:ObjectProperty ;
+    rdfs:label "within window"@en ;
+    rdfs:domain atlas:WealthSignal ;
+    rdfs:range  atlas:ObservationWindow ;
+    rdfs:comment "Links a WealthSignal to the ObservationWindow in which it was detected."@en .
+
+atlas:hasPreviousSurfacing
+    a owl:ObjectProperty ;
+    rdfs:label "has previous surfacing"@en ;
+    rdfs:domain atlas:Customer ;
+    rdfs:range  atlas:PreviousSurfacing ;
+    rdfs:comment "Links a Customer to one or more PreviousSurfacing records."@en .
+
+atlas:sourceDataset
+    a owl:ObjectProperty ;
+    rdfs:label "source dataset"@en ;
+    rdfs:comment "Links a WealthSignal or Transaction to the DataSource it originated from."@en .
+
+atlas:processedInStep
+    a owl:ObjectProperty ;
+    rdfs:label "processed in step"@en ;
+    rdfs:domain atlas:RoutingDecision ;
+    rdfs:range  atlas:WorkflowStep ;
+    rdfs:comment "Links a RoutingDecision to the WorkflowStep that produced it."@en .
+
+
+##############################################################################
+# Datatype Properties
+##############################################################################
+
+atlas:customerId
+    a owl:DatatypeProperty ;
+    rdfs:label "customer ID"@en ;
+    rdfs:domain atlas:Customer ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "Unique identifier for the Customer, as assigned by the institution."@en .
+
+atlas:accountId
+    a owl:DatatypeProperty ;
+    rdfs:label "account ID"@en ;
+    rdfs:domain atlas:Account ;
+    rdfs:range  xsd:string .
+
+atlas:accountType
+    a owl:DatatypeProperty ;
+    rdfs:label "account type"@en ;
+    rdfs:domain atlas:Account ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "One of: CHECKING, SAVINGS, BROKERAGE, RETIREMENT, BUSINESS."@en .
+
+atlas:balanceUSD
+    a owl:DatatypeProperty ;
+    rdfs:label "balance (USD)"@en ;
+    rdfs:domain atlas:Account ;
+    rdfs:range  xsd:decimal .
+
+atlas:transactionDate
+    a owl:DatatypeProperty ;
+    rdfs:label "transaction date"@en ;
+    rdfs:domain atlas:Transaction ;
+    rdfs:range  xsd:date .
+
+atlas:amountUSD
+    a owl:DatatypeProperty ;
+    rdfs:label "amount (USD)"@en ;
+    rdfs:domain atlas:Transaction ;
+    rdfs:range  xsd:decimal .
+
+atlas:transactionType
+    a owl:DatatypeProperty ;
+    rdfs:label "transaction type"@en ;
+    rdfs:domain atlas:Transaction ;
+    rdfs:range  xsd:string .
+
+atlas:signalDate
+    a owl:DatatypeProperty ;
+    rdfs:label "signal date"@en ;
+    rdfs:domain atlas:WealthSignal ;
+    rdfs:range  xsd:date .
+
+atlas:scoreValue
+    a owl:DatatypeProperty ;
+    rdfs:label "score value"@en ;
+    rdfs:domain atlas:Score ;
+    rdfs:range  xsd:decimal ;
+    rdfs:comment "Numeric score in [0.0, 1.0]."@en .
+
+atlas:probabilistic
+    a owl:DatatypeProperty ;
+    rdfs:label "is probabilistic"@en ;
+    rdfs:range  xsd:boolean ;
+    rdfs:comment
+        "Set to true on any property whose value originated from a probabilistic model. Required by the Module 6 boundary SHACL shape."@en .
+
+atlas:confidence
+    a owl:DatatypeProperty ;
+    rdfs:label "confidence"@en ;
+    rdfs:range  xsd:decimal ;
+    rdfs:comment "Confidence score in [0.0, 1.0] for probabilistic-explainable assertions."@en .
+
+atlas:explainability
+    a owl:DatatypeProperty ;
+    rdfs:label "has explainability"@en ;
+    rdfs:range  xsd:boolean ;
+    rdfs:comment
+        "Set to true when a probabilistic assertion carries per-record SHAP or equivalent explanations. Required for compliance-input use."@en .
+
+atlas:modelVersion
+    a owl:DatatypeProperty ;
+    rdfs:label "model version"@en ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "The versioned model identifier that produced a probabilistic assertion."@en .
+
+atlas:windowStartDate
+    a owl:DatatypeProperty ;
+    rdfs:label "window start date"@en ;
+    rdfs:domain atlas:ObservationWindow ;
+    rdfs:range  xsd:date .
+
+atlas:windowEndDate
+    a owl:DatatypeProperty ;
+    rdfs:label "window end date"@en ;
+    rdfs:domain atlas:ObservationWindow ;
+    rdfs:range  xsd:date .
+
+atlas:reviewOutcome
+    a owl:DatatypeProperty ;
+    rdfs:label "review outcome"@en ;
+    rdfs:domain atlas:HumanReview ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "One of: APPROVED, DECLINED, DEFERRED."@en .
+
+atlas:reviewDate
+    a owl:DatatypeProperty ;
+    rdfs:label "review date"@en ;
+    rdfs:domain atlas:HumanReview ;
+    rdfs:range  xsd:dateTime .
+
+atlas:membershipBasis
+    a owl:DatatypeProperty ;
+    rdfs:label "membership basis"@en ;
+    rdfs:domain atlas:HouseholdMembership ;
+    rdfs:range  xsd:string ;
+    rdfs:comment
+        "Human-readable description of the evidence for the household membership assertion (e.g., 'shared postal address', 'named beneficiary')."@en .
+
+atlas:selectedRoute
+    a owl:DatatypeProperty ;
+    rdfs:label "selected route"@en ;
+    rdfs:domain atlas:RoutingDecision ;
+    rdfs:range  xsd:string ;
+    rdfs:comment
+        "The route identifier selected by the bounded agent. Must be a member of the closed route enumeration defined in the state machine; enforced by the routing-policy SHACL shape in Module 6."@en .

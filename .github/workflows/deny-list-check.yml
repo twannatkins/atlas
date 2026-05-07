@@ -1,0 +1,29 @@
+name: Deny-list check
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Skip on forks — secrets are not available there
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run deny-list grep
+        env:
+          DENY_LIST: ${{ secrets.DENY_LIST }}
+        run: |
+          if [ -z "$DENY_LIST" ]; then
+            echo "No DENY_LIST secret set; skipping."
+            exit 0
+          fi
+          IFS=',' read -ra TERMS <<< "$DENY_LIST"
+          FAIL=0
+          for term in "${TERMS[@]}"; do
+            if grep -ri "$term" --exclude-dir=.git --exclude-dir=.github . ; then
+              echo "::error::Deny-list term matched: redacted"
+              FAIL=1
+            fi
+          done
+          exit $FAIL

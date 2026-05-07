@@ -1,0 +1,20 @@
+name: Workshop sync check
+# Placeholder — full implementation in a later module.
+# Enforces three invariants when complete:
+#   1. Every notebook in notebooks/ has a matching workshop/content/<NN>-<slug>/index.md.
+#   2. Every image referenced in any content Markdown resolves to a real file
+#      in workshop/static/images/.
+#   3. Every screenshot filename matches the <NN>-step-<NN>-<slug>.png convention.
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder sync check
+        run: |
+          echo "Workshop sync check placeholder — full check implemented alongside Module 2."
+          exit 0

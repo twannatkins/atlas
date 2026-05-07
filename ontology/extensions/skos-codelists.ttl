@@ -1,0 +1,102 @@
+##############################################################################
+# ATLAS SKOS Codelists — skos-codelists.ttl
+#
+# SKOS (Simple Knowledge Organization System, W3C Recommendation) concept
+# schemes for closed enumerations used by SHACL shapes in atlas-shapes.ttl.
+#
+# Two schemes in this file:
+#   1. atlas:WealthSignalTypeScheme  — five v1.0 wealth-signal types
+#   2. atlas:RoutingRouteScheme      — permissible routing routes (Module 8)
+#
+# References:
+#   SKOS Reference: https://www.w3.org/TR/skos-reference/
+##############################################################################
+
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+##############################################################################
+# Wealth Signal Type Scheme
+##############################################################################
+
+atlas:WealthSignalTypeScheme
+    a skos:ConceptScheme ;
+    skos:prefLabel "ATLAS Wealth Signal Type Scheme"@en ;
+    rdfs:comment
+        "Closed enumeration of the five v1.0 in-bank wealth-signal types. SHACL shapes in atlas-shapes.ttl require every WealthSignal instance to reference exactly one member of this scheme."@en .
+
+atlas:LargeDepositPattern
+    a skos:Concept, atlas:WealthSignalType ;
+    skos:inScheme atlas:WealthSignalTypeScheme ;
+    skos:prefLabel "Large Deposit Pattern"@en ;
+    skos:notation "large-deposit-pattern" ;
+    skos:definition
+        "A deposit-balance trajectory that crosses the large-deposit threshold (default USD 250,000) within the observation window."@en .
+
+atlas:EquityEventSignal
+    a skos:Concept, atlas:WealthSignalType ;
+    skos:inScheme atlas:WealthSignalTypeScheme ;
+    skos:prefLabel "Equity Event Signal"@en ;
+    skos:notation "equity-event-signal" ;
+    skos:definition
+        "A sale of a position in a connected brokerage account that exceeds the equity-event threshold (default USD 100,000)."@en .
+
+atlas:RetirementRolloverSignal
+    a skos:Concept, atlas:WealthSignalType ;
+    skos:inScheme atlas:WealthSignalTypeScheme ;
+    skos:prefLabel "Retirement Rollover Signal"@en ;
+    skos:notation "retirement-rollover-signal" ;
+    skos:definition
+        "An inbound transfer from a recognised retirement plan custodian exceeding the rollover threshold (default USD 50,000)."@en .
+
+atlas:BusinessSaleLiquiditySignal
+    a skos:Concept, atlas:WealthSignalType ;
+    skos:inScheme atlas:WealthSignalTypeScheme ;
+    skos:prefLabel "Business Sale Liquidity Signal"@en ;
+    skos:notation "business-sale-liquidity-signal" ;
+    skos:definition
+        "A single deposit exceeding the business-sale threshold (default USD 500,000) from a business account associated with the Customer."@en .
+
+atlas:HouseholdAggregationSignal
+    a skos:Concept, atlas:WealthSignalType ;
+    skos:inScheme atlas:WealthSignalTypeScheme ;
+    skos:prefLabel "Household Aggregation Signal"@en ;
+    skos:notation "household-aggregation-signal" ;
+    skos:definition
+        "The household's combined investable balance crosses the household-aggregation threshold (default USD 1,000,000) while individual Customer balances do not."@en .
+
+##############################################################################
+# Routing Route Scheme
+##############################################################################
+
+atlas:RoutingRouteScheme
+    a skos:ConceptScheme ;
+    skos:prefLabel "ATLAS Routing Route Scheme"@en ;
+    rdfs:comment
+        "Closed enumeration of permissible routing routes for the bounded agent state machine. SHACL routing-policy shapes in atlas-shapes.ttl require every RoutingDecision to select a route from this scheme. Introduced fully in Module 8; declared here so Module 1 ontology validation can reference the scheme."@en .
+
+atlas:RouteAdvisorQueue
+    a skos:Concept ;
+    skos:inScheme atlas:RoutingRouteScheme ;
+    skos:prefLabel "Advisor Queue"@en ;
+    skos:notation "ROUTE_ADVISOR_QUEUE" ;
+    skos:definition "Route the wealth lead to the advisor's pending-review queue."@en .
+
+atlas:RouteSuppressionList
+    a skos:Concept ;
+    skos:inScheme atlas:RoutingRouteScheme ;
+    skos:prefLabel "Suppression List"@en ;
+    skos:notation "ROUTE_SUPPRESSION_LIST" ;
+    skos:definition
+        "Suppress the lead — do not contact this Customer — for a defined period."@en .
+
+atlas:RouteEscalation
+    a skos:Concept ;
+    skos:inScheme atlas:RoutingRouteScheme ;
+    skos:prefLabel "Escalation"@en ;
+    skos:notation "ROUTE_ESCALATION" ;
+    skos:definition
+        "Escalate the lead to a senior advisor or compliance review before action."@en .

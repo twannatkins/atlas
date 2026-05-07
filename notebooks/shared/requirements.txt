@@ -1,0 +1,6 @@
+rdflib==7.0.0
+pyshacl==0.25.0
+boto3>=1.34.0
+requests>=2.31.0
+pandas>=2.0.0
+faker==24.3.0
