@@ -1,0 +1,60 @@
+##############################################################################
+# ATLAS GLEIF Bindings — gleif-bindings.ttl
+#
+# Demonstrates the GLEIF/LEI integration pattern for institutional
+# counterparties. In production, LEI codes are resolved via the GLEIF API
+# at https://api.gleif.org/api/v1/lei-records/.
+#
+# This file provides the vocabulary for LEI-attributed entities. Instance
+# data (actual LEI lookups) is generated at runtime in Module 2 and Module 5.
+#
+# GLEIF Reference: https://www.gleif.org/
+# FIBO BE integration: fibo-be-le-lei:LegalPerson
+#
+# Module 2 deliverable.
+# License: MIT-0
+##############################################################################
+
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix fibo-be-le-lei: <https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/> .
+
+
+##############################################################################
+# LEI-specific datatype property
+##############################################################################
+
+atlas:leiCode
+    a owl:DatatypeProperty ;
+    rdfs:label "LEI code"@en ;
+    rdfs:domain atlas:LegalEntity ;
+    rdfs:range  xsd:string ;
+    rdfs:comment
+        "The 20-character Legal Entity Identifier (LEI) assigned by a Local Operating Unit (LOU) under GLEIF governance. Format: 4 alphanumeric characters (LOU prefix) + 14 alphanumeric characters (entity-specific) + 2 check digits."@en .
+
+atlas:leiRegistrationStatus
+    a owl:DatatypeProperty ;
+    rdfs:label "LEI registration status"@en ;
+    rdfs:domain atlas:LegalEntity ;
+    rdfs:range  xsd:string ;
+    rdfs:comment
+        "The registration status of the LEI: ISSUED, LAPSED, RETIRED, ANNULLED, PENDING_TRANSFER, PENDING_ARCHIVAL. Only ISSUED entities are active."@en .
+
+atlas:leiJurisdiction
+    a owl:DatatypeProperty ;
+    rdfs:label "LEI jurisdiction"@en ;
+    rdfs:domain atlas:LegalEntity ;
+    rdfs:range  xsd:string ;
+    rdfs:comment
+        "The ISO 3166-1 alpha-2 country code of the legal jurisdiction where the entity is registered."@en .
+
+atlas:leiLegalName
+    a owl:DatatypeProperty ;
+    rdfs:label "LEI legal name"@en ;
+    rdfs:domain atlas:LegalEntity ;
+    rdfs:range  xsd:string ;
+    rdfs:comment
+        "The official legal name of the entity as registered with the LEI issuing authority."@en .

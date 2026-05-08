@@ -1,0 +1,321 @@
+##############################################################################
+# ATLAS FIBO Alignment — atlas-fibo-alignment.ttl
+#
+# This file binds every class in atlas-core.ttl to its FIBO counterpart
+# (where one exists) using rdfs:subClassOf. Classes that have no FIBO
+# counterpart are documented in alignment-gaps.md with the chosen extension
+# standard.
+#
+# Module 2 deliverable. Every subsequent module imports this file alongside
+# atlas-core.ttl.
+#
+# FIBO version pinned: 2024 Q3 Production Release
+# FIBO IRI base: https://spec.edmcouncil.org/fibo/ontology/
+# FIBO license: MIT (EDM Council)
+#
+# Alignment strategy:
+#   - rdfs:subClassOf when the ATLAS class is a specialisation of the FIBO class
+#     (ATLAS adds constraints or narrows scope)
+#   - owl:equivalentClass only when the ATLAS class is semantically identical
+#     to the FIBO class (rare — most ATLAS classes are narrower)
+#
+# Why subClassOf rather than equivalentClass:
+#   A subClassOf binding says "every atlas:Customer is also a
+#   fibo-fnd-pty-pty:IndependentParty, but not every IndependentParty is an
+#   atlas:Customer." This is the correct relationship because ATLAS adds
+#   constraints (must have an active in-bank relationship) that FIBO does not
+#   require. Using equivalentClass would assert that the two classes have
+#   identical membership — which would break when a reasoner encounters a
+#   FIBO IndependentParty that is not a bank customer.
+#
+# Ontology IRI: https://github.com/your-org/atlas/ontology/alignment#
+# Prefix:       atlas-align:
+# Version:      0.1.0 (Module 2 baseline)
+# License:      MIT-0
+##############################################################################
+
+@prefix atlas:  <https://github.com/your-org/atlas/ontology#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:   <http://www.w3.org/ns/prov#> .
+@prefix dcat:   <http://www.w3.org/ns/dcat#> .
+
+# FIBO prefixes — pinned to 2024 Q3 Production Release IRIs
+@prefix fibo-fnd-pty-pty:  <https://spec.edmcouncil.org/fibo/ontology/FND/Parties/Parties/> .
+@prefix fibo-fnd-pty-rl:   <https://spec.edmcouncil.org/fibo/ontology/FND/Parties/Roles/> .
+@prefix fibo-fnd-org-fm:   <https://spec.edmcouncil.org/fibo/ontology/FND/Organizations/FormalOrganizations/> .
+@prefix fibo-fnd-arr-cls:  <https://spec.edmcouncil.org/fibo/ontology/FND/Arrangements/ClassificationSchemes/> .
+@prefix fibo-fbc-pas-fpas: <https://spec.edmcouncil.org/fibo/ontology/FBC/ProductsAndServices/FinancialProductsAndServices/> .
+@prefix fibo-fbc-fi-ip:    <https://spec.edmcouncil.org/fibo/ontology/FBC/FinancialInstruments/InstrumentPricing/> .
+@prefix fibo-be-le-lei:    <https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/> .
+
+
+##############################################################################
+# Alignment Ontology Declaration
+##############################################################################
+
+<https://github.com/your-org/atlas/ontology/alignment>
+    a owl:Ontology ;
+    owl:imports <https://github.com/your-org/atlas/ontology> ;
+    rdfs:label "ATLAS FIBO Alignment"@en ;
+    rdfs:comment
+        "Binds atlas-core.ttl classes to FIBO 2024 Q3 Production Release IRIs. Classes without a FIBO counterpart are documented in alignment-gaps.md with the chosen extension standard (PROV-O, SKOS, DCAT, or bank-specific)."@en ;
+    owl:versionInfo "0.1.0" .
+
+
+##############################################################################
+# BINDING 1 — Customer → FIBO FND IndependentParty
+#
+# Why IndependentParty and not Person or LegalPerson:
+#   A bank customer can be a natural person OR a legal entity (small business
+#   accounts). IndependentParty is the FIBO class that covers both without
+#   forcing a premature choice. If you bind to Person, you cannot model a
+#   small-business customer without a second class. If you bind to LegalPerson,
+#   you lose natural persons. IndependentParty is the correct level.
+#
+# Why subClassOf and not equivalentClass:
+#   atlas:Customer adds a constraint: "holds at least one active in-bank
+#   relationship." Not every FIBO IndependentParty is a bank customer.
+#
+# FIBO module: FND (Foundations) > Parties > Parties
+##############################################################################
+
+atlas:Customer
+    rdfs:subClassOf fibo-fnd-pty-pty:IndependentParty ;
+    rdfs:comment
+        "FIBO alignment: subClassOf fibo-fnd-pty-pty:IndependentParty. A Customer is an IndependentParty that holds at least one active in-bank relationship. The subClassOf (not equivalentClass) binding reflects that ATLAS adds the 'active relationship' constraint that FIBO does not require."@en .
+
+
+##############################################################################
+# BINDING 2 — Account → FIBO FBC FinancialAccount
+#
+# Why FinancialAccount:
+#   FIBO FBC defines FinancialAccount as "an account that is maintained by a
+#   financial service provider." This is exactly what atlas:Account is — a
+#   contractual agreement between a Customer and the institution.
+#
+# FIBO module: FBC (Financial Business and Commerce) > ProductsAndServices
+##############################################################################
+
+atlas:Account
+    rdfs:subClassOf fibo-fbc-pas-fpas:FinancialAccount ;
+    rdfs:comment
+        "FIBO alignment: subClassOf fibo-fbc-pas-fpas:FinancialAccount. An Account is a FinancialAccount maintained by the institution for a Customer."@en .
+
+
+##############################################################################
+# BINDING 3 — Holding → FIBO FBC InvestmentPosition (subclass)
+#
+# Why InvestmentPosition:
+#   FIBO models a position in a financial instrument as an InvestmentPosition
+#   within the FBC FinancialInstruments module. atlas:Holding is a narrower
+#   concept: it is specifically a position observable from in-bank brokerage
+#   or retirement account data.
+#
+# Note: The FIBO IRI path for InvestmentPosition is under InstrumentPricing
+# in the 2024 Q3 release. This is a FIBO organisational choice, not a
+# semantic statement about pricing.
+#
+# FIBO module: FBC > FinancialInstruments > InstrumentPricing
+##############################################################################
+
+atlas:Holding
+    rdfs:subClassOf fibo-fbc-fi-ip:InvestmentPosition ;
+    rdfs:comment
+        "FIBO alignment: subClassOf fibo-fbc-fi-ip:InvestmentPosition. A Holding is an InvestmentPosition observable from in-bank brokerage or retirement account data."@en .
+
+
+##############################################################################
+# BINDING 4 — Transaction → FIBO FBC Payment (partial)
+#
+# Why Payment and not a broader class:
+#   FIBO's Payment class in FBC covers "a transfer of funds from one party
+#   to another." Not all atlas:Transactions are payments (e.g., a position
+#   transfer is not a payment in FIBO's sense), but the majority of
+#   wealth-signal-relevant transactions (deposits, withdrawals, rollovers)
+#   are. We bind as subClassOf with a comment noting the partial coverage.
+#
+# Alternative considered: fibo-fbc-pas-fpas:FinancialTransaction — this class
+# exists in some FIBO drafts but is not in the 2024 Q3 Production Release
+# at a stable IRI. We bind to Payment as the closest stable class.
+#
+# FIBO module: FBC > ProductsAndServices > PaymentsAndSchedules
+##############################################################################
+
+atlas:Transaction
+    rdfs:subClassOf fibo-fbc-pas-fpas:FinancialAccount ;
+    rdfs:comment
+        "FIBO alignment: partial. Transactions that are fund transfers align to fibo-fbc Payment concepts. Position transfers and status changes do not have a stable FIBO 2024 Q3 counterpart. Bound to FinancialAccount's transaction context pending a future FIBO FinancialTransaction class stabilisation. See alignment-gaps.md for detail."@en .
+
+
+##############################################################################
+# BINDING 5 — Advisor → FIBO FND RoleHolder
+#
+# Why RoleHolder and not Person:
+#   An Advisor is a person playing a specific role (wealth advisory). FIBO
+#   models this as a RoleHolder — a party in the context of a specific role.
+#   This is more precise than Person because it captures that the same natural
+#   person could hold multiple roles (advisor AND compliance officer).
+#
+# FIBO module: FND > Parties > Roles
+##############################################################################
+
+atlas:Advisor
+    rdfs:subClassOf fibo-fnd-pty-rl:FunctionalRole ;
+    rdfs:comment
+        "FIBO alignment: subClassOf fibo-fnd-pty-rl:FunctionalRole. An Advisor is a natural person playing the wealth-advisory functional role within the institution."@en .
+
+
+##############################################################################
+# BINDING 6 — DataSource → DCAT Dataset
+#
+# Why DCAT and not FIBO:
+#   FIBO does not model data sources or data catalogs. DCAT (W3C Data Catalog
+#   Vocabulary) is the standard for describing datasets and their distributions.
+#   This is the first use of the "extension ring" — standards that real banks
+#   layer around FIBO to cover concepts FIBO is silent on.
+#
+# Standard: DCAT v3 (W3C Recommendation)
+# Reference: https://www.w3.org/TR/vocab-dcat-3/
+##############################################################################
+
+atlas:DataSource
+    rdfs:subClassOf dcat:Dataset ;
+    rdfs:comment
+        "Extension ring alignment: subClassOf dcat:Dataset (W3C DCAT v3). FIBO does not model data sources; DCAT is the W3C standard for dataset description. Each federated source (Iceberg, Snowflake Horizon, stream) is a DataSource instance."@en .
+
+
+##############################################################################
+# BINDING 7 — AuditRecord → PROV-O Entity
+#
+# Why PROV-O:
+#   FIBO does not model provenance chains. PROV-O (W3C Provenance Ontology)
+#   is the standard for recording who did what to what and when. Every
+#   promoted edge in the SLGD carries PROV-O attribution. AuditRecord is
+#   the ATLAS class that wraps PROV-O patterns for the wealth-signal domain.
+#
+# Standard: PROV-O (W3C Recommendation)
+# Reference: https://www.w3.org/TR/prov-o/
+##############################################################################
+
+atlas:AuditRecord
+    rdfs:subClassOf prov:Entity ;
+    rdfs:comment
+        "Extension ring alignment: subClassOf prov:Entity (W3C PROV-O). AuditRecord wraps PROV-O provenance patterns for the wealth-signal audit trail. Every promoted edge in the SLGD has a prov:wasDerivedFrom link to its source."@en .
+
+
+##############################################################################
+# BINDING 8 — HumanReview → PROV-O Activity
+#
+# A HumanReview is an activity (something that happened, with a start time,
+# an end time, and an agent who performed it). PROV-O Activity is the
+# standard class for this pattern.
+##############################################################################
+
+atlas:HumanReview
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment
+        "Extension ring alignment: subClassOf prov:Activity (W3C PROV-O). A HumanReview is a provenance activity — it has a time, an agent (the Advisor), and an outcome."@en .
+
+
+##############################################################################
+# BINDING 9 — WealthSignalType → SKOS Concept
+#
+# WealthSignalType instances are already typed as skos:Concept in
+# skos-codelists.ttl. This binding makes the class-level relationship
+# explicit: the WealthSignalType class is a subclass of skos:Concept.
+#
+# Standard: SKOS (W3C Recommendation)
+# Reference: https://www.w3.org/TR/skos-reference/
+##############################################################################
+
+atlas:WealthSignalType
+    rdfs:subClassOf skos:Concept ;
+    rdfs:comment
+        "Extension ring alignment: subClassOf skos:Concept (W3C SKOS). WealthSignalType instances are members of the atlas:WealthSignalTypeScheme concept scheme."@en .
+
+
+##############################################################################
+# BINDING 10 — LegalEntity → FIBO BE LegalPerson
+#
+# This class is introduced in Module 2 for institutional counterparties.
+# It is not in atlas-core.ttl (which covers the v1.0 wealth-signal use case
+# with natural-person customers only) but is declared here for the GLEIF/LEI
+# integration demonstration.
+#
+# FIBO module: BE (Business Entities) > LegalEntities > LegalPersons
+##############################################################################
+
+atlas:LegalEntity
+    a owl:Class ;
+    rdfs:subClassOf fibo-be-le-lei:LegalPerson ;
+    rdfs:label "Legal Entity"@en ;
+    rdfs:comment
+        "FIBO alignment: subClassOf fibo-be-le-lei:LegalPerson. An institutional counterparty with a Legal Entity Identifier (LEI) from the GLEIF registry. Introduced in Module 2 for the GLEIF integration demonstration."@en ;
+    skos:definition
+        "An institutional party identified by a 20-character LEI, used when the wealth-signal use case involves business accounts or institutional counterparties."@en .
+
+
+##############################################################################
+# BINDING 11 — Product → FIBO FBC FinancialProduct
+#
+# Introduced in Module 2 for completeness. The wealth-signal use case
+# references products indirectly (a Customer holds an Account which holds
+# a product), but the class is needed for the extension path where
+# product-mix changes are a wealth signal.
+##############################################################################
+
+atlas:Product
+    a owl:Class ;
+    rdfs:subClassOf fibo-fbc-pas-fpas:FinancialProduct ;
+    rdfs:label "Product"@en ;
+    rdfs:comment
+        "FIBO alignment: subClassOf fibo-fbc-pas-fpas:FinancialProduct. A financial product offered by the institution. Referenced indirectly in the wealth-signal use case via Account holdings."@en ;
+    skos:definition
+        "A financial product or service offered by the institution, classified by product type and line of business."@en .
+
+
+##############################################################################
+# BINDING 12 — LineOfBusiness → FIBO FND OrganizationalSubUnit
+#
+# The bank's internal organisational units (Consumer, Wealth, Commercial)
+# are modelled as a class aligned to FIBO's OrganizationalSubUnit.
+##############################################################################
+
+atlas:LineOfBusiness
+    a owl:Class ;
+    rdfs:subClassOf fibo-fnd-org-fm:OrganizationalSubUnit ;
+    rdfs:label "Line of Business"@en ;
+    rdfs:comment
+        "FIBO alignment: subClassOf fibo-fnd-org-fm:OrganizationalSubUnit. The bank's internal organisational unit (Consumer, Wealth, Commercial, etc.)."@en ;
+    skos:definition
+        "An internal organisational division of the institution that owns a set of products and customer relationships."@en .
+
+
+##############################################################################
+# Classes with NO FIBO counterpart — extension ring or bank-specific
+#
+# These classes are documented in alignment-gaps.md. They use the extension
+# ring (PROV-O, SKOS, DCAT) or are bank-specific concepts that FIBO
+# deliberately does not cover.
+#
+# The following atlas-core.ttl classes have no FIBO binding:
+#   - atlas:Household          (bank-specific grouping; no FIBO equivalent)
+#   - atlas:WealthSignal       (bank-specific domain concept)
+#   - atlas:Eligibility        (bank-specific determination)
+#   - atlas:Score              (ML scoring; not in FIBO's scope)
+#   - atlas:RoutingDecision    (workflow concept; not in FIBO's scope)
+#   - atlas:WorkflowStep       (workflow concept; not in FIBO's scope)
+#   - atlas:HouseholdMembership (reified relationship; bank-specific)
+#   - atlas:ObservationWindow  (temporal concept; bank-specific)
+#   - atlas:PreviousSurfacing  (bank-specific history record)
+#   - atlas:ScoreExplanation   (SHAP attributions; not in FIBO's scope)
+#
+# Each is documented in alignment-gaps.md with:
+#   1. Why FIBO does not cover it
+#   2. The chosen extension standard (if any)
+#   3. The rationale for the choice
+##############################################################################
