@@ -1,0 +1,176 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  ATLAS Workshop — Two-Tier Neptune (LGD + SLGD).
+  Deploys two Neptune serverless clusters in the specified VPC.
+  Module 3 deliverable.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC where Neptune clusters will be deployed
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: At least two subnets in different AZs within the VPC
+  ProjectTag:
+    Type: String
+    Default: atlas
+    Description: Tag value for cost tracking
+
+Resources:
+  # Security group allowing Neptune traffic within the VPC
+  NeptuneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ATLAS Neptune clusters - allows port 8182 within VPC
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8182
+          ToPort: 8182
+          CidrIp: 10.38.0.0/16
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-neptune-sg
+
+  # Subnet group for Neptune (requires 2+ AZs)
+  NeptuneSubnetGroup:
+    Type: AWS::Neptune::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: ATLAS Neptune subnet group
+      SubnetIds: !Ref SubnetIds
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+
+  # IAM role for Neptune to access S3 (for bulk loading ontology)
+  NeptuneS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: atlas-neptune-s3-access
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: rds.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+
+  # LGD — Lexical Graph Database (raw, unvalidated, fast)
+  LGDCluster:
+    Type: AWS::Neptune::DBCluster
+    Properties:
+      DBClusterIdentifier: atlas-lgd
+      EngineVersion: '1.3.4.0'
+      ServerlessScalingConfiguration:
+        MinCapacity: 1
+        MaxCapacity: 2.5
+      VpcSecurityGroupIds:
+        - !Ref NeptuneSecurityGroup
+      DBSubnetGroupName: !Ref NeptuneSubnetGroup
+      IamAuthEnabled: false
+      AssociatedRoles:
+        - RoleArn: !GetAtt NeptuneS3Role.Arn
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: atlas:tier
+          Value: lgd
+    DeletionPolicy: Delete
+
+  LGDInstance:
+    Type: AWS::Neptune::DBInstance
+    Properties:
+      DBInstanceIdentifier: atlas-lgd-instance
+      DBClusterIdentifier: !Ref LGDCluster
+      DBInstanceClass: db.serverless
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+
+  # SLGD — Semantic Layer Graph Database (curated, FIBO-aligned, SHACL-valid)
+  SLGDCluster:
+    Type: AWS::Neptune::DBCluster
+    Properties:
+      DBClusterIdentifier: atlas-slgd
+      EngineVersion: '1.3.4.0'
+      ServerlessScalingConfiguration:
+        MinCapacity: 1
+        MaxCapacity: 2.5
+      VpcSecurityGroupIds:
+        - !Ref NeptuneSecurityGroup
+      DBSubnetGroupName: !Ref NeptuneSubnetGroup
+      IamAuthEnabled: false
+      AssociatedRoles:
+        - RoleArn: !GetAtt NeptuneS3Role.Arn
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: atlas:tier
+          Value: slgd
+    DeletionPolicy: Delete
+
+  SLGDInstance:
+    Type: AWS::Neptune::DBInstance
+    Properties:
+      DBInstanceIdentifier: atlas-slgd-instance
+      DBClusterIdentifier: !Ref SLGDCluster
+      DBInstanceClass: db.serverless
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+
+  # S3 bucket for ontology staging (bulk load source)
+  OntologyStagingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'atlas-ontology-staging-${AWS::AccountId}'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+    DeletionPolicy: Delete
+
+Outputs:
+  LGDEndpoint:
+    Description: Neptune LGD cluster endpoint
+    Value: !GetAtt LGDCluster.Endpoint
+    Export:
+      Name: atlas-lgd-endpoint
+
+  SLGDEndpoint:
+    Description: Neptune SLGD cluster endpoint
+    Value: !GetAtt SLGDCluster.Endpoint
+    Export:
+      Name: atlas-slgd-endpoint
+
+  LGDPort:
+    Description: Neptune LGD port
+    Value: !GetAtt LGDCluster.Port
+
+  SLGDPort:
+    Description: Neptune SLGD port
+    Value: !GetAtt SLGDCluster.Port
+
+  NeptuneSecurityGroupId:
+    Description: Security group for Neptune access
+    Value: !Ref NeptuneSecurityGroup
+    Export:
+      Name: atlas-neptune-sg
+
+  OntologyStagingBucketName:
+    Description: S3 bucket for ontology file staging
+    Value: !Ref OntologyStagingBucket
+    Export:
+      Name: atlas-ontology-bucket
+
+  NeptuneS3RoleArn:
+    Description: IAM role ARN for Neptune S3 access
+    Value: !GetAtt NeptuneS3Role.Arn
+    Export:
+      Name: atlas-neptune-s3-role-arn
