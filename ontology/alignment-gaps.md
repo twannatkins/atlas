@@ -39,7 +39,6 @@ standard should cover and what an institution must model for itself.
 | `atlas:HouseholdMembership` | FIBO does not model reified relationships with evidence. The concept of "membership with a confidence score and a basis" is an entity-resolution output, not an industry-standard relationship. | PROV-O (for provenance when probabilistic) | When membership is inferred by AWS Entity Resolution (probabilistic), the HouseholdMembership node carries `prov:wasGeneratedBy` and `atlas:confidence`. |
 | `atlas:ObservationWindow` | FIBO models entities, not temporal observation patterns. The concept of "evaluate transactions within this date range" is an analytical pattern, not a financial concept. | None (bank-specific) | ObservationWindow is a simple [startDate, endDate] interval. OWL-Time was considered but rejected as over-engineering for a two-property class. |
 | `atlas:PreviousSurfacing` | FIBO does not model internal lead-management history. Whether a customer was previously surfaced is an operational record, not a financial concept. | PROV-O (for provenance chain) | PreviousSurfacing links to the prior Eligibility determination via PROV-O, enabling CQ4's "what has changed since" query. |
-| `atlas:ScoreExplanation` | FIBO does not model SHAP attributions or feature-level explanations. This is an ML-specific concept that postdates FIBO's design. | None (bank-specific) | ScoreExplanation carries per-feature SHAP values. No standard covers this; it is defined by the XGBoost + SHAP contract. |
 
 ## Extension Ring Summary
 

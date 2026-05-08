@@ -56,7 +56,7 @@ SLGD = Semantic Layer Graph Database (curated, validated, authoritative).
 | # | Module | Runtime |
 |---|--------|---------|
 | 1 | [From Business Question to Ontology](notebooks/01_journey_to_ontology.ipynb) | 30–45 min |
-| 2 | FIBO Alignment and the Extension Ring | 60–90 min |
+| 2 | [FIBO Alignment and the Extension Ring](notebooks/02_fibo_alignment.ipynb) | 60–75 min |
 | 3 | Standing Up Two-Tier Neptune | 30–45 min |
 | 4 | Three Patterns for Source Connection | 45–60 min |
 | 5 | Entity Resolution and the Promotion Path | 30–45 min |
