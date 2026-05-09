@@ -1,0 +1,103 @@
+##############################################################################
+# ATLAS PROV-O Bindings — prov-o-bindings.ttl
+#
+# PROV-O (W3C Provenance Ontology) patterns for the ATLAS promotion path.
+# Every entity promoted from the LGD to the SLGD carries PROV-O attribution
+# recording: what source it came from, what process produced it, when, and
+# with what confidence.
+#
+# PROV-O Reference: https://www.w3.org/TR/prov-o/
+#
+# Three PROV-O concepts used in ATLAS:
+#   prov:Entity    — a thing with provenance (the promoted triple/node)
+#   prov:Activity  — a process that produced or used entities (the ER workflow)
+#   prov:Agent     — something that bears responsibility (the system or person)
+#
+# Module 5 deliverable.
+# License: MIT-0
+##############################################################################
+
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+
+##############################################################################
+# Promotion Activity — the process of moving data from LGD to SLGD
+##############################################################################
+
+atlas:PromotionActivity
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Promotion Activity"@en ;
+    rdfs:comment
+        "A governed, observable action that moves validated data from the LGD (Lexical Graph Database) to the SLGD (Semantic Layer Graph Database). Each promotion run is a distinct instance with a timestamp, an operator, and a log of what was promoted."@en .
+
+
+##############################################################################
+# Entity Resolution Activity — the process of resolving cross-source identities
+##############################################################################
+
+atlas:EntityResolutionActivity
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Entity Resolution Activity"@en ;
+    rdfs:comment
+        "An execution of the AWS Entity Resolution workflow that identifies which records across sources refer to the same real-world entity. Each run produces a mapping from source record IDs to resolved entity IDs."@en .
+
+
+##############################################################################
+# Promotion-specific properties
+##############################################################################
+
+atlas:promotedFrom
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    rdfs:label "promoted from"@en ;
+    rdfs:comment
+        "Links a promoted SLGD entity to the LGD source triple(s) it was derived from. Every promoted entity must have at least one promotedFrom link — this is enforced by the Module 6 SHACL provenance shape."@en .
+
+atlas:promotedBy
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasGeneratedBy ;
+    rdfs:label "promoted by"@en ;
+    rdfs:comment
+        "Links a promoted SLGD entity to the PromotionActivity that created it. Records the promotion run ID, timestamp, and operator."@en .
+
+atlas:resolvedBy
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasGeneratedBy ;
+    rdfs:label "resolved by"@en ;
+    rdfs:comment
+        "Links a resolved entity to the EntityResolutionActivity that produced the identity mapping. Records the ER workflow ID and matching method (rule-based or ML)."@en .
+
+atlas:promotionTimestamp
+    a owl:DatatypeProperty ;
+    rdfs:label "promotion timestamp"@en ;
+    rdfs:domain atlas:PromotionActivity ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "The date and time the promotion was executed."@en .
+
+atlas:promotionOperator
+    a owl:DatatypeProperty ;
+    rdfs:label "promotion operator"@en ;
+    rdfs:domain atlas:PromotionActivity ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The identity of the person or system that initiated the promotion."@en .
+
+atlas:matchingMethod
+    a owl:DatatypeProperty ;
+    rdfs:label "matching method"@en ;
+    rdfs:domain atlas:EntityResolutionActivity ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The method used for entity resolution: RULE_BASED or ML_BASED."@en .
+
+atlas:erWorkflowId
+    a owl:DatatypeProperty ;
+    rdfs:label "ER workflow ID"@en ;
+    rdfs:domain atlas:EntityResolutionActivity ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The AWS Entity Resolution workflow execution ID."@en .
