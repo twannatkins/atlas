@@ -59,7 +59,7 @@ SLGD = Semantic Layer Graph Database (curated, validated, authoritative).
 | 2 | [FIBO Alignment and the Extension Ring](notebooks/02_fibo_alignment.ipynb) | 60–75 min |
 | 3 | [Standing Up Two-Tier Neptune](notebooks/03_two_tier_neptune.ipynb) | 20–30 min |
 | 4 | [Three Patterns for Source Connection](notebooks/04_three_connection_patterns.ipynb) | 60–75 min |
-| 5 | Entity Resolution and the Promotion Path | 30–45 min |
+| 5 | [Entity Resolution and the Promotion Path](notebooks/05_entity_resolution.ipynb) | 30–45 min |
 | 6 | SHACL: Making the Boundary Mechanical | 45–60 min |
 | 7 | Bedrock at the Edges | 30–45 min |
 | 8 | The Wealth-Signal Demo with Bounded Agent | 45–60 min |
