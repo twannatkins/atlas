@@ -62,7 +62,7 @@ SLGD = Semantic Layer Graph Database (curated, validated, authoritative).
 | 5 | [Entity Resolution and the Promotion Path](notebooks/05_entity_resolution.ipynb) | 30–45 min |
 | 6 | [SHACL: Making the Boundary Mechanical](notebooks/06_shacl_boundary.ipynb) | 45–60 min |
 | 7 | [Bedrock at the Edges](notebooks/07_bedrock_at_edges.ipynb) | 30–45 min |
-| 8 | The Wealth-Signal Demo with Bounded Agent | 45–60 min |
+| 8 | [The Wealth-Signal Demo with Bounded Agent](notebooks/08_wealth_signal_demo.ipynb) | 45–60 min |
 
 Total: approximately 5–6 hours of focused work.
 
