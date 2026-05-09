@@ -1,0 +1,67 @@
+##############################################################################
+# ATLAS DCAT Bindings — dcat-bindings.ttl
+#
+# DCAT (Data Catalog Vocabulary, W3C Recommendation v3) descriptors for the
+# three data sources federated into the LGD in Module 4.
+#
+# Each connection pattern (Iceberg, Snowflake Horizon, real-time stream) is
+# described as a dcat:Dataset instance. This lets a data steward see what is
+# connected to the graph without reading R2RML mappings or Lambda code.
+#
+# DCAT v3 Reference: https://www.w3.org/TR/vocab-dcat-3/
+#
+# Module 4 deliverable.
+# License: MIT-0
+##############################################################################
+
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix dct:   <http://purl.org/dc/terms/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+
+##############################################################################
+# Pattern A — Customer Master (S3 Iceberg via Athena)
+##############################################################################
+
+atlas:CustomerMasterSource
+    a atlas:DataSource, dcat:Dataset ;
+    dct:title "Customer Master (Iceberg)"@en ;
+    dct:description
+        "Synthetic customer master data stored as an Apache Iceberg table on Amazon S3, queried via Amazon Athena. Contains customer demographics, household IDs, and segment classifications. Federated into the LGD via Ontop R2RML mappings."@en ;
+    dcat:keyword "customer", "iceberg", "pattern-a" ;
+    atlas:connectionPattern "ICEBERG" ;
+    atlas:latencyProfile "minutes (Iceberg snapshot cadence)" ;
+    atlas:r2rmlMapping "mappings/pattern_a_iceberg/customer-master.r2rml.ttl" .
+
+
+##############################################################################
+# Pattern B — Transaction History (Snowflake Horizon / Athena fallback)
+##############################################################################
+
+atlas:TransactionHistorySource
+    a atlas:DataSource, dcat:Dataset ;
+    dct:title "Transaction History (Snowflake Horizon / Athena)"@en ;
+    dct:description
+        "90 days of synthetic transaction history. In production, this would be a Snowflake external Iceberg table backed by customer S3 with Horizon governance. The workshop uses an Athena Iceberg fallback. Federated into the LGD via Ontop R2RML mappings."@en ;
+    dcat:keyword "transaction", "snowflake", "horizon", "pattern-b" ;
+    atlas:connectionPattern "SNOWFLAKE_HORIZON" ;
+    atlas:latencyProfile "minutes (Iceberg snapshot cadence)" ;
+    atlas:r2rmlMapping "mappings/pattern_b_snowflake_horizon/transaction-history.r2rml.ttl" .
+
+
+##############################################################################
+# Pattern C — Real-Time Event Stream (Kinesis / MSK)
+##############################################################################
+
+atlas:EventStreamSource
+    a atlas:DataSource, dcat:Dataset ;
+    dct:title "Wealth-Eligibility Event Stream (Kinesis)"@en ;
+    dct:description
+        "Real-time stream of wealth-eligibility events produced by the transaction-monitoring system. Events are consumed by a Lambda function and written to the LGD as BehavioralEvent triples. The deeper real-time treatment (high-throughput, exactly-once delivery, schema evolution) is deferred to a follow-on lab."@en ;
+    dcat:keyword "stream", "kinesis", "real-time", "pattern-c" ;
+    atlas:connectionPattern "REALTIME_STREAM" ;
+    atlas:latencyProfile "sub-second to single-digit seconds at the LGD" ;
+    atlas:lambdaConsumer "mappings/pattern_c_realtime/event-to-lgd.py" .

@@ -1,0 +1,104 @@
+##############################################################################
+# R2RML Mapping — Pattern A: Customer Master (Iceberg via Athena)
+#
+# R2RML (Relational-to-RDF Mapping Language) is a W3C standard that defines
+# how to project relational data (tables with rows and columns) as RDF triples
+# (subject-predicate-object statements). Ontop uses these mappings to create
+# a Virtual Knowledge Graph (VKG) — the relational data appears as if it were
+# a graph, without physically copying it.
+#
+# This mapping projects the customer-master Iceberg table into the LGD as
+# atlas:Customer instances with their properties.
+#
+# Source: S3 Iceberg table (customer_master) queried via Amazon Athena
+# Target: LGD (Lexical Graph Database)
+# Module: 4, Pattern A
+#
+# W3C R2RML Reference: https://www.w3.org/TR/r2rml/
+##############################################################################
+
+@prefix rr:    <http://www.w3.org/ns/r2rml#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+##############################################################################
+# TriplesMap: Customer
+#
+# Each row in the customer_master table becomes an atlas:Customer instance.
+# The URI template uses the customer_id column as the unique identifier.
+##############################################################################
+
+<#CustomerMap>
+    a rr:TriplesMap ;
+
+    # The SQL query that selects data from the source table
+    rr:logicalTable [
+        rr:sqlQuery """
+            SELECT customer_id, first_name, last_name, state,
+                   segment, household_id, created_date
+            FROM atlas_workshop.customer_master
+        """
+    ] ;
+
+    # How to construct the URI for each Customer instance
+    # Template: https://github.com/your-org/atlas/instance#customer-{customer_id}
+    rr:subjectMap [
+        rr:template "https://github.com/your-org/atlas/instance#customer-{customer_id}" ;
+        rr:class atlas:Customer
+    ] ;
+
+    # Map the customer_id column to the atlas:customerId property
+    rr:predicateObjectMap [
+        rr:predicate atlas:customerId ;
+        rr:objectMap [ rr:column "customer_id" ; rr:datatype xsd:string ]
+    ] ;
+
+    # Map first_name to rdfs:label (human-readable name)
+    rr:predicateObjectMap [
+        rr:predicate rdfs:label ;
+        rr:objectMap [
+            rr:template "{first_name} {last_name}" ;
+            rr:termType rr:Literal
+        ]
+    ] ;
+
+    # Map segment to atlas:customerSegment
+    rr:predicateObjectMap [
+        rr:predicate atlas:customerSegment ;
+        rr:objectMap [ rr:column "segment" ; rr:datatype xsd:string ]
+    ] ;
+
+    # Map household_id to atlas:memberOf (links Customer to Household)
+    rr:predicateObjectMap [
+        rr:predicate atlas:memberOf ;
+        rr:objectMap [
+            rr:template "https://github.com/your-org/atlas/instance#household-{household_id}" ;
+            rr:termType rr:IRI
+        ]
+    ] .
+
+
+##############################################################################
+# TriplesMap: Household
+#
+# Each unique household_id becomes an atlas:Household instance.
+# This is a secondary map — it creates the Household nodes that
+# the Customer memberOf links point to.
+##############################################################################
+
+<#HouseholdMap>
+    a rr:TriplesMap ;
+
+    rr:logicalTable [
+        rr:sqlQuery """
+            SELECT DISTINCT household_id
+            FROM atlas_workshop.customer_master
+        """
+    ] ;
+
+    rr:subjectMap [
+        rr:template "https://github.com/your-org/atlas/instance#household-{household_id}" ;
+        rr:class atlas:Household
+    ] .

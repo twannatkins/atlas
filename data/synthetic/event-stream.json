@@ -1,0 +1,312 @@
+[
+  {
+    "event_id": "e79f9f3d-19ee-2c3b-b93c-4b0bb93b770c",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "deaf528d-2e70-9838-0190-262059dcabd0",
+    "account_id": "b173fcdf-3fe1-e8f3-35ad-de8843e4f668",
+    "signal_type": "equity-event-signal",
+    "amount_usd": 280185.99,
+    "event_timestamp": "2026-04-06T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "352b6ec8-e90d-21cb-7f11-1a368c52d271",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "c6b6e4ad-e7ea-8d5a-31a3-ac4d828c37e7",
+    "account_id": "9bd0d4c7-9e45-455e-24d3-875167294d3c",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1801389.42,
+    "event_timestamp": "2026-02-09T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "c8e60939-1d2f-ed2a-485f-78881e23da4b",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "1d9af659-82ec-9f2d-fbf6-e16f9b3080d5",
+    "account_id": "bf519362-41a6-4fed-a7ed-c8d8713f8f8c",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1043081.15,
+    "event_timestamp": "2026-04-25T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "7e7d9a19-ab45-0578-92fb-acf6d5d1c669",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "610faa3f-f0bb-ac67-aa38-d0a16ba25efe",
+    "account_id": "d66d4627-e1da-ce6a-6afa-828c2cd10b9f",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 907752.0,
+    "event_timestamp": "2026-04-19T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "3c088990-54a2-7051-7b0c-cad9eee13cae",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "a9ab364a-1777-e8cb-7468-5b98d2fe2fde",
+    "account_id": "1ee89a4c-6811-34e2-5064-7c59774f6354",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 939386.96,
+    "event_timestamp": "2026-05-08T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "e3ea2d7f-c219-a845-d9eb-404c1851d1cf",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "68586eba-6a34-c854-1071-4d5136c59dac",
+    "account_id": "a43afb7a-c40d-4874-22ab-7752c4db5a62",
+    "signal_type": "equity-event-signal",
+    "amount_usd": 1418665.06,
+    "event_timestamp": "2026-05-03T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "e2d903c8-a61a-cd8e-6bf7-240fccc62fed",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "066803ee-78b2-b549-3bdb-c09eacc216a0",
+    "account_id": "3207343e-c6a0-7656-c5c9-fb91ff6ef9ed",
+    "signal_type": "business-sale-liquidity-signal",
+    "amount_usd": 1250682.41,
+    "event_timestamp": "2026-04-17T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "3322c68b-9be7-8aec-32da-81f07f6bd3c6",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "f7e8f8e5-0d2b-91ef-b897-6ec5ea74bb18",
+    "account_id": "12916e60-f5e7-2daf-5d69-6bc8dc54d59b",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1315729.59,
+    "event_timestamp": "2026-04-05T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "e4ffc31a-5b86-ea69-5423-1dbe2ba6b158",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "80bacd64-7a0e-cfea-958c-a9ba0cd620c2",
+    "account_id": "73b911d8-12f5-131a-da52-d2ee22bf18f5",
+    "signal_type": "retirement-rollover-signal",
+    "amount_usd": 337239.0,
+    "event_timestamp": "2026-03-13T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "82ff1f2e-c78f-07cf-170f-a87bf30ee4fe",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "1d9af659-82ec-9f2d-fbf6-e16f9b3080d5",
+    "account_id": "bf519362-41a6-4fed-a7ed-c8d8713f8f8c",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 531077.31,
+    "event_timestamp": "2026-04-29T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "fd1935cc-74ed-a60e-3b2d-520ba4f34185",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "9f8ded97-56ab-f2f1-43d8-8870f81dbaa1",
+    "account_id": "2a5fda18-a61f-0b96-e75f-745aaa1d3fc6",
+    "signal_type": "equity-event-signal",
+    "amount_usd": 936103.69,
+    "event_timestamp": "2026-04-01T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "a9d1a28e-236d-d176-da1c-96ae0279e2ab",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "36b5229a-acf5-e81e-7131-62697118e364",
+    "account_id": "7e710b55-8639-bd41-8b15-bd94a42d0cd7",
+    "signal_type": "equity-event-signal",
+    "amount_usd": 514623.7,
+    "event_timestamp": "2026-02-15T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "8532fc74-a998-7bdf-19d9-d0b5a962d996",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "66aa9385-dd59-ba71-36b8-24817b3a4e3e",
+    "account_id": "83599af6-5d01-f55f-67fd-64c4a334058a",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 750647.32,
+    "event_timestamp": "2026-04-04T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "6d0e0597-500d-92a7-ad40-9244cd3566ef",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "80bacd64-7a0e-cfea-958c-a9ba0cd620c2",
+    "account_id": "491b90e9-9ca3-fbb3-ff11-c8ba36ee1640",
+    "signal_type": "equity-event-signal",
+    "amount_usd": 910975.0,
+    "event_timestamp": "2026-04-24T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "2ed087d4-57bc-ad3a-d0a1-7fe85f642a53",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "c6b6e4ad-e7ea-8d5a-31a3-ac4d828c37e7",
+    "account_id": "9be4f19f-9270-1d60-7c4f-48e4a7a02a3d",
+    "signal_type": "retirement-rollover-signal",
+    "amount_usd": 83571.58,
+    "event_timestamp": "2026-04-24T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "28ce231e-d827-4fc3-f145-8426fb481ded",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "0a2c827e-9832-6856-9434-0a033f07f814",
+    "account_id": "238d6f44-cac4-d0eb-3373-730efc31a597",
+    "signal_type": "business-sale-liquidity-signal",
+    "amount_usd": 4443738.84,
+    "event_timestamp": "2026-04-25T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "4a629c5e-da2c-f852-0a19-0939dfc7ab26",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "68586eba-6a34-c854-1071-4d5136c59dac",
+    "account_id": "a43afb7a-c40d-4874-22ab-7752c4db5a62",
+    "signal_type": "equity-event-signal",
+    "amount_usd": 627695.26,
+    "event_timestamp": "2026-03-23T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "e8294a67-16c8-e3d7-abf0-263e03438b64",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "43e42caf-8181-a8cc-3691-47eb89a2688b",
+    "account_id": "46426c45-8d03-f17a-f4d3-75c1a29319fa",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1739031.69,
+    "event_timestamp": "2026-04-24T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "82f73861-1adb-a8cf-e60c-1638d4a5a81e",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "af908e3c-dd75-0e98-90e0-b95f0212b554",
+    "account_id": "d8b22277-f413-db19-bade-8d5d6fff15cc",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1425381.84,
+    "event_timestamp": "2026-02-18T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "74dfb83f-f659-f188-6676-cc7566995af5",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "7bfdcc12-89e0-6ab3-7250-ee18260a5962",
+    "account_id": "d8dff535-c62d-baea-de70-bd3000a21367",
+    "signal_type": "retirement-rollover-signal",
+    "amount_usd": 482787.37,
+    "event_timestamp": "2026-04-04T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "b9f6143b-b238-3056-21ec-47541cf14654",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "5d59cd2a-4eea-04e7-0ab5-4bde20a04502",
+    "account_id": "62e7c1a6-12d2-fa06-49e1-cd138da00495",
+    "signal_type": "business-sale-liquidity-signal",
+    "amount_usd": 4013893.75,
+    "event_timestamp": "2026-05-01T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "290e3e89-4b9c-22f4-68e5-c8cdb4146e4a",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "af908e3c-dd75-0e98-90e0-b95f0212b554",
+    "account_id": "d8b22277-f413-db19-bade-8d5d6fff15cc",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1342892.32,
+    "event_timestamp": "2026-05-03T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "d9c59cd9-b09d-721b-62be-4009d5f0fb6a",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "3a3c563e-4bd6-cee6-31b1-b099d52721e7",
+    "account_id": "16591c89-21eb-faa9-1a2b-d69c450f69ee",
+    "signal_type": "retirement-rollover-signal",
+    "amount_usd": 231600.29,
+    "event_timestamp": "2026-03-08T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "231d260b-b362-cd55-9b0a-da0b9f6facc1",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "0640be0f-25b8-fd4b-32fa-2de8ce7ae7f6",
+    "account_id": "4459bd6e-c0f6-3229-725d-42593c4b1eec",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1928961.11,
+    "event_timestamp": "2026-03-16T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "198d13a4-0cd2-0e43-76da-e194439db29d",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "deaf528d-2e70-9838-0190-262059dcabd0",
+    "account_id": "0c53644b-0053-f649-b86d-066b1ba827c6",
+    "signal_type": "equity-event-signal",
+    "amount_usd": 480710.41,
+    "event_timestamp": "2026-04-16T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "33a0daa7-f91e-5fcd-85ec-e729d4dd1b56",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "b423ccde-8857-5117-6155-46672112507c",
+    "account_id": "d64acb1f-39eb-038a-436e-3c49770e09db",
+    "signal_type": "large-deposit-pattern",
+    "amount_usd": 1006680.47,
+    "event_timestamp": "2026-03-24T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "e0e3c5ce-44af-ecb7-9f2e-befcf480b91e",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": "12d0498d-718d-4d05-e8e2-2743b65feea9",
+    "account_id": "c80c2195-8b65-84ce-7acc-99705beec570",
+    "signal_type": "retirement-rollover-signal",
+    "amount_usd": 409693.14,
+    "event_timestamp": "2026-04-27T12:00:00Z",
+    "source": "transaction-monitor"
+  },
+  {
+    "event_id": "209ebc46-44b6-cc9e-8904-59d78c69e2e8",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": null,
+    "household_id": "405cacec-8774-09a9-77d2-1e02ff01cf99",
+    "signal_type": "household-aggregation-signal",
+    "amount_usd": 2040040.98,
+    "event_timestamp": "2026-04-26T12:00:00Z",
+    "source": "household-aggregator"
+  },
+  {
+    "event_id": "6c5b059a-afcd-2960-be36-c36decfdceed",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": null,
+    "household_id": "f143262f-dc5c-0eed-8da0-365bf89897b9",
+    "signal_type": "household-aggregation-signal",
+    "amount_usd": 1353331.29,
+    "event_timestamp": "2026-04-12T12:00:00Z",
+    "source": "household-aggregator"
+  },
+  {
+    "event_id": "910a8ebf-a909-3889-e42c-fe330a39561f",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": null,
+    "household_id": "f8cda88b-436d-76e2-b83c-fe0be037e5ed",
+    "signal_type": "household-aggregation-signal",
+    "amount_usd": 1579136.19,
+    "event_timestamp": "2026-05-01T12:00:00Z",
+    "source": "household-aggregator"
+  },
+  {
+    "event_id": "fa11f0e7-566d-56e8-1c86-cf6f0285ede1",
+    "event_type": "WEALTH_ELIGIBILITY",
+    "customer_id": null,
+    "household_id": "956269f0-e5d7-b875-6dad-d6c795a76d79",
+    "signal_type": "household-aggregation-signal",
+    "amount_usd": 1233301.07,
+    "event_timestamp": "2026-02-18T12:00:00Z",
+    "source": "household-aggregator"
+  }
+]

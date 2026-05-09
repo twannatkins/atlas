@@ -1,0 +1,104 @@
+##############################################################################
+# R2RML Mapping — Pattern B: Transaction History (Snowflake Horizon / Athena)
+#
+# This mapping projects the transaction-history table into the LGD as
+# atlas:Transaction instances linked to their parent Accounts.
+#
+# In production, this table would be a Snowflake external Iceberg table
+# backed by customer S3, accessed via Snowflake Horizon governance.
+# The workshop ships an Athena Iceberg fallback so the module is fully
+# runnable without a Snowflake account.
+#
+# Source: Athena Iceberg table (transaction_history) — fallback for Snowflake
+# Target: LGD (Lexical Graph Database)
+# Module: 4, Pattern B
+##############################################################################
+
+@prefix rr:    <http://www.w3.org/ns/r2rml#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+##############################################################################
+# TriplesMap: Transaction
+#
+# Each row in the transaction_history table becomes an atlas:Transaction.
+# The signal_tag column (when not null) indicates this transaction is
+# evidence for a wealth signal — used in Module 5 for promotion decisions.
+##############################################################################
+
+<#TransactionMap>
+    a rr:TriplesMap ;
+
+    rr:logicalTable [
+        rr:sqlQuery """
+            SELECT transaction_id, account_id, customer_id,
+                   amount_usd, transaction_type, transaction_date,
+                   signal_tag
+            FROM atlas_workshop.transaction_history
+        """
+    ] ;
+
+    rr:subjectMap [
+        rr:template "https://github.com/your-org/atlas/instance#txn-{transaction_id}" ;
+        rr:class atlas:Transaction
+    ] ;
+
+    # Transaction amount
+    rr:predicateObjectMap [
+        rr:predicate atlas:amountUSD ;
+        rr:objectMap [ rr:column "amount_usd" ; rr:datatype xsd:decimal ]
+    ] ;
+
+    # Transaction type (DEPOSIT, WITHDRAWAL, EQUITY_SALE, etc.)
+    rr:predicateObjectMap [
+        rr:predicate atlas:transactionType ;
+        rr:objectMap [ rr:column "transaction_type" ; rr:datatype xsd:string ]
+    ] ;
+
+    # Transaction date
+    rr:predicateObjectMap [
+        rr:predicate atlas:transactionDate ;
+        rr:objectMap [ rr:column "transaction_date" ; rr:datatype xsd:date ]
+    ] ;
+
+    # Link to parent Account
+    rr:predicateObjectMap [
+        rr:predicate atlas:belongsToAccount ;
+        rr:objectMap [
+            rr:template "https://github.com/your-org/atlas/instance#account-{account_id}" ;
+            rr:termType rr:IRI
+        ]
+    ] .
+
+
+##############################################################################
+# TriplesMap: Account (created as a side effect of transaction mapping)
+#
+# Ensures Account nodes exist for the hasTransaction relationship.
+##############################################################################
+
+<#AccountFromTransactionMap>
+    a rr:TriplesMap ;
+
+    rr:logicalTable [
+        rr:sqlQuery """
+            SELECT DISTINCT account_id, customer_id
+            FROM atlas_workshop.transaction_history
+        """
+    ] ;
+
+    rr:subjectMap [
+        rr:template "https://github.com/your-org/atlas/instance#account-{account_id}" ;
+        rr:class atlas:Account
+    ] ;
+
+    # Link Account to its owning Customer
+    rr:predicateObjectMap [
+        rr:predicate atlas:ownedByCustomer ;
+        rr:objectMap [
+            rr:template "https://github.com/your-org/atlas/instance#customer-{customer_id}" ;
+            rr:termType rr:IRI
+        ]
+    ] .
