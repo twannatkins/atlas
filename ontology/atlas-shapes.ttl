@@ -1,0 +1,89 @@
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+
+# ==========================================================================
+# Shape 1: Provenance Shape
+# Every promoted entity must have provenance (where it came from)
+# ==========================================================================
+atlas:ProvenanceShape
+    a sh:NodeShape ;
+    sh:targetClass atlas:Customer ;
+    sh:property [
+        sh:path atlas:promotedFrom ;
+        sh:minCount 1 ;
+        sh:message "Every promoted Customer must have atlas:promotedFrom linking to its LGD source. Without provenance, the audit trail is broken." ;
+    ] .
+
+# ==========================================================================
+# Shape 2: Boundary Shape
+# Scores must be marked as probabilistic with a confidence value
+# ==========================================================================
+atlas:BoundaryShape
+    a sh:NodeShape ;
+    sh:targetClass atlas:Score ;
+    sh:property [
+        sh:path atlas:probabilistic ;
+        sh:minCount 1 ;
+        sh:hasValue true ;
+        sh:message "Every Score must have atlas:probabilistic = true. Scores are produced by ML models and must be explicitly marked as probabilistic." ;
+    ] ;
+    sh:property [
+        sh:path atlas:confidence ;
+        sh:minCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive 0.0 ;
+        sh:maxInclusive 1.0 ;
+        sh:message "Every Score must have atlas:confidence between 0 and 1." ;
+    ] .
+
+# ==========================================================================
+# Shape 3: Compliance-Input Shape
+# Scores used as compliance inputs must be explainable and version-pinned
+# ==========================================================================
+atlas:ComplianceInputShape
+    a sh:NodeShape ;
+    sh:targetClass atlas:Score ;
+    sh:property [
+        sh:path atlas:explainability ;
+        sh:minCount 1 ;
+        sh:hasValue true ;
+        sh:message "Scores must have atlas:explainability = true (SHAP attributions required for compliance use)." ;
+    ] ;
+    sh:property [
+        sh:path atlas:modelVersion ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Scores must have atlas:modelVersion identifying the model that produced them." ;
+    ] .
+
+# ==========================================================================
+# Shape 4: Routing-Policy Shape
+# Routing decisions must use values from the closed route scheme
+# ==========================================================================
+atlas:RoutingPolicyShape
+    a sh:NodeShape ;
+    sh:targetClass atlas:RoutingDecision ;
+    sh:property [
+        sh:path atlas:selectedRoute ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "ROUTE_ADVISOR_QUEUE"^^xsd:string "ROUTE_SUPPRESSION_LIST"^^xsd:string "ROUTE_ESCALATION"^^xsd:string ) ;
+        sh:message "RoutingDecision must select exactly one route from the closed set: ROUTE_ADVISOR_QUEUE, ROUTE_SUPPRESSION_LIST, or ROUTE_ESCALATION. Arbitrary LLM-generated values are prohibited." ;
+    ] .
+
+# ==========================================================================
+# Shape 5: Cardinality Shape (WealthSignal must have exactly one type)
+# ==========================================================================
+atlas:WealthSignalTypeShape
+    a sh:NodeShape ;
+    sh:targetClass atlas:WealthSignal ;
+    sh:property [
+        sh:path atlas:hasSignalType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every WealthSignal must have exactly one signal type from the SKOS WealthSignalTypeScheme." ;
+    ] .
