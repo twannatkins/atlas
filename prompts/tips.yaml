@@ -1,0 +1,58 @@
+# ATLAS NL-to-SPARQL Tips
+# FIBO-specific hints for the LLM when generating SPARQL queries.
+
+ontology_vocabulary:
+  classes:
+    - atlas:Customer
+    - atlas:Account
+    - atlas:Transaction
+    - atlas:Holding
+    - atlas:Household
+    - atlas:HouseholdMembership
+    - atlas:WealthSignal
+    - atlas:WealthSignalType
+    - atlas:Score
+    - atlas:Eligibility
+    - atlas:RoutingDecision
+    - atlas:HumanReview
+    - atlas:Advisor
+    - atlas:AdvisoryRelationship
+    - atlas:WorkflowStep
+    - atlas:ObservationWindow
+    - atlas:AuditRecord
+    - atlas:DataSource
+
+  key_properties:
+    - "atlas:producesSignal (Customer -> WealthSignal)"
+    - "atlas:hasScore (WealthSignal -> Score)"
+    - "atlas:evidencedBy (WealthSignal -> Transaction)"
+    - "atlas:hasSignalType (WealthSignal -> WealthSignalType)"
+    - "atlas:memberOf (Customer -> Household)"
+    - "atlas:hasEligibility (Customer -> Eligibility)"
+    - "atlas:triggersRouting (Eligibility -> RoutingDecision)"
+    - "atlas:reviewedBy (RoutingDecision -> HumanReview)"
+    - "atlas:conductedBy (HumanReview -> Advisor)"
+    - "atlas:hasAdvisor (Customer -> AdvisoryRelationship)"
+    - "atlas:advisesCustomer (AdvisoryRelationship -> Customer)"
+    - "atlas:coveringAdvisor (AdvisoryRelationship -> Advisor)"
+    - "atlas:hasAccount (Customer -> Account)"
+    - "atlas:hasTransaction (Account -> Transaction)"
+
+  coverage_pattern: |
+    To check if a customer has an active advisor:
+      ?customer atlas:hasAdvisor ?rel .
+      ?rel atlas:coveringAdvisor ?advisor .
+      FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
+
+    To check if a customer has NO active advisor:
+      FILTER NOT EXISTS {
+          ?customer atlas:hasAdvisor ?rel .
+          FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
+      }
+
+rules:
+  - Generate ONLY SELECT queries (never INSERT, UPDATE, DELETE)
+  - Use atlas: prefix for all ontology terms
+  - Use FILTER NOT EXISTS for absence checks (not negation)
+  - Active relationships have no coverageEndDate (or endDate > today)
+  - Historical relationships have coverageEndDate populated

@@ -1,0 +1,99 @@
+# ATLAS NL-to-SPARQL Ground-Truth Pairs
+# Used by Module 7 for few-shot prompting of the Bedrock NL-to-SPARQL component.
+# Each pair maps a natural-language question to a correct SPARQL query.
+# The three coverage pairs at the end are the canonical Phase 1 questions for Part 2.
+
+pairs:
+  - question: "Which customers have generated a wealth signal in the last 90 days?"
+    sparql: >
+      SELECT ?customer ?signalType ?signalDate WHERE {
+          ?customer a atlas:Customer ; atlas:producesSignal ?sig .
+          ?sig atlas:hasSignalType ?signalType ; atlas:signalDate ?signalDate ;
+               atlas:withinWindow ?window .
+      }
+
+  - question: "For a given signal, what observations support it and what is the score?"
+    sparql: >
+      SELECT ?signal ?txn ?scoreValue ?isProbabilistic WHERE {
+          ?signal a atlas:WealthSignal ; atlas:evidencedBy ?txn ; atlas:hasScore ?score .
+          ?score atlas:scoreValue ?scoreValue ; atlas:probabilistic ?isProbabilistic .
+      }
+
+  - question: "Which household relationships does this customer have?"
+    sparql: >
+      SELECT ?customer ?household WHERE {
+          ?customer a atlas:Customer ; atlas:memberOf ?household .
+      }
+
+  - question: "Has this customer been previously surfaced as a wealth candidate?"
+    sparql: >
+      SELECT ?customer ?prevSurfacing WHERE {
+          ?customer a atlas:Customer ; atlas:hasPreviousSurfacing ?prevSurfacing .
+      }
+
+  - question: "Which routing decisions have human review and what was the outcome?"
+    sparql: >
+      SELECT ?routing ?route ?review ?outcome WHERE {
+          ?routing a atlas:RoutingDecision ; atlas:selectedRoute ?route ;
+                   atlas:reviewedBy ?review .
+          ?review atlas:reviewOutcome ?outcome .
+      }
+
+  - question: "What is the full audit trail from customer to advisor approval?"
+    sparql: >
+      SELECT ?customer ?eligibility ?routing ?review ?advisor WHERE {
+          ?customer atlas:hasEligibility ?eligibility .
+          ?eligibility atlas:triggersRouting ?routing .
+          ?routing atlas:reviewedBy ?review .
+          ?review atlas:conductedBy ?advisor .
+      }
+
+  - question: "What specific transactions were used to surface this customer?"
+    sparql: >
+      SELECT ?customer ?signal ?txn ?txnDate ?amount WHERE {
+          ?customer a atlas:Customer ; atlas:producesSignal ?signal .
+          ?signal atlas:evidencedBy ?txn .
+          ?txn atlas:transactionDate ?txnDate ; atlas:amountUSD ?amount .
+      }
+
+  # --- Coverage queries (Phase 1 pilot questions for Part 2) ---
+
+  - question: "Which customers have no wealth advisor assigned?"
+    note: "Phase 1 pilot question 1"
+    sparql: >
+      SELECT ?customer ?balance WHERE {
+          ?customer a atlas:Customer ; atlas:hasAccount ?acct .
+          ?acct atlas:balanceUSD ?balance .
+          FILTER NOT EXISTS {
+              ?customer atlas:hasAdvisor ?rel .
+              ?rel atlas:coveringAdvisor ?adv .
+              FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
+          }
+      }
+
+  - question: "Which households have mixed wealth coverage?"
+    note: "Phase 1 pilot question 2"
+    sparql: >
+      SELECT ?household WHERE {
+          ?covered a atlas:Customer ; atlas:memberOf ?household ; atlas:hasAdvisor ?rel .
+          ?rel atlas:coveringAdvisor ?adv .
+          FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
+          ?uncovered a atlas:Customer ; atlas:memberOf ?household .
+          FILTER NOT EXISTS {
+              ?uncovered atlas:hasAdvisor ?rel2 .
+              FILTER NOT EXISTS { ?rel2 atlas:coverageEndDate ?end2 }
+          }
+          FILTER (?covered != ?uncovered)
+      }
+
+  - question: "Who was this customer's advisor 18 months ago?"
+    note: "Temporal coverage query"
+    sparql: >
+      SELECT ?customer ?advisor ?startDate ?endDate WHERE {
+          ?customer atlas:hasAdvisor ?rel .
+          ?rel atlas:coveringAdvisor ?advisor ;
+               atlas:coverageStartDate ?startDate .
+          OPTIONAL { ?rel atlas:coverageEndDate ?endDate }
+          FILTER (?startDate <= "2024-11-01"^^xsd:date)
+          FILTER (!BOUND(?endDate) || ?endDate >= "2024-11-01"^^xsd:date)
+      }
