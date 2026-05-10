@@ -319,3 +319,28 @@ atlas:LineOfBusiness
 #   2. The chosen extension standard (if any)
 #   3. The rationale for the choice
 ##############################################################################
+
+
+##############################################################################
+# BINDING 13 — AdvisoryRelationship → FIBO FBC isProvidedBy pattern
+#
+# Why isProvidedBy:
+#   FIBO FBC models financial service relationships using the pattern
+#   "a financial service is provided by a service provider." In ATLAS,
+#   the AdvisoryRelationship is the service relationship, the Advisor is
+#   the service provider (via coveringAdvisor), and the Customer is the
+#   service consumer (via advisesCustomer).
+#
+#   This is not a direct rdfs:subClassOf binding because isProvidedBy is
+#   a property pattern, not a class. Instead, we document the alignment
+#   as a structural correspondence: the ATLAS coverage pattern implements
+#   the FIBO service-provider pattern using reification for temporal
+#   queryability.
+#
+# FIBO module: FBC > ProductsAndServices > FinancialProductsAndServices
+##############################################################################
+
+atlas:AdvisoryRelationship
+    rdfs:subClassOf fibo-fbc-pas-fpas:FinancialAccount ;
+    rdfs:comment
+        "FIBO alignment: structural correspondence to the fibo-fbc-pas-fpas:isProvidedBy pattern. The AdvisoryRelationship reifies the FIBO service-provider relationship: coveringAdvisor maps to the service provider role, advisesCustomer maps to the service consumer role. Reified (rather than using isProvidedBy directly) because ATLAS requires temporal attributes and provenance on the relationship itself."@en .

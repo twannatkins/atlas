@@ -87,3 +87,44 @@ atlas:WealthSignalTypeShape
         sh:maxCount 1 ;
         sh:message "Every WealthSignal must have exactly one signal type from the SKOS WealthSignalTypeScheme." ;
     ] .
+
+# ==========================================================================
+# Shape 6: Coverage Relationship Shape
+# Every AdvisoryRelationship must have valid temporal, type, and party links
+# ==========================================================================
+atlas:CoverageRelationshipShape
+    a sh:NodeShape ;
+    sh:targetClass atlas:AdvisoryRelationship ;
+    sh:property [
+        sh:path atlas:coverageStartDate ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:date ;
+        sh:message "Every AdvisoryRelationship must have exactly one coverageStartDate (xsd:date)." ;
+    ] ;
+    sh:property [
+        sh:path atlas:coverageEndDate ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:date ;
+        sh:message "AdvisoryRelationship may have at most one coverageEndDate. When absent, the relationship is active." ;
+    ] ;
+    sh:property [
+        sh:path atlas:relationshipType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every AdvisoryRelationship must have exactly one relationshipType from atlas:RelationshipTypeScheme." ;
+    ] ;
+    sh:property [
+        sh:path atlas:coveringAdvisor ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class atlas:Advisor ;
+        sh:message "Every AdvisoryRelationship must link to exactly one Advisor via coveringAdvisor." ;
+    ] ;
+    sh:property [
+        sh:path atlas:advisesCustomer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class atlas:Customer ;
+        sh:message "Every AdvisoryRelationship must link to exactly one Customer via advisesCustomer." ;
+    ] .

@@ -101,3 +101,30 @@ atlas:erWorkflowId
     rdfs:domain atlas:EntityResolutionActivity ;
     rdfs:range xsd:string ;
     rdfs:comment "The AWS Entity Resolution workflow execution ID."@en .
+
+
+##############################################################################
+# Coverage-creation provenance pattern
+#
+# When a HumanReview outcome is APPROVED, the workflow mints an
+# AdvisoryRelationship instance. That instance carries:
+#   prov:wasGeneratedBy ?humanReview
+#
+# This preserves the model-risk-defensible posture: every coverage edge
+# points to a human-approved review. The HumanReview is the source of truth
+# for the engagement event; the AdvisoryRelationship is the derived coverage
+# assertion with provenance traceable back to the review that authorized it.
+#
+# Legacy-migrated coverage (pre-existing assignments from the institution's
+# systems) carries a different provenance stamp:
+#   prov:wasAttributedTo atlas:LegacyDataMigration
+#
+# This distinguishes workflow-generated coverage from legacy coverage in
+# queries and in the model-risk-review report.
+##############################################################################
+
+atlas:LegacyDataMigration
+    a prov:Agent ;
+    rdfs:label "Legacy Data Migration"@en ;
+    rdfs:comment
+        "A provenance agent representing the institution's legacy data migration process. AdvisoryRelationship instances stamped prov:wasAttributedTo atlas:LegacyDataMigration represent pre-existing coverage assignments that predate the ATLAS workflow. They are confirmed enterprise data, not workflow outputs."@en .

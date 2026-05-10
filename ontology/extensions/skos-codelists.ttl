@@ -100,3 +100,42 @@ atlas:RouteEscalation
     skos:notation "ROUTE_ESCALATION" ;
     skos:definition
         "Escalate the lead to a senior advisor or compliance review before action."@en .
+
+
+##############################################################################
+# Relationship Type Scheme
+##############################################################################
+
+atlas:RelationshipTypeScheme
+    a skos:ConceptScheme ;
+    skos:prefLabel "ATLAS Advisory Relationship Type Scheme"@en ;
+    rdfs:comment
+        "Closed enumeration of advisory relationship types. Every AdvisoryRelationship instance must reference exactly one member of this scheme via atlas:relationshipType."@en .
+
+atlas:RelType_Primary
+    a skos:Concept ;
+    skos:inScheme atlas:RelationshipTypeScheme ;
+    skos:prefLabel "Primary"@en ;
+    skos:notation "PRIMARY" ;
+    skos:definition "The primary advisory relationship — the advisor with principal responsibility for the customer's wealth management needs."@en .
+
+atlas:RelType_Secondary
+    a skos:Concept ;
+    skos:inScheme atlas:RelationshipTypeScheme ;
+    skos:prefLabel "Secondary"@en ;
+    skos:notation "SECONDARY" ;
+    skos:definition "A secondary advisory relationship — a supporting advisor who assists the primary, often specialising in a specific product area."@en .
+
+atlas:RelType_Joint
+    a skos:Concept ;
+    skos:inScheme atlas:RelationshipTypeScheme ;
+    skos:prefLabel "Joint"@en ;
+    skos:notation "JOINT" ;
+    skos:definition "A joint advisory relationship — shared coverage between two advisors with equal responsibility, common for high-net-worth households."@en .
+
+atlas:RelType_Prospective
+    a skos:Concept ;
+    skos:inScheme atlas:RelationshipTypeScheme ;
+    skos:prefLabel "Prospective"@en ;
+    skos:notation "PROSPECTIVE" ;
+    skos:definition "A prospective advisory relationship — the advisor has been assigned but the customer has not yet been contacted or onboarded. Created by the Module 8 workflow when a HumanReview is APPROVED."@en .
