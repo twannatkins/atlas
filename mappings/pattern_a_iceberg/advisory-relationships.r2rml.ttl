@@ -1,0 +1,98 @@
+##############################################################################
+# R2RML Mapping — Pattern A: Advisory Relationships (Iceberg via Athena)
+#
+# Projects the advisory-relationships data (legacy-migrated coverage
+# assignments) into the LGD as atlas:AdvisoryRelationship instances.
+#
+# These represent the institution's existing advisor assignments as they
+# would arrive from a tiered Gold-layer source. They are confirmed enterprise
+# data (Commitment 1), not workflow outputs.
+#
+# Workflow-generated AdvisoryRelationship instances are NOT produced by R2RML;
+# they are produced by Module 8 logic at runtime when a HumanReview is APPROVED.
+#
+# Source: S3 Iceberg table (advisory_relationships) queried via Amazon Athena
+# Target: LGD (Lexical Graph Database)
+# Module: 4, Pattern A (same pattern as customer-master)
+##############################################################################
+
+@prefix rr:    <http://www.w3.org/ns/r2rml#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+##############################################################################
+# TriplesMap: AdvisoryRelationship
+#
+# Each row in the advisory_relationships table becomes an
+# atlas:AdvisoryRelationship instance with temporal attributes,
+# relationship type, and provenance stamped as legacy migration.
+##############################################################################
+
+<#AdvisoryRelationshipMap>
+    a rr:TriplesMap ;
+
+    rr:logicalTable [
+        rr:sqlQuery """
+            SELECT relationship_id, customer_id, advisor_id,
+                   coverage_start_date, coverage_end_date,
+                   relationship_type, line_of_business
+            FROM atlas_workshop.advisory_relationships
+        """
+    ] ;
+
+    rr:subjectMap [
+        rr:template "https://github.com/your-org/atlas/instance#advisory-rel-{relationship_id}" ;
+        rr:class atlas:AdvisoryRelationship
+    ] ;
+
+    # Link to the customer this relationship covers
+    rr:predicateObjectMap [
+        rr:predicate atlas:advisesCustomer ;
+        rr:objectMap [
+            rr:template "https://github.com/your-org/atlas/instance#customer-{customer_id}" ;
+            rr:termType rr:IRI
+        ]
+    ] ;
+
+    # Link to the covering advisor
+    rr:predicateObjectMap [
+        rr:predicate atlas:coveringAdvisor ;
+        rr:objectMap [
+            rr:template "https://github.com/your-org/atlas/instance#advisor-{advisor_id}" ;
+            rr:termType rr:IRI
+        ]
+    ] ;
+
+    # Coverage start date (required)
+    rr:predicateObjectMap [
+        rr:predicate atlas:coverageStartDate ;
+        rr:objectMap [ rr:column "coverage_start_date" ; rr:datatype xsd:date ]
+    ] ;
+
+    # Coverage end date (optional — NULL means active)
+    rr:predicateObjectMap [
+        rr:predicate atlas:coverageEndDate ;
+        rr:objectMap [ rr:column "coverage_end_date" ; rr:datatype xsd:date ]
+    ] ;
+
+    # Relationship type (links to SKOS concept)
+    rr:predicateObjectMap [
+        rr:predicate atlas:relationshipType ;
+        rr:objectMap [
+            rr:template "https://github.com/your-org/atlas/ontology#RelType_{relationship_type}" ;
+            rr:termType rr:IRI
+        ]
+    ] ;
+
+    # Provenance: all legacy-migrated relationships are attributed to the
+    # legacy data migration process, not to a workflow HumanReview.
+    rr:predicateObjectMap [
+        rr:predicate prov:wasAttributedTo ;
+        rr:objectMap [
+            rr:constant <https://github.com/your-org/atlas/ontology#LegacyDataMigration> ;
+            rr:termType rr:IRI
+        ]
+    ] .

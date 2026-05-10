@@ -36,3 +36,22 @@ in front of a committee or a model risk management reviewer.
 | CQ5 | `atlas:RoutingDecision`, `atlas:HumanReview`, `atlas:Advisor`, `atlas:WorkflowStep` |
 | CQ6 | `atlas:Customer`, `atlas:RoutingDecision`, `atlas:HumanReview`, `atlas:AuditRecord`, `atlas:Advisor` |
 | CQ7 | `atlas:Customer`, `atlas:Transaction`, `atlas:AuditRecord`, `atlas:DataSource` |
+
+## Coverage Competency Questions (Added in Finishing Pass)
+
+These three competency questions exercise the `atlas:AdvisoryRelationship` class
+and are the canonical Phase 1 questions for Part 2 of the workshop.
+
+| CQ | Question | Satisfying SPARQL | Why It Is a Valid FSI CQ |
+|----|----------|-------------------|------------------------|
+| CQ-Coverage-1 | For any customer, identify their currently active wealth advisor, if any. | `SELECT ?customer ?advisor WHERE { ?customer atlas:hasAdvisor ?rel . ?rel atlas:coveringAdvisor ?advisor . FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end } }` | Every regulated institution must be able to identify the responsible advisor for any customer at any point in time. This is a basic accountability question. |
+| CQ-Coverage-2 | For any household, identify which members have active wealth coverage and which do not. | `SELECT ?household ?covered ?uncovered WHERE { ?covered atlas:memberOf ?household ; atlas:hasAdvisor ?rel . FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end } . ?uncovered atlas:memberOf ?household . FILTER NOT EXISTS { ?uncovered atlas:hasAdvisor ?rel2 . FILTER NOT EXISTS { ?rel2 atlas:coverageEndDate ?end2 } } FILTER (?covered != ?uncovered) }` | Household-level coverage gaps are the primary source of wealth-management referral opportunities. A household with one engaged member and three unengaged members represents three potential referrals. |
+| CQ-Coverage-3 | For any historical date, identify the wealth advisor covering a customer at that date. | `SELECT ?customer ?advisor ?start ?end WHERE { ?customer atlas:hasAdvisor ?rel . ?rel atlas:coveringAdvisor ?advisor ; atlas:coverageStartDate ?start . OPTIONAL { ?rel atlas:coverageEndDate ?end } FILTER (?start <= "2024-11-01"^^xsd:date) FILTER (!BOUND(?end) \|\| ?end >= "2024-11-01"^^xsd:date) }` | Regulatory inquiries often ask about historical state: "who was responsible for this customer when this event occurred?" Without temporal coverage, this question is unanswerable. |
+
+### Class Derivation from Coverage CQs
+
+| CQ | Classes Derived or Exercised |
+|----|------------------------------|
+| CQ-Coverage-1 | `atlas:Customer`, `atlas:AdvisoryRelationship`, `atlas:Advisor` |
+| CQ-Coverage-2 | `atlas:Customer`, `atlas:Household`, `atlas:AdvisoryRelationship` |
+| CQ-Coverage-3 | `atlas:Customer`, `atlas:AdvisoryRelationship`, `atlas:Advisor` |
