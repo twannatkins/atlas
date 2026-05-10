@@ -1,0 +1,1052 @@
+[
+  {
+    "relationship_id": "0b1f9163-ce9f-f57f-43b7-a3a69a8dca03",
+    "customer_id": "b18753e6-d457-8ad9-a867-a096edd877c8",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2023-12-24",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "d453dd32-4b0d-bb41-8d52-88f1142c3fe8",
+    "customer_id": "016b6287-b008-05cc-a7f3-6ae925c73c44",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2023-02-07",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "4a15544d-c5e7-ce8a-3a57-8a8ea9488d99",
+    "customer_id": "98543881-118a-9d29-2f92-3996d9f195d0",
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "coverage_start_date": "2022-11-15",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "5d65a441-d588-42de-a2bc-372f7412b293",
+    "customer_id": "7de1bdfe-d072-5b5c-a281-40446f962882",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2024-10-21",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "a5e5a5ab-aefc-fad8-efc8-9849b3aa7efe",
+    "customer_id": "610faa3f-f0bb-ac67-aa38-d0a16ba25efe",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2024-01-13",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6123fdf7-7656-af72-29d4-beef3eabedcb",
+    "customer_id": "3f6c21f7-0a05-37f0-2c2c-d22ba56895c6",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2022-09-11",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "c6a7ee39-c4b0-32cc-d7c5-24a55304317f",
+    "customer_id": "598ddaec-eaaf-e543-2434-a678a9e27ba9",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2022-07-10",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "3602f8ac-10f1-bc81-448a-aa9e66b2bc5b",
+    "customer_id": "506e5a9a-b758-588d-ab73-295b344a54b8",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2024-10-28",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "24933b83-7577-50a9-a491-f0b2ea1fca65",
+    "customer_id": "a81fdec3-279c-658a-3676-0ce581e5c9f6",
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "coverage_start_date": "2024-12-01",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6dadd6c7-95a7-6d79-bf3c-4c06434308bc",
+    "customer_id": "093923de-8bab-ce3b-2628-6bfbe767dcea",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2025-04-30",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "c17af08a-1745-d6d8-7e57-0ddf827050a8",
+    "customer_id": "0db95301-afbb-411a-a123-5a8c93b7a886",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2024-01-30",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "10435a10-98ae-4334-6c12-ace8ae340454",
+    "customer_id": "e9b5c5cf-d766-5cda-fe04-90593985fb62",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2025-06-30",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "dc5c0eed-8da0-365b-f898-97b9405cacec",
+    "customer_id": "9458054e-c287-4f06-9050-f7efc1235c91",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2023-12-21",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "c4c2e2e3-444e-a7c8-c039-87108976e334",
+    "customer_id": "8e485223-46b9-8991-e14e-b70db380c73a",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2022-04-18",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "e037e5ed-b8db-0672-f42d-47cc00d4af59",
+    "customer_id": "4a193501-4169-b9fc-c3a0-0c6f2321d1e1",
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "coverage_start_date": "2025-06-26",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "4c66e0a8-a013-ac6e-deda-4e161b3dbd5c",
+    "customer_id": "91e1aa96-76f7-2255-c01f-36bf3e6dd58b",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2023-04-21",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "c754108f-f418-8f3f-8a14-be62295b4715",
+    "customer_id": "cd2372c2-2bff-e17b-5324-01fcf758dce2",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2022-09-11",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "e0f3eab0-5cec-4eb5-edd9-68311ca35cfb",
+    "customer_id": "ca3dd859-c5ce-099c-46b8-265911df12d7",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2026-02-08",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "14296c07-f26b-4776-913e-4de2e0c53cb8",
+    "customer_id": "839fbc50-1223-b513-5496-f63cdc1110c1",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2024-10-07",
+    "coverage_end_date": null,
+    "relationship_type": "JOINT",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "2031d750-c40d-b9b4-885f-6e66c2b6d2c5",
+    "customer_id": "39e58ff0-92f8-37d4-4750-3f1dc33a1f6c",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2022-01-03",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "9b49bd26-df57-c59a-8715-a10343dac043",
+    "customer_id": "517400f8-0b2c-782a-6928-8e92c68a152f",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2022-05-30",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "4fcca39a-b683-d2e6-337e-a2dfb09b2a5c",
+    "customer_id": "f295456e-1967-5f06-bd76-7e35f5c9b047",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2024-12-03",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "3f76be1d-1efa-2197-7394-988f847fd9b4",
+    "customer_id": "157d94a1-06f0-28ff-a9ba-5a27907bfe36",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2022-05-06",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "01d74256-3860-2ab6-96a4-02f23ae8cc93",
+    "customer_id": "4e20fd1a-5983-36e3-75d6-6ed4eb1fa9f2",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2025-10-01",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "5496f63c-dc11-10c1-080a-adfbe7c99b26",
+    "customer_id": "ad81f8bd-4029-13ec-9ef2-b93e30ac7d7b",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2022-02-21",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "b92da22b-21df-306f-8a0b-3c3336d8393a",
+    "customer_id": "a8149562-da00-3f16-b946-9bcf4082cbb9",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2023-03-25",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "a8b317fa-18d0-752b-1825-bc5430beb45f",
+    "customer_id": "89456f27-d7fa-2d8d-fb2c-a025adf4e62d",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2024-09-30",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "a748dbcf-ac61-9e63-0dde-29a6baa4b71a",
+    "customer_id": "93829b43-922f-e15a-e1e3-db63ef7ddc76",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2024-02-15",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "310c0c00-3fa7-f104-1bf9-0e27dc96925e",
+    "customer_id": "b4fb0eb9-49c1-3de7-3b42-06c5085b15fb",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2025-10-08",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "dfde4fbf-3ff3-50bf-766e-cb15474ebc19",
+    "customer_id": "1efd76e9-ce37-14af-99b4-9350af2b99b4",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2023-02-07",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "ffd0f9d5-a6f2-f7b8-0cf3-5b5819108be5",
+    "customer_id": "31274148-7c7c-404e-c422-d03ef29a6339",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2023-08-17",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "680ac07a-2a93-5d62-3c83-5dc0d9441fa5",
+    "customer_id": "96c044d0-6f88-7f28-3e49-fd091b19d8b8",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2026-01-10",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "008d4127-6104-61e3-2a25-a8880f02bad0",
+    "customer_id": "4fa03f26-f6f7-f0cc-29ec-8e49d1bdb8c0",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2023-05-31",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "f512c4c3-b253-d218-6c4a-37ea490617f2",
+    "customer_id": "066803ee-78b2-b549-3bdb-c09eacc216a0",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2024-08-15",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "0ef8c2d6-f7fd-5646-37bb-3eec4bf50b52",
+    "customer_id": "ef8c485b-c07a-30f2-edd4-253b50f0fd0a",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2022-05-26",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "eb5cf467-80ba-cd64-7a0e-cfea958ca9ba",
+    "customer_id": "5d59cd2a-4eea-04e7-0ab5-4bde20a04502",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2025-10-08",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "2f923996-d9f1-95d0-1482-2f5382010c62",
+    "customer_id": "68586eba-6a34-c854-1071-4d5136c59dac",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2025-03-24",
+    "coverage_end_date": null,
+    "relationship_type": "JOINT",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "1eb0e38a-675d-d5af-3c36-5296dca02eec",
+    "customer_id": "69efafb1-3a7e-8e14-e359-eee173991a47",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2022-10-10",
+    "coverage_end_date": null,
+    "relationship_type": "JOINT",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "90b2b633-956b-8c0c-a849-9b926b5252e3",
+    "customer_id": "5e6fea07-c453-6f1d-4199-2fdfb31022f0",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2022-11-12",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "43ff5011-3d1a-85dd-506e-5a9ab758588d",
+    "customer_id": "fc043f08-9207-0158-f277-1f63ada58417",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2024-05-03",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "ef8c485b-c07a-30f2-edd4-253b50f0fd0a",
+    "customer_id": "6cedd15d-5800-7c02-87ea-7ff58db06746",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2025-05-17",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "89a2688b-12c1-36e0-1998-5f15ff002d4d",
+    "customer_id": "13748146-32c5-bd89-b70b-3420f1043785",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2026-01-21",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "3e896c64-e117-dac3-119c-4ea3e1805081",
+    "customer_id": "d11fc8c0-297c-a4ff-f75d-599f6b2d5b09",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2023-04-10",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "fbddcf7c-9c96-e9ec-4d71-c366b41b3143",
+    "customer_id": "8b10550c-d570-4f32-702c-dd20286218b8",
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "coverage_start_date": "2024-07-06",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "f05db76e-1a84-a51a-a9d3-d7c7ee87905e",
+    "customer_id": "6232b17a-2507-4181-8d1f-b54074eff545",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2026-01-24",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "48212ddb-45b8-9cd9-27cb-6f2a8da01097",
+    "customer_id": "9a36d1ec-2c6a-6e9a-3280-67a14187222b",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2024-08-17",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "7d106c60-8162-7cf1-4394-72e6da587e8a",
+    "customer_id": "7129cec7-9b69-554d-7c54-535f6c8c3b6a",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2022-02-01",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "5563f616-00e8-5ece-0b49-452d46d483f3",
+    "customer_id": "1d9af659-82ec-9f2d-fbf6-e16f9b3080d5",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2025-10-28",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6d7ce3c9-b4a6-9f3c-8d3a-ed99711c21c9",
+    "customer_id": "5a8aaeca-1a50-aec3-aabc-25fa3fe12e47",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2022-07-16",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "8babce3b-2628-6bfb-e767-dceab0e6a969",
+    "customer_id": "45b89cd9-27cb-6f2a-8da0-1097be0f051b",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2026-01-21",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "4eea04e7-0ab5-4bde-20a0-45026e068097",
+    "customer_id": "09cb3942-43f5-9a85-fbc9-f87af668a617",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2021-06-06",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "3fe12e47-ae9b-ec36-35c7-936c5b9962c6",
+    "customer_id": "8cbfedb0-f264-accc-79ac-1b1ea8e56e0c",
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "coverage_start_date": "2021-08-24",
+    "coverage_end_date": null,
+    "relationship_type": "PROSPECTIVE",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "bfddc3d9-9ee3-ac2a-f94d-62046808593f",
+    "customer_id": "9e87e04c-a208-6977-a9f2-533683f4a9a9",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2024-02-16",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "698c206f-e1a4-7e10-2d53-4dd0cf8ebc5a",
+    "customer_id": "b4a69f3c-8d3a-ed99-711c-21c9bdc14f1f",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2024-10-13",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "ab7f089a-cd5f-4822-6966-08aaee49f329",
+    "customer_id": "fcce96f6-250a-4578-fbe9-4499dbc080fd",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2025-02-07",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "dbccc477-09e9-db0a-df46-529061ee411a",
+    "customer_id": "4094dded-6beb-ac31-d4f8-fd72f3821cfd",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2024-08-12",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "cb9bc326-d20e-ac17-4e20-fd1a598336e3",
+    "customer_id": "8498e113-b227-462c-f53d-4330cdda24ba",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2024-11-11",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "475287aa-5408-f9ac-6601-ddd03170f437",
+    "customer_id": "b5a1b949-6788-4209-92ca-525a6de59332",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2024-11-10",
+    "coverage_end_date": null,
+    "relationship_type": "JOINT",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "d7fa2d8d-fb2c-a025-adf4-e62d6651529e",
+    "customer_id": "a5c5650c-8186-a576-11a7-26095eddbbbf",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2021-10-10",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "94a1875d-2db6-9edb-42de-ffccf86c2ca2",
+    "customer_id": "6a8a616f-c3b2-90d0-8edd-dfcd1e52d770",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2024-04-02",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6fb78271-504d-281f-c953-5b63ba81edd9",
+    "customer_id": "03c72ba8-d605-e770-8a63-f881ffd0f9d5",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2025-11-23",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6fa17735-b572-f3d0-0b5c-ea6a41357e8c",
+    "customer_id": "0ad45230-bdf6-6ba5-dc9c-96de65a674c2",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2025-06-18",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "bcae8081-bdf0-70aa-f0b5-156bb82c9074",
+    "customer_id": "deaf528d-2e70-9838-0190-262059dcabd0",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2023-03-13",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "505cc686-9f87-1ce7-5487-fd4febb7a385",
+    "customer_id": "49bc473f-ed7b-f656-218a-15368c99a894",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2024-01-26",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6703b636-5380-b904-688c-7015aab97e49",
+    "customer_id": "4c71e0fe-5a0c-dd7c-f157-8470018267c4",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2022-01-27",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "bf85bf0e-ad64-b56c-610f-aa3ff0bbac67",
+    "customer_id": "5bc440f1-4b1a-269b-0e5d-d462cbd00ef2",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2023-01-01",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "49732d6c-4dca-bfb7-001a-9a8bd56f0350",
+    "customer_id": "80bacd64-7a0e-cfea-958c-a9ba0cd620c2",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2022-08-29",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "71316269-7118-e364-7709-7749527eecfa",
+    "customer_id": "e8a3f341-c881-9065-ba2c-98ce0b19f88e",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2023-09-13",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "a8aa7158-2b70-e525-bc67-f831cbc84759",
+    "customer_id": "caaa5bbe-a4bb-f962-606e-0e1c8f158449",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2023-03-31",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "f3b63fe1-d184-3324-17e8-392a55cee5db",
+    "customer_id": "5ca0c428-822c-4d32-6c64-5c15aba301cb",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2024-07-08",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "3eae0032-0bd4-a990-0640-be0f25b8fd4b",
+    "customer_id": "45241ea6-a684-6099-f729-4951859131d2",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2022-05-04",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "935f2b0a-a138-4ddc-e2d9-de5d6a18ce4c",
+    "customer_id": "ffd6f232-32ff-e294-4d57-d880d865d69a",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2022-09-07",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "b00805cc-a7f3-6ae9-25c7-3c443e75c3b4",
+    "customer_id": "3d114802-2702-878b-9f0f-da8d05379ff6",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2022-01-30",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "2d06e8cf-3805-f907-6cd6-6193c7468f59",
+    "customer_id": "13d5f2f7-709b-7d97-464c-04af3d3f3799",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2021-11-25",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "1f115b76-d92c-9227-eadf-50853fcb7546",
+    "customer_id": "746f7891-0964-fbbf-8cd3-21b0c2b01cfd",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2023-07-04",
+    "coverage_end_date": null,
+    "relationship_type": "JOINT",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "513a7052-986f-9025-8f15-ba58fce68504",
+    "customer_id": "ee33688d-597e-6845-e277-18c5737d1fb6",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2025-05-12",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "8c41561b-e827-a1b9-d4a0-2e536d3ee1dc",
+    "customer_id": "362f5e5c-53cd-6268-610c-f37342999aa4",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2022-09-04",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "d701410d-3f4b-1a70-c074-718e425a609f",
+    "customer_id": "0640be0f-25b8-fd4b-32fa-2de8ce7ae7f6",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2025-03-21",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "13d5f2f7-709b-7d97-464c-04af3d3f3799",
+    "customer_id": "c7fee39f-1190-f938-a66f-d7f739669fa7",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2021-10-25",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "269cd696-236c-7b87-14a0-bccb8a476a87",
+    "customer_id": "203c8c25-fd23-5def-3e5a-87e35560db22",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2024-10-17",
+    "coverage_end_date": null,
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "68586eba-6a34-c854-1071-4d5136c59dac",
+    "customer_id": "1efd76e9-ce37-14af-99b4-9350af2b99b4",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2023-08-24",
+    "coverage_end_date": "2024-04-17",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6b8e869f-d538-5b0e-34f3-193c0ff0a55c",
+    "customer_id": "d11fc8c0-297c-a4ff-f75d-599f6b2d5b09",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2020-02-18",
+    "coverage_end_date": "2021-08-11",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "4c71e0fe-5a0c-dd7c-f157-8470018267c4",
+    "customer_id": "45b89cd9-27cb-6f2a-8da0-1097be0f051b",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2021-02-02",
+    "coverage_end_date": "2023-08-08",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "7c5308bf-6f92-f25e-45df-16b6382c043f",
+    "customer_id": "45b89cd9-27cb-6f2a-8da0-1097be0f051b",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2022-11-19",
+    "coverage_end_date": "2023-07-16",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "b963f37f-6781-4c1f-cc53-0e36addc3e13",
+    "customer_id": "7de1bdfe-d072-5b5c-a281-40446f962882",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2021-08-03",
+    "coverage_end_date": "2022-07-11",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "64de82e6-e82c-7d7b-06e7-45f988bc539c",
+    "customer_id": "f295456e-1967-5f06-bd76-7e35f5c9b047",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2023-12-05",
+    "coverage_end_date": "2024-07-12",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "2e85cb21-7631-de9d-dde9-f86322bd3388",
+    "customer_id": "ee33688d-597e-6845-e277-18c5737d1fb6",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2024-06-01",
+    "coverage_end_date": "2025-01-27",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "56666f9f-53ac-2ab9-7467-2cd9362f5e5c",
+    "customer_id": "598ddaec-eaaf-e543-2434-a678a9e27ba9",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2021-02-08",
+    "coverage_end_date": "2024-06-09",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "04f64d86-7866-0765-14f7-ce8dd5bcb8d0",
+    "customer_id": "5a8aaeca-1a50-aec3-aabc-25fa3fe12e47",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2020-08-18",
+    "coverage_end_date": "2024-11-10",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "f510ab53-c7fe-e39f-1190-f938a66fd7f7",
+    "customer_id": "5ca0c428-822c-4d32-6c64-5c15aba301cb",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2021-06-07",
+    "coverage_end_date": "2025-01-06",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "2702878b-9f0f-da8d-0537-9ff6d6d7b3b8",
+    "customer_id": "3f6c21f7-0a05-37f0-2c2c-d22ba56895c6",
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "coverage_start_date": "2022-08-02",
+    "coverage_end_date": "2025-02-26",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "770c7798-37cc-863b-f2a0-345990604f62",
+    "customer_id": "31274148-7c7c-404e-c422-d03ef29a6339",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2020-01-18",
+    "coverage_end_date": "2024-12-28",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "b7e6427c-bf78-0e3f-f6b7-51f79b749245",
+    "customer_id": "4fa03f26-f6f7-f0cc-29ec-8e49d1bdb8c0",
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "coverage_start_date": "2023-06-23",
+    "coverage_end_date": "2024-07-29",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "4fdc6e1b-edcb-8cb6-0692-dc639424aed5",
+    "customer_id": "4a193501-4169-b9fc-c3a0-0c6f2321d1e1",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2021-11-13",
+    "coverage_end_date": "2025-09-01",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "9793b9b4-1374-8146-32c5-bd89b70b3420",
+    "customer_id": "13d5f2f7-709b-7d97-464c-04af3d3f3799",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2020-11-28",
+    "coverage_end_date": "2020-12-29",
+    "relationship_type": "PRIMARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "4d3485c5-c5c1-4eb4-b27b-3d901a16342c",
+    "customer_id": "157d94a1-06f0-28ff-a9ba-5a27907bfe36",
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "coverage_start_date": "2024-04-10",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "c85aca46-90e0-f4a0-fbdd-3933cbd58bf6",
+    "customer_id": "39e58ff0-92f8-37d4-4750-3f1dc33a1f6c",
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "coverage_start_date": "2026-01-28",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "11a72609-5edd-bbbf-a959-76636daa2e68",
+    "customer_id": "e9b5c5cf-d766-5cda-fe04-90593985fb62",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2024-10-09",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "d284476c-6b88-f83d-d97d-c9cd033d2bce",
+    "customer_id": "517400f8-0b2c-782a-6928-8e92c68a152f",
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "coverage_start_date": "2024-10-26",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "e43e4288-a2b5-b498-5cb8-5aedf5f62c97",
+    "customer_id": "7de1bdfe-d072-5b5c-a281-40446f962882",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2024-11-26",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "859131d2-bbda-0242-2d17-4fc96f7c15ea",
+    "customer_id": "157d94a1-06f0-28ff-a9ba-5a27907bfe36",
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "coverage_start_date": "2024-05-14",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "6f81cf4f-7701-f7bb-7bc6-7e1fc64ee6e3",
+    "customer_id": "a81fdec3-279c-658a-3676-0ce581e5c9f6",
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "coverage_start_date": "2024-02-22",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "d4aac9a3-3ed8-c56c-da09-dfa052828d80",
+    "customer_id": "839fbc50-1223-b513-5496-f63cdc1110c1",
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "coverage_start_date": "2025-12-13",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "91e1aa96-76f7-2255-c01f-36bf3e6dd58b",
+    "customer_id": "a81fdec3-279c-658a-3676-0ce581e5c9f6",
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "coverage_start_date": "2024-06-25",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  },
+  {
+    "relationship_id": "d9d80b8d-7e8a-dee7-0758-e201561e16d1",
+    "customer_id": "f295456e-1967-5f06-bd76-7e35f5c9b047",
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "coverage_start_date": "2025-04-13",
+    "coverage_end_date": null,
+    "relationship_type": "SECONDARY",
+    "line_of_business": "WEALTH",
+    "provenance": "atlas:LegacyDataMigration"
+  }
+]

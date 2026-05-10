@@ -1,0 +1,62 @@
+[
+  {
+    "advisor_id": "bdd640fb-0667-1ad1-1c80-317fa3b1799d",
+    "first_name": "Alex",
+    "last_name": "Morgan",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "bc8960a9-23b8-c1e9-3924-56de3eb13b90",
+    "first_name": "Jordan",
+    "last_name": "Chen",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "8b9d2434-e465-e150-bd9c-66b3ad3c2d6d",
+    "first_name": "Taylor",
+    "last_name": "Patel",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "07a0ca6e-0822-e8f3-6c03-1199972a8469",
+    "first_name": "Casey",
+    "last_name": "Williams",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "9a1de644-815e-f6d1-3b8f-aa1837f8a88b",
+    "first_name": "Riley",
+    "last_name": "Kim",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "a65ed389-b74d-0fb1-32e7-06298fadc1a6",
+    "first_name": "Avery",
+    "last_name": "Martinez",
+    "line_of_business": "RETAIL"
+  },
+  {
+    "advisor_id": "96da1dac-72ff-5d2a-386e-cbe06b65a6a4",
+    "first_name": "Quinn",
+    "last_name": "Johnson",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "c241330b-01a9-e71f-de8a-774bcf36d58b",
+    "first_name": "Peyton",
+    "last_name": "Davis",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "47229389-571a-a876-6c30-7511b2b9437a",
+    "first_name": "Reese",
+    "last_name": "Anderson",
+    "line_of_business": "WEALTH"
+  },
+  {
+    "advisor_id": "562b0f79-c374-59ee-f50b-ea63371ecd7b",
+    "first_name": "Hayden",
+    "last_name": "Thomas",
+    "line_of_business": "WEALTH"
+  }
+]
