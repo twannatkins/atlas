@@ -51,5 +51,5 @@ navigation:
     weight: 80
 
   - title: "Cleanup"
-    path: "99-cleanup"
+    path: "cleanup"
     weight: 99
