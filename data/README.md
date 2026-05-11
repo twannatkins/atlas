@@ -9,7 +9,8 @@ No real customer data is used anywhere.
 |------|---------|-------------|
 | `synthetic/customer-master.json` | 200 | Synthetic customer records with household IDs, segments, and states |
 | `synthetic/transaction-history.json` | ~3,750 | 90 days of synthetic transactions with embedded wealth-signal patterns |
-| `synthetic/event-stream.json` | 31 | Pre-generated stream of wealth-eligibility events for Pattern C replay |
+| `synthetic/advisors.json` | 10 | Synthetic wealth advisor personas |
+| `synthetic/advisory-relationships.json` | 105 | Legacy-migrated advisory coverage assignments |
 
 ## Embedded Signal Counts
 

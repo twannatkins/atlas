@@ -15,6 +15,10 @@ Parameters:
     Type: String
     Default: atlas
     Description: Tag value for cost tracking
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block of the VPC (used for Neptune security group ingress on port 8182)
 
 Resources:
   # Security group allowing Neptune traffic within the VPC
@@ -27,7 +31,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 8182
           ToPort: 8182
-          CidrIp: 10.38.0.0/16
+          CidrIp: !Ref VpcCidr
       Tags:
         - Key: Project
           Value: !Ref ProjectTag

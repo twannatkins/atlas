@@ -53,18 +53,115 @@ SLGD = Semantic Layer Graph Database (curated, validated, authoritative).
 
 ## Eight-Module Table of Contents
 
-| # | Module | Runtime |
-|---|--------|---------|
-| 1 | [From Business Question to Ontology](notebooks/01_journey_to_ontology.ipynb) | 30–45 min |
-| 2 | [FIBO Alignment and the Extension Ring](notebooks/02_fibo_alignment.ipynb) | 60–75 min |
-| 3 | [Standing Up Two-Tier Neptune](notebooks/03_two_tier_neptune.ipynb) | 20–30 min |
-| 4 | [Three Patterns for Source Connection](notebooks/04_three_connection_patterns.ipynb) | 60–75 min |
-| 5 | [Entity Resolution and the Promotion Path](notebooks/05_entity_resolution.ipynb) | 30–45 min |
-| 6 | [SHACL: Making the Boundary Mechanical](notebooks/06_shacl_boundary.ipynb) | 45–60 min |
-| 7 | [Bedrock at the Edges](notebooks/07_bedrock_at_edges.ipynb) | 30–45 min |
-| 8 | [The Wealth-Signal Demo with Bounded Agent](notebooks/08_wealth_signal_demo.ipynb) | 45–60 min |
+| # | Module | What You Learn | Runtime |
+|---|--------|----------------|---------|
+| 1 | [From Business Question to Ontology](notebooks/01_journey_to_ontology.ipynb) | How to derive an ontology from competency questions | 30–45 min |
+| 2 | [FIBO Alignment and the Extension Ring](notebooks/02_fibo_alignment.ipynb) | How to bind your ontology to the industry standard (FIBO) | 60–75 min |
+| 3 | [Standing Up Two-Tier Neptune](notebooks/03_two_tier_neptune.ipynb) | How to deploy graph infrastructure on AWS | 20–30 min |
+| 4 | [Three Patterns for Source Connection](notebooks/04_three_connection_patterns.ipynb) | How to connect source systems to a knowledge graph | 60–75 min |
+| 5 | [Entity Resolution and the Promotion Path](notebooks/05_entity_resolution.ipynb) | How to resolve identities and govern data promotion | 30–45 min |
+| 6 | [SHACL: Making the Boundary Mechanical](notebooks/06_shacl_boundary.ipynb) | How to enforce rules with machine-checkable shapes | 45–60 min |
+| 7 | [Bedrock at the Edges](notebooks/07_bedrock_at_edges.ipynb) | How to use LLMs safely in a regulated architecture | 30–45 min |
+| 8 | [The Wealth-Signal Demo with Bounded Agent](notebooks/08_wealth_signal_demo.ipynb) | End-to-end workflow from signal to advisor approval | 45–60 min |
 
 Total: approximately 5–6 hours of focused work.
+
+---
+
+## Prerequisites
+
+### Required Knowledge
+
+- **No prior ontology experience required.** Module 1 teaches ontology concepts from scratch.
+- Basic Python familiarity (reading code, running notebooks)
+- Basic AWS console navigation (creating stacks, finding services)
+
+### AWS Account Requirements
+
+You need an AWS account with the following services enabled in **us-east-1**:
+
+| Service | Used In | Purpose |
+|---------|---------|---------|
+| Amazon SageMaker | All modules | Notebook execution environment |
+| Amazon Neptune | Modules 3–8 | Graph database (two serverless clusters) |
+| Amazon Bedrock | Modules 1, 7, 8 | LLM for ontology exploration and NL↔SPARQL |
+| Amazon S3 | Modules 3–4 | Ontology staging and data lake |
+| AWS CloudFormation | Module 3 | Infrastructure deployment |
+| Amazon Athena | Module 4 | SQL queries over S3 data |
+| AWS Glue | Module 4 | Data catalog for Iceberg tables |
+
+### Setup Checklist
+
+Before starting Module 1, complete these steps:
+
+1. **Create a SageMaker notebook instance** (or SageMaker Studio domain)
+   - Instance type: `ml.t3.medium` is sufficient
+   - Attach an IAM role with the policies listed below
+
+2. **Enable Amazon Bedrock model access**
+   - Open the Bedrock console in us-east-1
+   - Go to Model access → Manage model access
+   - Enable access to **Anthropic Claude Sonnet** (cross-region inference profile: `us.anthropic.claude-sonnet-4-6`)
+   - This takes 1–2 minutes to activate
+
+3. **Note your VPC and subnet IDs** (needed for Module 3)
+   - Open the VPC console
+   - Record your VPC ID (e.g., `vpc-0abc123def456`)
+   - Record at least two subnet IDs in different Availability Zones
+   - Record your VPC CIDR block (e.g., `10.0.0.0/16`)
+
+4. **Clone this repository** into your SageMaker environment:
+   ```bash
+   git clone https://github.com/twannatkins/atlas.git
+   cd atlas
+   pip install -r notebooks/shared/requirements.txt
+   ```
+
+### IAM Permissions
+
+The SageMaker execution role needs these managed policies:
+
+- `AmazonSageMakerFullAccess` (notebook execution)
+- `AmazonS3FullAccess` (data staging)
+- `NeptuneFullAccess` (graph database access)
+- `AmazonAthenaFullAccess` (SQL queries in Module 4)
+- `AWSGlueServiceRole` (data catalog in Module 4)
+- `AWSCloudFormationFullAccess` (stack deployment in Module 3)
+
+Plus this inline policy for Bedrock:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+    "Resource": "arn:aws:bedrock:*::foundation-model/*"
+  }]
+}
+```
+
+### Python Version
+
+This workshop requires **Python 3.10 or later**. Python 3.9 reached end-of-life
+in October 2025. SageMaker Studio and SageMaker notebook instances ship with
+Python 3.10+ by default.
+
+---
+
+## Cost to Run
+
+A single architect completing the full workshop end-to-end (approximately five to
+six hours of active infrastructure time) should expect **$10–$18 in us-east-1**:
+
+| Resource | Approximate Cost | Notes |
+|----------|-----------------|-------|
+| Neptune serverless (2 clusters) | ~$8.50/day | Scales to zero when idle; ~$17/day at minimum capacity |
+| SageMaker notebook | ~$0.05/hr | ml.t3.medium |
+| Bedrock invocations | ~$1–3 total | Modules 1, 7, 8 |
+| S3 + Athena | < $0.50 | Minimal data volume |
+
+**Important:** Run the cleanup at the end of your session. The two Neptune clusters
+cost approximately $17 per day combined if left running.
 
 ---
 
@@ -76,32 +173,35 @@ as an AWS Workshop Studio site. Begin with Module 1 at
 
 ---
 
-## Cost to Run
+## Key Concepts for Newcomers
 
-A single architect completing the full workshop end-to-end (approximately five to
-six hours of active infrastructure time) should expect **$10–$18 in us-east-1**,
-dominated by two Neptune clusters and Bedrock invocations in Module 7. Run the
-cleanup notebook at the end of your session — the two Neptune clusters cost
-approximately $17 per day combined if left running.
+If you are new to ontologies and knowledge graphs, here are the core concepts
+you will learn in this workshop:
 
-A full cost breakdown will be added before the workshop's public release.
-
----
-
-## Prerequisites
-
-- An AWS account with SageMaker notebook permissions and Bedrock model access
-  enabled in us-east-1
-- No prior ontology experience required for Module 1
-- Subsequent modules assume you have completed prior modules
+| Concept | What It Is | Where You Learn It |
+|---------|-----------|-------------------|
+| **Ontology** | A formal vocabulary that defines the nouns (classes) and verbs (properties) in your domain | Module 1 |
+| **FIBO** | The Financial Industry Business Ontology — a shared vocabulary for FSI | Module 2 |
+| **RDF / Triples** | The data format for knowledge graphs: subject → predicate → object | Module 1 |
+| **SPARQL** | The query language for RDF graphs (like SQL for relational databases) | Modules 1, 7 |
+| **Neptune** | AWS's managed graph database service | Module 3 |
+| **SHACL** | Shapes Constraint Language — machine-checkable rules for your graph | Module 6 |
+| **R2RML** | A W3C standard for mapping relational data to RDF triples | Module 4 |
+| **PROV-O** | W3C Provenance Ontology — records who did what, when, from what | Module 5 |
 
 ---
 
 ## Synthetic Data
 
-All data in this workshop is synthetic, generated with a fixed random seed.
+All data in this workshop is synthetic, generated with a fixed random seed (42).
 No real customer data is used anywhere. Generators are in
 [notebooks/shared/atlas_synthetic.py](notebooks/shared/atlas_synthetic.py).
+
+The synthetic dataset includes:
+- 200 customers across 3 segments (Retail, Mass Affluent, Affluent)
+- ~3,750 transactions with 27 embedded wealth-signal patterns
+- 10 advisor personas (including "Alex Morgan" — the demo reviewer)
+- 105 legacy advisory coverage relationships
 
 ---
 
@@ -113,6 +213,18 @@ Architectural commentary in every module is industry-neutral.
 - **Insurance:** replace wealth-signal taxonomy with claim-pattern-to-product-fit signals
 - **Asset management:** replace with family-office relationship surface signals
 - **Capital markets:** replace with counterparty-to-product fit signals
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| "Bedrock model not available" | Enable model access in the Bedrock console (us-east-1) |
+| "Neptune not reachable" | Ensure your SageMaker instance is in the same VPC as Neptune |
+| CloudFormation stack fails | Check that your VPC has at least 2 subnets in different AZs |
+| `ModuleNotFoundError: rdflib` | Run `pip install -r notebooks/shared/requirements.txt` |
+| Neptune clusters cost too much | Delete the CloudFormation stack when not actively working |
 
 ---
 
