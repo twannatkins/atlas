@@ -27,12 +27,31 @@ weight: 50
 
 This module produces:
 
-- A populated SLGD with resolved customer entities, each carrying PROV-O metadata
+- A populated SLGD (Semantic Layer Graph Database) with resolved customer entities,
+  each carrying PROV-O (W3C Provenance Ontology) metadata
 - A promotion log showing entity counts, matching methods, and confidence distribution
 - WealthSignal instances derived from promoted data via SPARQL CONSTRUCT
 - `ontology/extensions/prov-o-bindings.ttl` — PROV-O vocabulary for the promotion path
 
 The notebook is `notebooks/05_entity_resolution.ipynb`.
+
+## How This Connects to Competency Questions
+
+In Module 1, you wrote Competency Questions (CQs) — the testable questions your
+ontology must answer. Module 5 is where those questions start getting answered with
+*real data* rather than a minimal test graph.
+
+When you promote entities from the LGD (Lexical Graph Database) to the SLGD, the
+promoted data must be able to answer the same CQs. For example:
+- CQ1 ("Which customers have generated a wealth signal?") requires promoted
+  Customer entities to exist in the SLGD
+- CQ3 ("Which household relationships does this customer have?") requires the
+  household membership links to survive promotion
+
+The WealthSignal derivation at the end of this module is the first time the
+architecture *computes* answers to CQs from real data — signals are derived from
+promoted transactions, not loaded from a file. This is the "computed, not loaded"
+principle in action: CQs are answered by running queries against derived data.
 
 ## Steps
 

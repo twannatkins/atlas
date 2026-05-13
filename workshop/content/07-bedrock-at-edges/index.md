@@ -26,13 +26,39 @@ weight: 70
 
 This module produces:
 
-- A working NL-to-SPARQL translation function with SHACL pre-check
-- `prompts/ground-truth.yaml` — few-shot competency-question/SPARQL pairs
-- `prompts/tips.yaml` — FIBO-specific hints for the LLM
+- A working NL-to-SPARQL (Natural Language to SPARQL) translation function with
+  SHACL (Shapes Constraint Language) pre-check
+- `prompts/ground-truth.yaml` — few-shot Competency Question/SPARQL pairs
+- `prompts/tips.yaml` — FIBO-specific hints for the LLM (Large Language Model)
 - `prompts/prefixes.txt` — standard SPARQL prefix block
-- All seven competency questions answerable in plain English
+- All seven Competency Questions answerable in plain English
 
 The notebook is `notebooks/07_bedrock_at_edges.ipynb`.
+
+## How This Connects to Competency Questions
+
+This is where the Competency Questions (CQs) from Module 1 take on their second
+and third roles. In Module 1, CQs served as **validation** — acceptance tests that
+proved the ontology had the right structure. Here in Module 7, the same CQs serve
+two additional purposes:
+
+**Grounding.** The ground-truth pairs that teach the LLM how to generate SPARQL
+are the same seven CQs from Module 1, each paired with its known-correct SPARQL
+query. The CQs constrain what vocabulary the LLM is allowed to use. If a concept
+isn't needed to answer any CQ, it shouldn't appear in generated queries — and if
+the LLM hallucinates a property like `atlas:hasWealth` (which doesn't exist), the
+CQ ground-truth pairs teach it the correct form (`atlas:producesSignal`).
+
+**Accuracy.** When you measure whether the NL-to-SPARQL component works correctly,
+you measure it against the CQ ground-truth pairs. Did the generated query return
+the same results as the known-correct query? The CQs give you a measurable
+definition of "correct" that isn't subjective.
+
+The lifecycle of a single Competency Question across this workshop:
+1. **Module 1** — Written as an acceptance test (validation)
+2. **Module 7** — Used as a few-shot example for the LLM (grounding)
+3. **Module 7** — Used to measure translation accuracy (benchmarking)
+4. **Module 8** — Answered with real data in the CIO demo (proof of value)
 
 ## Steps
 

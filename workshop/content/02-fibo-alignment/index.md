@@ -36,7 +36,9 @@ This module produces two deliverables:
 
 1. `ontology/atlas-fibo-alignment.ttl` — a Turtle file that binds every atlas-core
    class to its FIBO counterpart (where one exists) using `rdfs:subClassOf`, plus
-   extension-ring bindings to PROV-O, DCAT, and SKOS for classes that FIBO does not cover
+   extension-ring bindings to PROV-O (W3C Provenance Ontology), DCAT (Data Catalog
+   Vocabulary), and SKOS (Simple Knowledge Organization System) for classes that
+   FIBO does not cover
 2. `ontology/alignment-gaps.md` — a Markdown document listing every atlas-core class
    that does NOT have a FIBO counterpart, with the rationale for why FIBO is silent
    and the chosen extension standard (if any)
@@ -44,6 +46,21 @@ This module produces two deliverables:
 The module also introduces three new classes not in atlas-core.ttl:
 `atlas:LegalEntity`, `atlas:Product`, and `atlas:LineOfBusiness` — each with
 immediate FIBO bindings.
+
+## How This Connects to Competency Questions
+
+In Module 1, you wrote Competency Questions (CQs) that define what the ontology
+must answer. FIBO alignment does not change those questions — it changes the
+*vocabulary* used to answer them. After this module, a SPARQL query for CQ1
+("Which customers have generated a wealth signal?") still works, but the
+`atlas:Customer` class now carries a formal relationship to FIBO's
+`IndependentParty`. This means your CQ answers are interoperable with any other
+system that aligns to FIBO.
+
+The key insight: **Competency Questions are stable across alignment.** If aligning
+to FIBO broke a CQ query, the alignment would be wrong. The Module 2 validation
+gate confirms this — it checks that the merged ontology still parses correctly,
+which means your CQ queries from Module 1 remain valid.
 
 ## Steps
 

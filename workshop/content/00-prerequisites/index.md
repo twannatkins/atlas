@@ -75,7 +75,7 @@ From inside your project:
 2. In the terminal, run:
 
 ```bash
-git clone https://gitlab.aws.dev/twannatk/atlas-ontology.git atlas
+git clone https://github.com/twannatkins/atlas.git
 cd atlas
 pip install -r notebooks/shared/requirements.txt
 ```

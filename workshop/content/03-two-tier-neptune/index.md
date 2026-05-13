@@ -38,6 +38,16 @@ builds against:
 
 The notebook is `notebooks/03_two_tier_neptune.ipynb`.
 
+## How This Connects to Competency Questions
+
+In Module 1, you ran Competency Questions (CQs) against an in-memory graph to
+prove the ontology had the right structure. Module 3 makes that graph *physical*.
+Once the SLGD (Semantic Layer Graph Database) is loaded with the ontology, you can
+run the same CQ-shaped SPARQL queries against a live Neptune cluster — not just a
+local rdflib graph. The discovery queries in this module's notebook are a preview:
+they confirm the ontology is loaded and queryable, which means your CQs will work
+against real infrastructure from this point forward.
+
 ## Steps
 
 ### Step 1 — Deploy the CloudFormation stack

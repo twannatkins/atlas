@@ -29,14 +29,31 @@ weight: 40
 
 ## What You Will Build
 
-This module populates the LGD with data from three source systems:
+This module populates the LGD (Lexical Graph Database) with data from three source systems:
 
 - **Pattern A**: Customer master data (200 records) via S3 Iceberg and R2RML
-- **Pattern B**: Transaction history (3,747 records) via Athena and R2RML
-- **Pattern C**: Real-time wealth-eligibility events (31 events) via Lambda
+  (Relational-to-RDF Mapping Language)
+- **Pattern B**: Transaction history (~3,750 records) via Athena and R2RML
+- **Pattern C**: Real-time wealth-eligibility events via Lambda
 
 The notebook is `notebooks/04_three_connection_patterns.ipynb`.
 Supporting files: `mappings/` (R2RML and Lambda code), `data/synthetic/` (source data).
+
+## How This Connects to Competency Questions
+
+Competency Questions (CQs) can only be answered if the graph has data. Module 4
+is where data arrives. Each connection pattern feeds specific CQs:
+
+- **Pattern A** (customer master) feeds CQ1, CQ3, CQ4 — questions about customers,
+  households, and prior surfacing
+- **Pattern B** (transactions) feeds CQ1, CQ2, CQ7 — questions about signals,
+  evidence, and specific observations
+- **Pattern C** (real-time events) feeds CQ1, CQ5 — questions about signal
+  detection and workflow triggering
+
+If a CQ can't be answered after this module, it means one of the patterns didn't
+load the right data. The validation gate at the end checks cross-source query
+results — which is really checking that the data needed for CQs is present.
 
 ## Steps
 

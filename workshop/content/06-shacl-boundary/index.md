@@ -28,13 +28,29 @@ weight: 60
 
 This module produces:
 
-- `ontology/atlas-shapes.ttl` — six SHACL shapes enforcing the boundary
+- `ontology/atlas-shapes.ttl` — six SHACL (Shapes Constraint Language) shapes
+  enforcing the boundary
 - A validation report showing the shapes catch boundary violations
 - A counter-example demonstrating what happens when probabilistic data enters
   a compliance-bound path without explanation
 - Evidence that a reviewer can run one command and produce a compliance report
 
 The notebook is `notebooks/06_shacl_boundary.ipynb`.
+
+## How This Connects to Competency Questions
+
+In Module 1, you wrote Competency Questions (CQs) that test whether the ontology
+has the right structure. SHACL shapes are a complementary validation mechanism —
+they test whether the *data* in the graph conforms to the rules the ontology implies.
+
+Think of it this way:
+- **CQs validate structure** — "Can the ontology answer this question?" (Module 1)
+- **SHACL validates content** — "Does the data in the graph follow the rules?" (Module 6)
+
+For example, CQ2 asks about the "deterministic vs probabilistic component" of a
+score. The CQ proves the ontology *can* distinguish these. The SHACL shape in this
+module *enforces* that every Score instance actually carries the required
+`explainability` flag. CQs define what's possible; SHACL enforces what's required.
 
 ## Steps
 

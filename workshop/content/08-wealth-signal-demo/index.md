@@ -32,9 +32,31 @@ This module produces:
 - A simulated end-to-end workflow execution (signal → score → route → review → approve)
 - An AdvisoryRelationship minted on approval (coverage assertion with provenance)
 - The full audit trail queryable in one SPARQL query (the CIO demo)
-- A demonstration script suitable for presenting to a CIO
+- A demonstration script suitable for presenting to a CIO (Chief Information Officer)
 
 The notebook is `notebooks/08_wealth_signal_demo.ipynb`.
+
+## How This Connects to Competency Questions
+
+This is the payoff. The Competency Questions (CQs) you wrote in Module 1 were
+acceptance tests for an empty ontology. In Module 8, those same questions are
+answered by a running system with real (synthetic) data flowing through it.
+
+The CIO demo query in this module is essentially **CQ6** ("What is the full audit
+trail from signal detection to advisor approval?") running against the SLGD
+(Semantic Layer Graph Database) with promoted, scored, routed, and reviewed data.
+One SPARQL query. Full audit trail. Every component classified.
+
+This completes the Competency Question lifecycle:
+
+| Module | CQ Role | What Happens |
+|--------|---------|--------------|
+| 1 | **Validation** | CQs prove the ontology has the right structure |
+| 2 | **Stability** | CQs remain valid after FIBO alignment |
+| 5 | **Derivation** | CQs are answered by computed (not loaded) data |
+| 6 | **Enforcement** | SHACL shapes enforce what CQs imply |
+| 7 | **Grounding + Accuracy** | CQs become few-shot examples and benchmarks for the LLM |
+| 8 | **Proof of value** | CQs are answered end-to-end in a live demo |
 
 ## Steps
 
