@@ -46,8 +46,8 @@ other resources. A project is a container for your work.
 3. Configure:
    - Project name: `atlas-workshop`
    - Description: `ATLAS FSI Semantic Layer Workshop`
-   - For project template/profile, choose a default data science or ML template
-     (any template that includes JupyterLab/notebook support works)
+   - For project profile, choose **All capabilities** (this gives you JupyterLab,
+     terminal access, and VPC network connectivity needed for Neptune)
 4. Choose **Create project**
 5. Wait for the project to be created (1–2 minutes)
 6. Click into your new `atlas-workshop` project
@@ -56,15 +56,17 @@ other resources. A project is a container for your work.
 
 From inside your project:
 
-1. In the project sidebar, look for **IDE** or **Notebooks** (depending on your
-   Studio version)
-2. Choose **JupyterLab** to open a notebook environment
-   - If prompted for compute, choose `ml.t3.medium` (sufficient for all modules)
-   - If prompted for an image, choose **SageMaker Distribution 2.x** (includes
-     Python 3.10+, pandas, boto3)
-3. Wait for the environment to start (1–2 minutes)
-4. You should now see a JupyterLab interface with a file browser on the left and
-   a Launcher tab on the right
+1. Choose **Create a notebook** (or look for a JupyterLab/Notebook option in the
+   project sidebar)
+2. This provisions a **space** — a compute environment for your notebooks
+3. Accept the defaults or configure:
+   - Instance: `ml.t3.medium` (sufficient for all modules)
+   - Image: **SageMaker Distribution 3.9** (or latest — includes Python 3.11+)
+   - Storage: 16 GB (default is fine)
+4. Choose **Create** or **Run**
+5. Wait for the "Connecting to space" screen to finish (1–3 minutes)
+6. Once connected, you'll see a JupyterLab interface with a file browser on the
+   left and a Launcher tab on the right
 
 ### 1d. Clone the Workshop Repository
 
@@ -73,7 +75,7 @@ From inside your project:
 2. In the terminal, run:
 
 ```bash
-git clone https://github.com/twannatkins/atlas.git
+git clone https://gitlab.aws.dev/twannatk/atlas-ontology.git atlas
 cd atlas
 pip install -r notebooks/shared/requirements.txt
 ```
