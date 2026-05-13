@@ -13,7 +13,7 @@ You need an AWS account with the following services available in **us-east-1**:
 
 | Service | Used In | Purpose |
 |---------|---------|---------|
-| Amazon SageMaker | All modules | Notebook execution environment |
+| Amazon SageMaker Unified Studio | All modules | Notebook execution environment |
 | Amazon Neptune | Modules 3–8 | Graph database (two serverless clusters) |
 | Amazon Bedrock | Modules 1, 7, 8 | LLM for ontology exploration and NL↔SPARQL |
 | Amazon S3 | Modules 3–4 | Ontology staging and data lake |
@@ -23,58 +23,67 @@ You need an AWS account with the following services available in **us-east-1**:
 
 ---
 
-## Step 1 — Open SageMaker Studio and Create a JupyterLab Space
+## Step 1 — Set Up SageMaker Unified Studio
 
-This workshop runs inside **Amazon SageMaker Studio** using a JupyterLab notebook
-environment. If you already have a SageMaker Studio domain, skip to step 1c.
+This workshop runs inside **Amazon SageMaker Unified Studio** using a JupyterLab
+notebook environment. SageMaker Unified Studio organizes work into **projects** —
+you'll create a project first, then open a notebook environment inside it.
 
-### 1a. Open SageMaker Studio
+### 1a. Open SageMaker Unified Studio
 
 1. Open the [Amazon SageMaker console](https://console.aws.amazon.com/sagemaker/) in **us-east-1**
-2. In the left navigation, choose **Studio** (under Admin configurations, or directly from the landing page)
-3. If you see a domain listed, choose **Open Studio** next to your user profile
-4. If no domain exists, choose **Set up for single user** — this creates a domain
-   with default settings (takes 2–3 minutes)
+2. Choose **Studio** to open SageMaker Unified Studio
+3. If this is your first time, you may be prompted to set up a domain — follow the
+   guided setup (choose defaults for a single-user environment)
 
-You should now see the **SageMaker Studio home page** with a left sidebar showing
-Applications, Spaces, and other options.
+### 1b. Create a Project
 
-### 1b. Create a JupyterLab Space
+SageMaker Unified Studio requires a **project** before you can create notebooks or
+other resources. A project is a container for your work.
 
-A "Space" in SageMaker Studio is an isolated environment where your notebooks run.
+1. In the Studio home page, choose **Projects** in the left sidebar
+2. Choose **Create project**
+3. Configure:
+   - Project name: `atlas-workshop`
+   - Description: `ATLAS FSI Semantic Layer Workshop`
+   - For project template/profile, choose a default data science or ML template
+     (any template that includes JupyterLab/notebook support works)
+4. Choose **Create project**
+5. Wait for the project to be created (1–2 minutes)
+6. Click into your new `atlas-workshop` project
 
-1. In the Studio left sidebar, choose **JupyterLab**
-2. Choose **Create JupyterLab space**
-3. Name it: `atlas-workshop`
-4. Choose **Create space**
-5. On the space configuration page:
-   - Instance type: `ml.t3.medium` (sufficient for all modules)
-   - Image: **SageMaker Distribution 2.x** (includes Python 3.10+, pandas, boto3)
-   - Storage: 5 GB (default is fine)
-6. Choose **Run space**
-7. Wait for status to show **Running** (1–2 minutes)
-8. Choose **Open JupyterLab**
+### 1c. Open a JupyterLab Notebook Environment
 
-You should now see a JupyterLab interface with a file browser on the left and a
-Launcher tab on the right.
+From inside your project:
 
-### 1c. Clone the Workshop Repository
+1. In the project sidebar, look for **IDE** or **Notebooks** (depending on your
+   Studio version)
+2. Choose **JupyterLab** to open a notebook environment
+   - If prompted for compute, choose `ml.t3.medium` (sufficient for all modules)
+   - If prompted for an image, choose **SageMaker Distribution 2.x** (includes
+     Python 3.10+, pandas, boto3)
+3. Wait for the environment to start (1–2 minutes)
+4. You should now see a JupyterLab interface with a file browser on the left and
+   a Launcher tab on the right
 
-1. In JupyterLab, choose **File → New → Terminal** (or click the Terminal icon in the Launcher)
+### 1d. Clone the Workshop Repository
+
+1. In JupyterLab, choose **File → New → Terminal** (or click the Terminal icon
+   in the Launcher)
 2. In the terminal, run:
 
 ```bash
-cd ~
 git clone https://github.com/twannatkins/atlas.git
 cd atlas
 pip install -r notebooks/shared/requirements.txt
 ```
 
 3. Wait for the install to complete (30–60 seconds)
-4. In the left file browser, you should now see the `atlas/` folder. Click into it.
-   You'll see: `notebooks/`, `ontology/`, `data/`, `infrastructure/`, etc.
+4. In the left file browser, click the folder icon to refresh, then navigate into
+   the `atlas/` folder. You'll see: `notebooks/`, `ontology/`, `data/`,
+   `infrastructure/`, etc.
 
-### 1d. Open Your First Notebook
+### 1e. Open Your First Notebook
 
 1. In the file browser, navigate to `atlas/notebooks/`
 2. Double-click `01_journey_to_ontology.ipynb`
@@ -86,35 +95,63 @@ numbered 01 through 08. Run them in order.
 
 ---
 
-## Step 2 — Enable Amazon Bedrock Model Access
+## Step 2 — Confirm Amazon Bedrock Access
 
-Module 1 uses Bedrock for a Socratic exploration exercise. Enable it now so you
-don't hit a permissions error mid-module.
+Module 1 uses Bedrock for a Socratic exploration exercise. As of 2025, **Bedrock
+foundation models are automatically enabled** — you no longer need to manually
+activate model access.
 
-1. Open a **new browser tab** (keep SageMaker Studio open)
-2. Go to the [Bedrock console](https://console.aws.amazon.com/bedrock/) in us-east-1
-3. In the left navigation, choose **Model access**
-4. Choose **Manage model access**
-5. Find **Anthropic** in the list and check the box next to **Claude 3.5 Sonnet** (or later versions)
-6. Choose **Save changes**
-7. Wait for status to show **Access granted** (1–2 minutes)
+> **Note:** The Model access page in the Bedrock console has been retired.
+> Serverless foundation models are now automatically enabled across all AWS
+> commercial regions when first invoked in your account.
 
-The workshop uses the cross-region inference profile `us.anthropic.claude-sonnet-4-6`.
-This is available automatically once Anthropic Claude access is granted.
+**For first-time Anthropic users:** You may be prompted to submit use case details
+before accessing Claude models. If this happens:
+
+1. Open the [Bedrock console](https://console.aws.amazon.com/bedrock/) in us-east-1
+2. Choose **Model catalog** in the left navigation
+3. Find **Anthropic Claude** and attempt to open it in the Playground
+4. If prompted, submit the required use case details
+5. Access is typically granted within minutes
+
+**To verify access works**, run this in your JupyterLab terminal (after Step 1):
+
+```bash
+cd ~/atlas
+python3 -c "
+import boto3, json
+client = boto3.client('bedrock-runtime', region_name='us-east-1')
+resp = client.invoke_model(
+    modelId='us.anthropic.claude-sonnet-4-6',
+    contentType='application/json',
+    accept='application/json',
+    body=json.dumps({
+        'anthropic_version': 'bedrock-2023-05-31',
+        'max_tokens': 10,
+        'messages': [{'role': 'user', 'content': 'Say OK'}]
+    })
+)
+result = json.loads(resp['body'].read())
+print('Bedrock: OK -', result['content'][0]['text'])
+"
+```
+
+If this prints `Bedrock: OK`, you're set. If it fails with `AccessDeniedException`,
+check the IAM permissions in Step 3 below.
 
 ---
 
 ## Step 3 — Configure IAM Permissions
 
-The SageMaker execution role (automatically created with your domain/space) needs
+The SageMaker execution role (associated with your Studio domain or project) needs
 additional permissions for Neptune, CloudFormation, and Bedrock.
 
 ### Find your execution role
 
 1. In the SageMaker console, choose **Domains** in the left navigation
 2. Click your domain name
-3. Click your user profile
-4. Note the **Execution role** ARN (looks like `arn:aws:iam::XXXX:role/AmazonSageMaker-ExecutionRole-XXXX`)
+3. Look for the **Execution role** ARN (looks like
+   `arn:aws:iam::XXXX:role/AmazonSageMaker-ExecutionRole-XXXX` or similar)
 
 ### Add managed policies
 
@@ -172,18 +209,17 @@ in the same VPC as your SageMaker Studio domain so the notebooks can reach it.
    (check the "Availability Zone" column — you need subnets in at least 2 different AZs)
 
 **Tip:** If you're using the default VPC, it already has subnets in every AZ.
-Your SageMaker Studio domain is likely already in this VPC.
 
 **Important:** The VPC your SageMaker Studio domain uses must be the same VPC where
 you deploy Neptune. If they're in different VPCs, the notebooks won't be able to
-connect to Neptune. To check which VPC Studio uses: SageMaker console → Domains →
-your domain → look for "VPC" in the Network section.
+connect to Neptune on port 8182. To check which VPC Studio uses: SageMaker console →
+Domains → your domain → look for "VPC" in the Network section.
 
 ---
 
 ## Step 5 — Verify Your Setup
 
-Back in your JupyterLab terminal (inside SageMaker Studio), run these checks:
+In your JupyterLab terminal, run these checks:
 
 ```bash
 cd ~/atlas
@@ -196,23 +232,6 @@ python3 -c "import rdflib; print(f'rdflib: {rdflib.__version__}')"
 python3 -c "import pyshacl; print(f'pyshacl: {pyshacl.__version__}')"
 python3 -c "import boto3; print(f'boto3: {boto3.__version__}')"
 python3 -c "import pandas; print(f'pandas: {pandas.__version__}')"
-
-# Check Bedrock access
-python3 -c "
-import boto3, json
-client = boto3.client('bedrock-runtime', region_name='us-east-1')
-resp = client.invoke_model(
-    modelId='us.anthropic.claude-sonnet-4-6',
-    contentType='application/json',
-    accept='application/json',
-    body=json.dumps({
-        'anthropic_version': 'bedrock-2023-05-31',
-        'max_tokens': 10,
-        'messages': [{'role': 'user', 'content': 'Say OK'}]
-    })
-)
-print('Bedrock: OK')
-"
 ```
 
 Expected output:
@@ -223,11 +242,7 @@ rdflib: 7.0.0
 pyshacl: 0.25.0
 boto3: 1.34.x (or higher)
 pandas: 2.x.x
-Bedrock: OK
 ```
-
-If the Bedrock check fails with `AccessDeniedException`, revisit Step 3 (IAM policy)
-and Step 2 (model access).
 
 ---
 
@@ -243,7 +258,7 @@ and Step 2 (model access).
 **Total for a single workshop run (5–6 hours): $10–$18**
 
 **Important:** When you're done for the day:
-- **Stop your JupyterLab space** (Studio → JupyterLab → your space → Stop)
+- **Stop your JupyterLab environment** in Studio to stop compute charges
 - **Delete the CloudFormation stack** if you're done with Modules 3–8
   (Neptune costs ~$17/day if left running)
 
@@ -253,17 +268,17 @@ and Step 2 (model access).
 
 Before starting Module 1, confirm:
 
-- [ ] SageMaker Studio JupyterLab space is **Running** and open
+- [ ] SageMaker Studio project created and JupyterLab environment is running
 - [ ] Repository is cloned (`atlas/` folder visible in file browser)
 - [ ] `pip install` completed without errors
 - [ ] `python3 --version` shows 3.10 or higher
-- [ ] Bedrock test prints `Bedrock: OK`
+- [ ] Bedrock test prints `Bedrock: OK` (or you've confirmed Anthropic access)
 - [ ] You have your VPC ID, CIDR, and two subnet IDs written down
 - [ ] You understand the cost (~$17/day for Neptune if left running)
 
 ---
 
-## Quick Reference: Navigating SageMaker Studio JupyterLab
+## Quick Reference: Navigating JupyterLab
 
 | Task | How |
 |------|-----|
@@ -272,8 +287,7 @@ Before starting Module 1, confirm:
 | Run all cells | **Run** menu → **Run All Cells** |
 | Open a terminal | **File** → **New** → **Terminal** |
 | Restart kernel | **Kernel** menu → **Restart Kernel** |
-| Stop your space | Back in Studio home → JupyterLab → click **Stop** on your space |
-| Check running spaces | Studio home → JupyterLab → shows status of all spaces |
+| Stop compute | Back in Studio → stop your JupyterLab environment |
 
 ---
 

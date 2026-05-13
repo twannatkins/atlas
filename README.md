@@ -95,7 +95,7 @@ You need an AWS account with the following services enabled in **us-east-1**:
 Before starting Module 1, complete these steps (detailed walkthrough in
 [workshop/content/00-prerequisites/](workshop/content/00-prerequisites/index.md)):
 
-1. **Open SageMaker Studio** in us-east-1 and create a JupyterLab space
+1. **Open SageMaker Unified Studio** in us-east-1, create a project, and open a JupyterLab environment
    - Instance type: `ml.t3.medium` is sufficient
    - Image: SageMaker Distribution 2.x (includes Python 3.10+)
 
@@ -106,11 +106,11 @@ Before starting Module 1, complete these steps (detailed walkthrough in
    pip install -r notebooks/shared/requirements.txt
    ```
 
-3. **Enable Amazon Bedrock model access**
-   - Open the Bedrock console in us-east-1
-   - Go to Model access → Manage model access
-   - Enable access to **Anthropic Claude Sonnet**
-   - This takes 1–2 minutes to activate
+3. **Confirm Amazon Bedrock access**
+   - Bedrock foundation models are now automatically enabled on first invocation
+   - For first-time Anthropic users, you may need to submit use case details
+     via the Bedrock Model catalog before Claude models activate
+   - No manual model access page activation required
 
 4. **Add IAM permissions** to your SageMaker execution role
    - S3, Neptune, Athena, Glue, CloudFormation (managed policies)
@@ -223,8 +223,9 @@ Architectural commentary in every module is industry-neutral.
 
 | Problem | Solution |
 |---------|----------|
-| "Bedrock model not available" | Enable model access in the Bedrock console (us-east-1) |
-| "Neptune not reachable" | Ensure your SageMaker instance is in the same VPC as Neptune |
+| "Bedrock AccessDeniedException" | Add the `bedrock:InvokeModel` inline policy to your SageMaker execution role |
+| "Anthropic model not available" | First-time users: open Bedrock Model catalog, find Claude, submit use case details if prompted |
+| "Neptune not reachable" | Ensure your SageMaker Studio domain is in the same VPC as Neptune |
 | CloudFormation stack fails | Check that your VPC has at least 2 subnets in different AZs |
 | `ModuleNotFoundError: rdflib` | Run `pip install -r notebooks/shared/requirements.txt` |
 | Neptune clusters cost too much | Delete the CloudFormation stack when not actively working |
