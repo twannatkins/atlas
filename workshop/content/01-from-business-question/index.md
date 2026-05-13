@@ -81,7 +81,59 @@ ATLAS shared utilities loaded.
 Synthetic data seed : 42
 ```
 
-### Step 2 — Read the competency questions
+### Step 2 — Understand what competency questions are (and are not)
+
+Before reading the seven CQs, understand what they are and why they are the
+tool of choice for ontology engineering.
+
+**Competency questions (CQs)** are natural-language questions the ontology must
+be able to answer once built. They are written from the consumer's perspective
+and act as both a scoping device and an acceptance test. A CQ is satisfied when
+you can write a SPARQL query against the ontology that returns the right answer —
+this is what makes them executable acceptance criteria, not just requirements.
+
+CQs sit in a hierarchy of related artifacts that workshops often conflate:
+
+| Artifact | What It Is | Example | Scope |
+|----------|-----------|---------|-------|
+| **Business scenario** | An end-to-end narrative that strings together multiple user stories into a coherent business flow | "A Consumer customer deposits $500K, triggering a wealth-signal workflow that routes to an advisor" | Executive demos |
+| **User story** | A value statement from a persona's perspective | "As a Wealth advisor, I want to see incoming referrals with full household context so I can prepare for outreach" | Workflow and value |
+| **Competency question** | A testable question the ontology must answer | "Which Consumer households have a member with a wealth-eligible liquidity event in the last 30 days?" | Ontology structure |
+| **SPARQL query** | The implementation that proves a CQ is satisfied | `SELECT ?household WHERE { ... }` | Code |
+
+The practical hierarchy for ATLAS is:
+
+```
+Business scenario (the demo)
+  → User stories (advisor, RM, compliance perspectives)
+    → Competency questions (the testable layer that drives ontology structure)
+      → SPARQL queries (the implementation that proves CQs are satisfied)
+```
+
+**Why CQs and not just requirements?**
+
+Traditional requirements ("the system shall...") describe system behavior. CQs are
+a subset of ontology requirements — specifically the ones that test whether the
+model has the right concepts, relationships, and granularity. They prevent two
+common failure modes:
+
+- **Over-modeling** — concepts no one will ever query. If a class or property
+  doesn't participate in answering any CQ, it's probably scope creep.
+- **Under-modeling** — gaps you only discover at integration time. If you can't
+  write a SPARQL query for a CQ, the ontology is incomplete.
+
+A single user story typically decomposes into multiple CQs. For example, the user
+story "detect wealth-eligible events" produces these CQs:
+- "What constitutes a wealth-eligible event?"
+- "Which Consumer customers have crossed the eligibility threshold?"
+- "What is the household composition of customer X?"
+- "Who is the assigned Wealth advisor for household Y?"
+
+Each CQ forces a modeling decision — you can't answer the household question
+without modeling household membership relations explicitly. This is their unique
+role: CQs are where business intent meets formal modeling.
+
+### Step 3 — Read the seven starter competency questions
 
 Read the seven competency questions in cell 4 aloud. Do not skip this step.
 The questions are written in business language intentionally. Notice:
@@ -93,7 +145,7 @@ The questions are written in business language intentionally. Notice:
 - CQ6 mentions a regulator asking a question about audit trail. This implies the
   audit chain must be queryable end-to-end in SPARQL.
 
-### Step 3 — Run the noun and verb extraction
+### Step 4 — Run the noun and verb extraction
 
 Run cell 6 (noun extraction) and cell 8 (verb extraction). Each cell prints a
 structured inventory. Review it before moving forward.
@@ -110,7 +162,7 @@ Customer                       CQ1, CQ3, CQ4, CQ6, CQ7  Primary subject of wealt
 Signal                         CQ1, CQ2, CQ5, CQ6, CQ7  An in-bank indicator of wealth eligibility...
 ```
 
-### Step 4 — Work through the hard sorting cases
+### Step 5 — Work through the hard sorting cases
 
 Run cell 10 (class/property/instance sorting). Before running it, read cell 9
 (the intro to Step 3) and answer this question in your own words:
@@ -130,7 +182,7 @@ Classes (18):
   18. atlas:WorkflowStep
 ```
 
-### Step 5 — Run the Socratic Bedrock session
+### Step 6 — Run the Socratic Bedrock session
 
 Run cell 14 (Bedrock Socratic partner). This cell demonstrates how to use Bedrock
 as a mirror during ontology derivation. The LLM asks clarifying questions; you supply
@@ -155,7 +207,7 @@ BEDROCK SOCRATIC PARTNER:
 1. Does the Eligibility determination have a date and a reviewer...
 ```
 
-### Step 6 — Load and inspect the starter ontology
+### Step 7 — Load and inspect the starter ontology
 
 Run cells 16 and 18 to load `atlas-core.ttl` and `skos-codelists.ttl` into
 an rdflib graph and verify the class count and SKOS concept scheme.
@@ -188,7 +240,7 @@ Wealth Signal Types in SKOS scheme: 5
 SKOS codelist loaded. 5 of 5 signal types present.
 ```
 
-### Step 7 — Run the competency question SPARQL traversal
+### Step 8 — Run the competency question SPARQL traversal
 
 Run cells 20 and 21 to build the minimal instance graph and verify that all
 seven competency questions return non-empty results.
@@ -217,7 +269,7 @@ CQ7  [        PASS        ]  What specific in-bank observations were used...
 All 7 competency questions return non-empty results. Traversal gate: PASS.
 ```
 
-### Step 8 — Generate rationale.md
+### Step 9 — Generate rationale.md
 
 Run cell 23. This generates `ontology/rationale.md` — the artifact that makes
 the ontology defensible in front of a committee or a model risk management reviewer.
@@ -240,7 +292,7 @@ Coverage check — every CQ maps to at least one class:
   CQ7: PASS (4 classes)
 ```
 
-### Step 9 — Run the validation gate
+### Step 10 — Run the validation gate
 
 Run cell 25 (the Module 1 validation gate). All four sub-gates must pass.
 
