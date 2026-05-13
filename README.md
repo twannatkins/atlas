@@ -92,30 +92,33 @@ You need an AWS account with the following services enabled in **us-east-1**:
 
 ### Setup Checklist
 
-Before starting Module 1, complete these steps:
+Before starting Module 1, complete these steps (detailed walkthrough in
+[workshop/content/00-prerequisites/](workshop/content/00-prerequisites/index.md)):
 
-1. **Create a SageMaker notebook instance** (or SageMaker Studio domain)
+1. **Open SageMaker Studio** in us-east-1 and create a JupyterLab space
    - Instance type: `ml.t3.medium` is sufficient
-   - Attach an IAM role with the policies listed below
+   - Image: SageMaker Distribution 2.x (includes Python 3.10+)
 
-2. **Enable Amazon Bedrock model access**
-   - Open the Bedrock console in us-east-1
-   - Go to Model access → Manage model access
-   - Enable access to **Anthropic Claude Sonnet** (cross-region inference profile: `us.anthropic.claude-sonnet-4-6`)
-   - This takes 1–2 minutes to activate
-
-3. **Note your VPC and subnet IDs** (needed for Module 3)
-   - Open the VPC console
-   - Record your VPC ID (e.g., `vpc-0abc123def456`)
-   - Record at least two subnet IDs in different Availability Zones
-   - Record your VPC CIDR block (e.g., `10.0.0.0/16`)
-
-4. **Clone this repository** into your SageMaker environment:
+2. **Clone this repository** in the JupyterLab terminal:
    ```bash
    git clone https://github.com/twannatkins/atlas.git
    cd atlas
    pip install -r notebooks/shared/requirements.txt
    ```
+
+3. **Enable Amazon Bedrock model access**
+   - Open the Bedrock console in us-east-1
+   - Go to Model access → Manage model access
+   - Enable access to **Anthropic Claude Sonnet**
+   - This takes 1–2 minutes to activate
+
+4. **Add IAM permissions** to your SageMaker execution role
+   - S3, Neptune, Athena, Glue, CloudFormation (managed policies)
+   - Bedrock InvokeModel (inline policy)
+
+5. **Note your VPC and subnet IDs** (needed for Module 3)
+   - Record your VPC ID, CIDR block, and at least two subnet IDs in different AZs
+   - Must be the same VPC as your SageMaker Studio domain
 
 ### IAM Permissions
 
