@@ -1,0 +1,14 @@
+{
+  "mcp_server_name": "atlas-er-mcp",
+  "version": "1.0.0",
+  "description": "AWS Entity Resolution lookups; MatchID to canonical URI translation.",
+  "runtime": {"type": "lambda", "handler": "atlas_er_mcp.handler", "runtime": "python3.12", "timeout_seconds": 30, "memory_mb": 512, "environment_variables": {"ER_WORKFLOW_NAME": "${er_workflow_name}"}},
+  "iam_policy": {"inline_policy": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["entityresolution:GetMatchId", "entityresolution:ListMatchingWorkflows", "entityresolution:StartMatchingJob"], "Resource": "*"}, {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/atlas-er-mcp:*"}]}},
+  "operations": {
+    "lookup": {"input": {"source_system": "string", "source_id": "string"}, "output": {"canonical_uri": "string", "match_confidence": "number"}},
+    "resolve": {"input": {"record_attributes": "object"}, "output": {"match_id": "string", "canonical_uri": "string"}},
+    "link": {"input": {"source_record_uri": "string", "canonical_uri": "string"}, "output": {"link_recorded": "boolean"}}
+  },
+  "registry_metadata": {"discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward"]},
+  "dependencies": {"aws_services": ["AWS Entity Resolution"]}
+}

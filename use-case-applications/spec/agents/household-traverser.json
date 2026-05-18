@@ -1,0 +1,50 @@
+{
+  "agent_name": "household-traverser",
+  "version": "1.0.0",
+  "phase": 1,
+  "posture": "deterministic-read-only",
+  "description": "Returns 1-hop relationship strip for a household URI via parameterized SPARQL.",
+  "owner": "atlas-platform-team",
+  "model_risk_classification": "tier-1-deterministic",
+  "runtime": {
+    "type": "lambda",
+    "handler": "household_traverser.handler",
+    "runtime": "python3.12",
+    "timeout_seconds": 15,
+    "memory_mb": 512,
+    "environment_variables": {"SPARQL_MCP_ARN": "${atlas_sparql_mcp_arn}"}
+  },
+  "iam_policy": {
+    "inline_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": "${atlas_sparql_mcp_arn}"},
+        {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/household-traverser:*"}
+      ]
+    }
+  },
+  "input_schema": {
+    "type": "object",
+    "required": ["household_uri", "persona_claim"],
+    "properties": {
+      "household_uri": {"type": "string"},
+      "persona_claim": {"type": "string"}
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["status", "nodes"],
+    "properties": {
+      "status": {"type": "string", "enum": ["success", "not_found", "query_error"]},
+      "nodes": {"type": "array", "items": {"type": "object", "properties": {"uri": {"type": "string"}, "type": {"type": "string"}, "label": {"type": "string"}, "relationship": {"type": "string"}}}}
+    }
+  },
+  "registry_metadata": {
+    "discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward"],
+    "display_name": "Traverse household",
+    "display_icon": "affiliate",
+    "capability_tag": "deterministic",
+    "phase": 1
+  },
+  "dependencies": {"mcp_servers": ["atlas-sparql-mcp"]}
+}

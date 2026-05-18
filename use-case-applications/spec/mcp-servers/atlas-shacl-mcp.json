@@ -1,0 +1,14 @@
+{
+  "mcp_server_name": "atlas-shacl-mcp",
+  "version": "1.0.0",
+  "description": "SHACL shape validation against Workshop 1's six shapes. Returns conformance reports.",
+  "runtime": {"type": "lambda", "handler": "atlas_shacl_mcp.handler", "runtime": "python3.12", "timeout_seconds": 30, "memory_mb": 1024, "environment_variables": {"SHAPES_S3_URI": "s3://atlas-workshop-1/ontology/atlas-shapes.ttl"}},
+  "iam_policy": {"inline_policy": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "arn:aws:s3:::atlas-workshop-1/ontology/*"}, {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/atlas-shacl-mcp:*"}]}},
+  "operations": {
+    "validate": {"input": {"triples": "array", "shape_uris": "array"}, "output": {"conforms": "boolean", "report": "object"}},
+    "validate_graph": {"input": {"named_graph": "string", "shape_uris": "array"}, "output": {"conforms": "boolean", "report": "object"}},
+    "list_shapes": {"input": {}, "output": {"shapes": "array"}}
+  },
+  "registry_metadata": {"discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward", "atlas-auditor"]},
+  "dependencies": {"workshop_1_artifacts": ["agentic-semantic-layer/ontology/atlas-shapes.ttl"]}
+}
