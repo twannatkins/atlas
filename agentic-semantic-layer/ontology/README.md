@@ -1,64 +1,67 @@
-# ATLAS Ontology
+# Ontology — the heart of the agentic semantic layer
 
-This directory contains the ATLAS ontology files. They are built in module order;
-each module may extend or align the files from prior modules.
+This directory contains the **FIBO-aligned ontology** that defines what concepts and relationships exist in the bank's knowledge graph. Every triple stored in Neptune conforms to a class defined here. Every SPARQL query an agent issues in Workshop 2 is written against the vocabulary defined here. Every SHACL boundary shape that protects the deterministic layer references the classes defined here.
 
-## File Inventory
+The ontology is not configuration. It is the *contract* between data engineering, application development, and compliance — written in a form (OWL and RDF) that both machines and standards bodies recognize.
 
-| File | Introduced | Purpose |
-|------|-----------|---------|
-| `atlas-core.ttl` | Module 1 | 18-class starter ontology derived from competency questions |
-| `atlas-fibo-alignment.ttl` | Module 2 | FIBO IRI bindings for every atlas-core class |
-| `atlas-shapes.ttl` | Module 6 | SHACL shapes enforcing the deterministic-vs-probabilistic boundary |
-| `extensions/prov-o-bindings.ttl` | Module 5 | PROV-O attribution patterns |
-| `extensions/dcat-bindings.ttl` | Module 4 | DCAT dataset descriptors for source connection patterns |
-| `extensions/skos-codelists.ttl` | Module 1 | SKOS concept scheme for WealthSignalType enumeration |
-| `extensions/gleif-bindings.ttl` | Module 2 | GLEIF Legal Entity Identifier bindings for counterparty entities |
-
-## FIBO Citation
-
-This workshop aligns to FIBO (Financial Industry Business Ontology) published
-by the Enterprise Data Management (EDM) Council under the MIT license.
-
-FIBO version pinned: **FIBO 2024 Q3 Production Release**
-FIBO IRI base: `https://spec.edmcouncil.org/fibo/ontology/`
-FIBO GitHub: `https://github.com/edmcouncil/fibo`
-
-The FIBO alignment bindings are in `atlas-fibo-alignment.ttl` and are introduced
-in Module 2. This file (`atlas-core.ttl`) uses `rdfs:comment` annotations to
-document the anticipated FIBO alignment; the normative bindings are in the
-alignment file.
-
-## Ontology IRI
-
-All ATLAS ontology entities use the IRI prefix:
+## What's in this directory
 
 ```
-https://github.com/your-org/atlas/ontology#
+ontology/
+├── atlas-core.ttl                # 19 classes that define the bank's domain
+├── atlas-fibo-alignment.ttl      # 3 classes that bridge atlas: to FIBO
+├── atlas-shapes.ttl              # 6 SHACL boundary shapes
+├── extensions/
+│   ├── dcat-bindings.ttl         # Data catalog vocabulary alignment
+│   ├── gleif-bindings.ttl        # Legal entity identifier alignment
+│   ├── prov-o-bindings.ttl       # Provenance vocabulary alignment
+│   └── skos-codelists.ttl        # SKOS concept schemes (signal types, routing decisions, etc.)
+├── alignment-gaps.md             # Where FIBO doesn't cover what the bank needs, and how atlas: closes the gap
+├── rationale.md                  # Design decisions and the reasoning behind them
+└── README.md                     # This file
 ```
 
-Replace `your-org` with your GitHub username or organization when forking
-this repository for production use.
+## The 22 classes
 
-## Class Summary (Module 1 baseline)
+The ontology declares 22 classes in the `atlas:` namespace:
 
-18 classes, each traceable to at least one competency question:
+**Core domain (19 classes in `atlas-core.ttl`):** Customer, Account, Holding, Transaction, Household, WealthSignal, Eligibility, Score, RoutingDecision, HumanReview, AuditRecord, Advisor, WorkflowStep, WealthSignalType, HouseholdMembership, DataSource, ObservationWindow, PreviousSurfacing, AdvisoryRelationship.
 
-1. `atlas:Customer` — CQ1, CQ3, CQ6, CQ7
-2. `atlas:Account` — CQ1, CQ2
-3. `atlas:Holding` — CQ1, CQ2
-4. `atlas:Transaction` — CQ1, CQ2, CQ7
-5. `atlas:Household` — CQ3
-6. `atlas:WealthSignal` — CQ1, CQ2, CQ4
-7. `atlas:Eligibility` — CQ1, CQ4
-8. `atlas:Score` — CQ2
-9. `atlas:RoutingDecision` — CQ5, CQ6
-10. `atlas:HumanReview` — CQ5, CQ6
-11. `atlas:AuditRecord` — CQ6, CQ7
-12. `atlas:Advisor` — CQ5, CQ6
-13. `atlas:WorkflowStep` — CQ5
-14. `atlas:WealthSignalType` — CQ1, CQ2
-15. `atlas:HouseholdMembership` — CQ3
-16. `atlas:DataSource` — CQ7
-17. `atlas:ObservationWindow` — CQ1, CQ4
-18. `atlas:PreviousSurfacing` — CQ4
+**FIBO alignment bridges (3 classes in `atlas-fibo-alignment.ttl`):** LegalEntity, Product, LineOfBusiness.
+
+Each class is documented in the TTL files with `rdfs:label`, `rdfs:comment`, and where applicable an `owl:equivalentClass` or `rdfs:subClassOf` link to its FIBO counterpart. The mapping between `atlas:` classes and FIBO classes is the substance of `atlas-fibo-alignment.ttl`.
+
+## The 6 SHACL shapes
+
+The shapes in `atlas-shapes.ttl` are the deterministic boundary — the rules that decide what is allowed to enter the graph. They are the most important artifact in this directory from a model risk perspective:
+
+| Shape | What it asserts |
+|---|---|
+| `atlas:ProvenanceShape` | Every promoted entity in the SLGD has full PROV-O attribution back to its source |
+| `atlas:BoundaryShape` | Every probabilistic output (Bedrock-drafted narrative, ML score) carries the required confidence and review flags |
+| `atlas:ComplianceInputShape` | Every compliance-bound path carries the explainability artifacts required by SR 11-7 and OCC 2011-12 |
+| `atlas:RoutingPolicyShape` | Every routing decision is drawn from the closed enumerated set defined in the SKOS scheme |
+| `atlas:WealthSignalTypeShape` | Every wealth signal type is drawn from the SKOS scheme — this is what makes new signals additive rather than ad hoc |
+| `atlas:CoverageRelationshipShape` | Every advisory relationship has the required client, advisor, effective date, and line-of-business properties |
+
+These shapes are what makes the ontology *governable*. Without them, the graph is just a graph. With them, the graph is a regulated artifact.
+
+## How agents use the ontology (Workshop 2 preview)
+
+In Workshop 2, registered agents consume this ontology in five ways:
+
+1. **SPARQL queries** are written against the class names defined here
+2. **GraphQL fragments** are shaped to the class hierarchy defined here
+3. **SHACL validation** runs against the shapes defined here before any new triple is accepted
+4. **Provenance traces** in the UI follow the PROV-O bindings defined in `extensions/prov-o-bindings.ttl`
+5. **SKOS code lists** in `extensions/skos-codelists.ttl` populate dropdowns and enumerated choices in the UI
+
+Workshop 2 does **not** modify any file in this directory. Workshop 2 extensions to the vocabulary live in `../use-case-applications/ontology-extensions/` under the `atlas-part-2:` namespace. This isolation is intentional — Workshop 1's ontology is a stable artifact that downstream workshops and customer deployments can rely on.
+
+## Where to start reading
+
+- New to ontology engineering? Start with `rationale.md` — the design decisions in plain English.
+- New to FIBO? Read `alignment-gaps.md` — what FIBO covers, what it doesn't, and why.
+- Ready to read code? Start with `atlas-core.ttl` and walk through the 19 classes. Then `atlas-fibo-alignment.ttl` for the FIBO bridge, then `atlas-shapes.ttl` for the deterministic boundary.
+
+The eight teaching notebooks in `../notebooks/` walk through all of the above in order, with executable examples. If you are working through the workshop, follow the notebooks rather than reading the TTL files directly.

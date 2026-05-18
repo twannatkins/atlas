@@ -1,93 +1,54 @@
----
-title: "Introduction"
-weight: 0
----
+# Welcome
 
-# ATLAS — Aligned Three-Layer Architecture for Semantics
+Over the next day, you are going to build an **ontology**.
 
-Welcome to the ATLAS workshop. Over the next 5–6 hours, you will build a complete
-enterprise semantic layer for Financial Services on AWS — from a blank competency
-question to a running wealth-signal detection demo with full audit trail.
+Not a vocabulary written in a document. Not a class diagram in a slide deck. A working, queryable, federated, governed ontology, hosted on Amazon Neptune, aligned to the Financial Industry Business Ontology (FIBO), and ready for AI agents to operate against.
 
-## What You Will Build
+By the end of this workshop, you will have built a *semantic layer for agentic AI*: the substrate that lets enterprise AI agents query your bank's data, reason about it within model risk policy, and produce auditable answers without hallucinating.
 
-By the end of this workshop, you will have:
+Workshop 2 (`use-case-applications/`) takes this substrate and builds two real banking applications on top of it — a Wholesale UI for Consumer Banker referrals, a Wealth UI for the advisor workbench, both backed by registered agents and a FIBO-shaped GraphQL API. But none of that works without what you build today.
 
-- A **FIBO-aligned ontology** with 19 classes derived from competency questions
-- **Two Amazon Neptune clusters** (LGD and SLGD) running a two-tier graph architecture
-- **Three data integration patterns** feeding source data into the graph
-- **SHACL shapes** that mechanically enforce the deterministic-vs-probabilistic boundary
-- A **natural-language-to-SPARQL** component powered by Amazon Bedrock
-- An **end-to-end wealth-signal workflow** from signal detection through advisor approval
-- A **one-query audit trail** you can demo to a CIO in 30 seconds
+## Why we start here
 
-## Who This Workshop Is For
+Enterprise AI agents in regulated industries have a structural problem. Language models hallucinate. They invent account numbers, fabricate relationships, mis-classify customers. In a consumer chatbot this is annoying. In a wealth referral, a compliance review, or a risk decision, it is unacceptable — and it is a violation of model risk regulations that exist for exactly this reason (SR 11-7, OCC 2011-12).
 
-- **FSI architects** who need to build and defend a knowledge graph to a Model Risk
-  Management (MRM) reviewer
-- **Data engineers** who want to understand how ontologies connect to real data pipelines
-- **Ontologists** who want to see FIBO alignment applied to a concrete use case on AWS
+The way around this is not to make the model better. The way around this is to *ground* the model in a layer that has explicit semantics, deterministic validation, and full provenance. An ontology.
 
-**No prior ontology experience is required.** Module 1 teaches ontology concepts
-from scratch using a Socratic method with Amazon Bedrock.
+That is what you build today. The agents in Workshop 2 don't hallucinate — not because they're better agents, but because they operate against a graph that won't let them. Every triple in the graph is validated by a SHACL shape. Every probabilistic output carries a flag. Every compliance decision carries an explainability artifact. The agents inherit all of this automatically because they query a substrate that already enforces it.
 
-## The Architecture
+This is the architectural decision that makes ATLAS different from a generic agentic AI platform. You will learn it by building it.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Application Layer                                              │
-│  Bedrock (NL↔SPARQL only) · Step Functions agent · AppSync UI  │
-├─────────────────────────────────────────────────────────────────┤
-│  Ontology and Digital Twin Layer                                │
-│  LGD (raw, unvalidated)  →  SLGD (FIBO-aligned, SHACL-valid)  │
-│  Amazon Neptune two-tier · SHACL boundary enforcement           │
-├─────────────────────────────────────────────────────────────────┤
-│  Data Integration Layer                                         │
-│  Pattern A: S3 Iceberg → Ontop → R2RML                          │
-│  Pattern B: Snowflake Horizon (or Athena fallback) → Ontop      │
-│  Pattern C: Kinesis/MSK → Lambda → LGD                          │
-└─────────────────────────────────────────────────────────────────┘
-```
+## What the day looks like
 
-## The Central Commitment
+Eight modules, roughly 45–60 minutes each, with breaks. Each module is a Jupyter notebook. Each notebook has the same shape: a question you would naturally ask, the concept that answers it, the artifact that embodies the concept, and the next question that the artifact opens.
 
-Every component in ATLAS is classified as one of:
+| # | Module | The question it answers |
+|---|---|---|
+| 1 | Journey to ontology | Why an ontology — and not a CRM or a data warehouse — is the right substrate for agentic AI |
+| 2 | FIBO alignment | What FIBO is, why it matters, how to extend it where it doesn't cover what your bank uses |
+| 3 | Two-tier Neptune | Why the graph has two tiers (LGD for raw facts, SLGD for the curated ontology) and what each one is for |
+| 4 | Three connection patterns | How enterprise data flows into the ontology — Iceberg, Snowflake Horizon, real-time events — without bulk migration |
+| 5 | Entity resolution | How AWS Entity Resolution mints canonical URIs, and what to do when records don't match |
+| 6 | The SHACL boundary | The most important hour of the day. Where the deterministic boundary lives, why SHACL draws it, and why this is the SR 11-7 story |
+| 7 | Bedrock at the edges | Why Bedrock is at the *edges* of the architecture — translating natural language to SPARQL — not in the *middle* reasoning over data |
+| 8 | Wealth signal demo | A worked example: surfacing a wealth-eligible customer through SHACL shapes and SPARQL CONSTRUCT queries, end to end |
 
-- **DETERMINISTIC** — same inputs always produce the same outputs (SHACL validation,
-  route selection, SPARQL queries, R2RML mappings)
-- **PROBABILISTIC-EXPLAINABLE** — non-deterministic but produces per-record explanations
-  (XGBoost scoring with SHAP attributions)
-- **PROBABILISTIC-OPAQUE** — non-deterministic without per-record explanations
-  (Bedrock narrative drafting — interface role only, never a decision input)
+By module 8 you will see, end to end, how a customer event flows from a source system into the graph, through a shape that validates it, through a SPARQL CONSTRUCT that derives a signal from it, and out to an answer that a banker could trust. Every step will be inspectable. Every step will be auditable. Every step will be yours.
 
-The boundary between these classes is enforced mechanically by SHACL shapes. A
-reviewer can run one validator and produce a report.
+## What you'll have at the end
 
-## Module Overview
+A FIBO-aligned ontology of 22 classes covering customers, accounts, holdings, transactions, advisors, households, signals, and the governance scaffolding around all of it. Six SHACL shapes that draw the deterministic boundary. Three R2RML mappings that federate enterprise data sources without copying their bytes. A two-tier Neptune deployment populated with 200 synthetic customers, 3,747 transactions, 10 advisors, and 105 advisory relationships. Bedrock at the edges, translating natural language to SPARQL through a ground-truth set of question-answer pairs.
 
-| # | Module | What You Learn | Time |
-|---|--------|----------------|------|
-| 1 | From Business Question to Ontology | Derive an ontology from competency questions | 30–45 min |
-| 2 | FIBO Alignment and the Extension Ring | Bind your ontology to the industry standard | 60–75 min |
-| 3 | Standing Up Two-Tier Neptune | Deploy graph infrastructure on AWS | 20–30 min |
-| 4 | Three Patterns for Source Connection | Connect source systems to a knowledge graph | 60–75 min |
-| 5 | Entity Resolution and the Promotion Path | Resolve identities and govern data promotion | 30–45 min |
-| 6 | SHACL: Making the Boundary Mechanical | Enforce rules with machine-checkable shapes | 45–60 min |
-| 7 | Bedrock at the Edges | Use LLMs safely in a regulated architecture | 30–45 min |
-| 8 | The Wealth-Signal Demo with Bounded Agent | End-to-end workflow from signal to approval | 45–60 min |
+You will have this in a working AWS environment. You will be able to query it. You will be able to extend it. And tomorrow, when you move to Workshop 2, you will be able to point agents at it.
 
-## How to Use This Workshop
+## How to read the notebooks
 
-Each module follows the same pattern:
+Each notebook follows a five-section pattern: the question, the concept, the build, the verification, what just changed. Read the concept sections carefully — they are where the teaching lives. The build cells produce the artifacts; the concept sections explain why the artifacts exist.
 
-1. **Read** the learning objectives and key concepts
-2. **Open** the corresponding Jupyter notebook in SageMaker
-3. **Run** cells sequentially, reading the educational prose between code cells
-4. **Pass** the validation gate at the end of each module before proceeding
+If you find yourself executing cells without absorbing the *why*, slow down. This workshop is dense. The reading is the teaching.
 
-Modules must be completed in order — each builds on the deliverables of the previous one.
+## What you need before you start
 
-## Let's Begin
+See `00-prerequisites/index.md` for the complete prerequisite list. Briefly: an AWS account with permissions to deploy Neptune, Bedrock model access, SageMaker Studio domain access, and comfort with Jupyter notebooks. You do not need local Python, local Docker, or local AWS CLI. Everything runs in Studio.
 
-Proceed to [Prerequisites](../00-prerequisites/) to set up your AWS environment,
-then start with [Module 1](../01-from-business-question/).
+When you're ready, open `01-from-business-question/index.md` and begin.
