@@ -1,9 +1,10 @@
 name: Workshop sync check
 # Placeholder — full implementation in a later module.
 # Enforces three invariants when complete:
-#   1. Every notebook in notebooks/ has a matching workshop/content/<NN>-<slug>/index.md.
+#   1. Every notebook in agentic-semantic-layer/notebooks/ has a matching
+#      agentic-semantic-layer/workshop/content/<NN>-<slug>/index.md.
 #   2. Every image referenced in any content Markdown resolves to a real file
-#      in workshop/static/images/.
+#      in agentic-semantic-layer/workshop/static/images/.
 #   3. Every screenshot filename matches the <NN>-step-<NN>-<slug>.png convention.
 on:
   pull_request:

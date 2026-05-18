@@ -1,0 +1,61 @@
+{
+  "agent_name": "wealth-signal-detector",
+  "version": "1.0.0",
+  "phase": 1,
+  "posture": "deterministic-shacl-driven",
+  "description": "Runs SPARQL CONSTRUCT queries to produce atlas:WealthSignal instances; validates via SHACL before write.",
+  "owner": "atlas-platform-team",
+  "model_risk_classification": "tier-1-deterministic",
+  "mrm_submission_ref": "agentic-semantic-layer/docs/model-risk-review.md#wealth-signals",
+  "runtime": {
+    "type": "lambda",
+    "handler": "wealth_signal_detector.handler",
+    "runtime": "python3.12",
+    "timeout_seconds": 60,
+    "memory_mb": 1024,
+    "environment_variables": {
+      "SPARQL_MCP_ARN": "${atlas_sparql_mcp_arn}",
+      "SHACL_MCP_ARN": "${atlas_shacl_mcp_arn}",
+      "SIGNAL_QUERIES_S3_URI": "s3://atlas-workshop-2/signal-queries/"
+    }
+  },
+  "iam_policy": {
+    "inline_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": ["${atlas_sparql_mcp_arn}", "${atlas_shacl_mcp_arn}"]},
+        {"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "arn:aws:s3:::atlas-workshop-2/signal-queries/*"},
+        {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/wealth-signal-detector:*"}
+      ]
+    }
+  },
+  "input_schema": {
+    "type": "object",
+    "required": ["target_uri", "persona_claim"],
+    "properties": {
+      "target_uri": {"type": "string", "description": "atlas:Customer or atlas:Household URI"},
+      "signal_types": {"type": "array", "items": {"type": "string"}, "description": "Optional filter; defaults to all Phase 1 signals"},
+      "persona_claim": {"type": "string"}
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["status", "signals_minted", "provenance"],
+    "properties": {
+      "status": {"type": "string", "enum": ["success", "partial", "no_signals_detected", "validation_failed"]},
+      "signals_minted": {"type": "array", "items": {"type": "object", "properties": {"signal_uri": {"type": "string"}, "signal_type": {"type": "string"}, "strength": {"type": "string", "enum": ["strong", "moderate", "weak", "gap"]}}}},
+      "provenance": {"type": "object", "properties": {"queries_executed": {"type": "array"}, "shapes_validated": {"type": "array"}, "execution_time_ms": {"type": "number"}}}
+    }
+  },
+  "registry_metadata": {
+    "discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-ontology-steward"],
+    "display_name": "Detect wealth signals",
+    "display_icon": "radar",
+    "capability_tag": "deterministic",
+    "phase": 1
+  },
+  "dependencies": {
+    "mcp_servers": ["atlas-sparql-mcp", "atlas-shacl-mcp"],
+    "workshop_1_artifacts": ["agentic-semantic-layer/ontology/atlas-shapes.ttl"]
+  }
+}

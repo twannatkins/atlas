@@ -1,0 +1,15 @@
+{
+  "mcp_server_name": "atlas-registry-mcp",
+  "version": "1.0.0",
+  "description": "Agent Registry exposed as MCP server. Persona-aware capability discovery and proxied invocation with audit.",
+  "runtime": {"type": "lambda", "handler": "atlas_registry_mcp.handler", "runtime": "python3.12", "timeout_seconds": 30, "memory_mb": 512, "environment_variables": {"REGISTRY_ENDPOINT": "${agent_registry_endpoint}"}},
+  "iam_policy": {"inline_policy": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["bedrock-agentcore:ListAgents", "bedrock-agentcore:GetAgent", "bedrock-agentcore:InvokeAgent"], "Resource": "*"}, {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/atlas-registry-mcp:*"}]}},
+  "operations": {
+    "list_capabilities": {"input": {"persona_claim": "string"}, "output": {"agents": "array", "mcp_servers": "array"}},
+    "get_agent": {"input": {"agent_name": "string"}, "output": {"agent": "object"}},
+    "get_mcp_server": {"input": {"mcp_name": "string"}, "output": {"mcp_server": "object"}},
+    "invoke_capability": {"input": {"capability_uri": "string", "input_payload": "object", "persona_claim": "string"}, "output": {"result": "object", "audit_record_uri": "string"}}
+  },
+  "registry_metadata": {"discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward", "atlas-auditor"]},
+  "auth_modes": {"phase_1": "iam", "phase_2": "jwt-via-cognito"}
+}
