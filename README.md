@@ -1,6 +1,6 @@
 # ATLAS
 
-**Adaptive Truist Linked Analytics System — an AWS-native reference architecture for governed agentic AI on enterprise data.**
+**Aligned Three-Layer Architecture for Semantics — an AWS-native reference architecture for governed agentic AI on enterprise data, built in two workshops.**
 
 ATLAS is delivered as two workshops. You work through them in order. By the end, you have a working, governed, agent-driven application stack that runs entirely on AWS, aligned to FSI standards, and ready to adapt to your institution's use cases.
 

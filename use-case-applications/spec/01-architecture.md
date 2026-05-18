@@ -100,7 +100,7 @@ Three things ATLAS is deliberately not, that are easy to mistake it for:
 
 **Not a knowledge graph for analytics.** Workshop 1's ontology is operational, not analytical. It populates from source systems via R2RML, validates via SHACL, and serves agent queries via SPARQL. It is not designed for ad-hoc analyst exploration. (Analytical access to the underlying data goes through Iceberg directly, with the ontology as a logical overlay.)
 
-**Not a Palantir Foundry clone.** Foundry's architectural choice is the opposite of ATLAS's: Foundry lets the LLM reason over the ontology, with proprietary controls layered on top. ATLAS keeps the LLM at the edges and uses open standards (FIBO, SHACL, R2RML, PROV-O) to draw the deterministic boundary. The trade-off is feature completeness for portability and auditability. For Truist's posture (AWS-native, FIBO-aligned, no proprietary cloud dependency), ATLAS is the architecture; Foundry is not.
+**Not a Palantir Foundry clone.** Foundry's architectural choice is the opposite of ATLAS's: Foundry lets the LLM reason over the ontology, with proprietary controls layered on top. ATLAS keeps the LLM at the edges and uses open standards (FIBO, SHACL, R2RML, PROV-O) to draw the deterministic boundary. The trade-off is feature completeness for portability and auditability. For this posture (AWS-native, FIBO-aligned, no proprietary cloud dependency), ATLAS is the architecture; Foundry is not.
 
 ## The dependency on Workshop 1
 

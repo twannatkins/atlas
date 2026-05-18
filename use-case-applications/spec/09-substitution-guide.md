@@ -2,7 +2,7 @@
 
 This document explains how to substitute real institutional data for Workshop 1's synthetic data without changing the ontology, the SHACL shapes, the R2RML mapping logic, the registry records, or the agents.
 
-This is the document that turns Workshop 2 from a workshop into a customer POC. If you are reading this with a Truist deployment in mind, this is your primary reference.
+This is the document that turns Workshop 2 from a workshop into a customer POC. If you are reading this with a real deployment in mind, this is your primary reference.
 
 ## The principle
 
@@ -89,7 +89,7 @@ Six things change when substituting real data. Each is a discrete, bounded chang
 
 ### 6. IDC group names and assignments
 
-**What changes.** The IAM Identity Center groups (`atlas-consumer-banker`, `atlas-wealth-advisor`, etc.) are workshop conventions. Your institution likely has existing groups (`truist-cnsmr-banker-l3`, or whatever your naming convention is). Cognito federation needs to know how to map.
+**What changes.** The IAM Identity Center groups (`atlas-consumer-banker`, `atlas-wealth-advisor`, etc.) are workshop conventions. Your institution likely has existing groups (`fsi-consumer-banker-l3`, or whatever your naming convention is). Cognito federation needs to know how to map.
 
 **For synthetic data.** The workshop creates the `atlas-*` groups in IDC and assigns the workshop attendee to all of them.
 
@@ -107,7 +107,7 @@ When moving from a workshop deployment to a customer POC, work through these six
 
 3. **Run a parallel ER workflow.** Before pointing the workshop at real data, run AWS Entity Resolution against a sample. Verify the canonical URIs make sense. Adjust matching rules if needed. This is where most real-data deployments find their first surprise.
 
-4. **Deploy to a non-production environment first.** Truist's pilot environment (the CDK-deployed sandbox referenced in your AWS Lab Account) is the right target. Run the full Phase 1 acceptance criteria against real data in this environment before considering production.
+4. **Deploy to a non-production environment first.** A CDK-deployed sandbox in your institution's non-production AWS account is the right target. Run the full Phase 1 acceptance criteria against real data in this environment before considering production.
 
 5. **Run the Rachel Kim scenario with anonymized real data.** Pick one real wealth-eligible household, anonymize the names for the demo, and walk through the full Phase 1 flow. This is your end-to-end smoke test.
 
@@ -127,6 +127,6 @@ Three things are out of scope for the substitution guide and require additional 
 
 This document is also part of Workshop 2's teaching. A novice who reads it should leave understanding *why* the ATLAS architecture separates ontology from data: not as an aesthetic preference, but as the property that makes the workshop's artifacts portable across institutions, across data volumes, and across deployment environments.
 
-When a Truist engineer reads this guide, they should see clearly which six things will change for their deployment and which everything-else will stay the same. The brevity of the substitution list is the proof that the architecture works.
+When an engineer at the deploying institution reads this guide, they should see clearly which six things will change for their deployment and which everything-else will stay the same. The brevity of the substitution list is the proof that the architecture works.
 
 If a future revision of ATLAS makes substitution harder — if more than six things change, or if substitution requires modifying the ontology — that is a signal that the architecture has drifted from its founding principle. The substitution guide is the canary.
