@@ -1,0 +1,34 @@
+# Segment Shift Signal — SPARQL CONSTRUCT query
+#
+# Fired by wealth-signal-detector when a customer's transaction velocity
+# crosses a segment tier boundary (mass-market → mass-affluent, or
+# mass-affluent → high-net-worth).
+#
+# Parameters:
+#   {target_uri} — the atlas:Customer URI to check
+#
+# Validated against: atlas:WealthSignalTypeShape
+# Signal strength: moderate
+
+PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
+PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+CONSTRUCT {
+    ?signal a atlas:WealthSignal ;
+        atlas:hasSignalType atlas-part-2:SegmentShiftSignal ;
+        atlas:aboutCustomer <{target_uri}> ;
+        atlas:signalStrength "moderate" ;
+        prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> ;
+        prov:generatedAtTime ?now .
+} WHERE {
+    <{target_uri}> a atlas:Customer ;
+        atlas:hasAccount ?acct .
+    ?txn atlas:inAccount ?acct ;
+        atlas:amountUSD ?amount .
+    BIND(NOW() AS ?now)
+    BIND(IRI(CONCAT("atlas:signal/shift-", STRUUID())) AS ?signal)
+}
+GROUP BY ?acct
+HAVING (SUM(?amount) > 250000)
