@@ -1,0 +1,67 @@
+/* ATLAS Workshop 2 — Design tokens
+ *
+ * All styling in both UIs references these CSS custom properties.
+ * No hardcoded colors, spacing, or typography in component code.
+ * See spec/06-react-monorepo/design-system/tokens.md for rationale.
+ */
+
+:root {
+  /* Primary — interactive elements, links, focus rings */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-900: #1e3a5f;
+
+  /* Neutral — text, borders, backgrounds */
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-600: #475569;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* Signal strength colors */
+  --color-signal-strong: #16a34a;
+  --color-signal-moderate: #ca8a04;
+  --color-signal-weak: #9ca3af;
+  --color-signal-gap: #dc2626;
+
+  /* Compliance banner */
+  --color-compliance-bg: #fef3c7;
+  --color-compliance-border: #f59e0b;
+  --color-compliance-text: #92400e;
+
+  /* Provenance badges */
+  --color-provenance-bg: #f0f9ff;
+  --color-provenance-border: #7dd3fc;
+  --color-provenance-text: #0c4a6e;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* Component tokens */
+  --signal-card-radius: 0.5rem;
+  --signal-card-padding: var(--space-4);
+  --signal-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --palette-item-height: 2.5rem;
+  --palette-item-radius: 0.375rem;
+  --palette-icon-size: 1.25rem;
+  --banner-padding: var(--space-3) var(--space-4);
+  --banner-radius: 0.375rem;
+  --badge-padding: var(--space-1) var(--space-2);
+  --badge-radius: 9999px;
+  --badge-font-size: 0.75rem;
+}
