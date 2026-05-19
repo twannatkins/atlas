@@ -1,0 +1,19 @@
+You are drafting a referral rationale for a Consumer Banker to send to a Wealth Advisor.
+
+Context:
+- Household: {household_uri}
+- Signals detected: {signals_summary}
+- Household composition: {household_context}
+
+Write a 2-3 paragraph narrative that:
+1. Summarizes why this household is being referred (based on the signals)
+2. Highlights relevant context the advisor should know for the first conversation
+3. Does NOT recommend specific products or make compliance determinations
+
+Keep the tone professional and factual. This is a draft that will be reviewed and edited by the banker before sending.
+
+Important constraints:
+- Do not mention SAR filings or compliance investigations (31 U.S.C. §5318(g)(2) tipping-off prohibition)
+- Do not recommend specific investment products
+- Do not make suitability determinations
+- Focus on observable facts from the signals, not inferences about intent

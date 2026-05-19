@@ -1,0 +1,53 @@
+@prefix atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+# -------------------------------------------------------------------
+# atlas-part-2:ThemeAssertion
+#
+# A market or portfolio theme connected to a holding or client.
+# Used by the Wealth UI Themes route. Phase 2 only.
+#
+# Themes are curated upstream (not invented by agents). The
+# theme-summarizer agent reads them and generates summaries;
+# it does not create new themes.
+# -------------------------------------------------------------------
+
+atlas-part-2:ThemeAssertion a owl:Class ;
+    rdfs:label "Theme Assertion" ;
+    rdfs:comment "A market or portfolio theme linked to holdings or clients. Themes are curated upstream and summarized by the theme-summarizer agent for the Wealth UI's Themes route." ;
+    skos:definition "Represents a curated market or portfolio theme (e.g., 'AI infrastructure spending', 'rate-sensitive fixed income') that is connected to specific holdings or client portfolios. The theme-summarizer agent reads ThemeAssertions and their linked source articles to produce advisor-facing summaries." ;
+    rdfs:subClassOf owl:Thing .
+
+atlas-part-2:hasSourceArticle a owl:ObjectProperty ;
+    rdfs:label "has source article" ;
+    rdfs:comment "Links a theme to a source article that informs it." ;
+    rdfs:domain atlas-part-2:ThemeAssertion ;
+    rdfs:range owl:Thing .
+
+atlas-part-2:appliesToHolding a owl:ObjectProperty ;
+    rdfs:label "applies to holding" ;
+    rdfs:comment "Links a theme to a holding it is relevant to." ;
+    rdfs:domain atlas-part-2:ThemeAssertion ;
+    rdfs:range atlas:Holding .
+
+atlas-part-2:appliesToCustomer a owl:ObjectProperty ;
+    rdfs:label "applies to customer" ;
+    rdfs:comment "Links a theme to a customer whose portfolio is exposed to it." ;
+    rdfs:domain atlas-part-2:ThemeAssertion ;
+    rdfs:range atlas:Customer .
+
+atlas-part-2:themeLabel a owl:DatatypeProperty ;
+    rdfs:label "theme label" ;
+    rdfs:comment "Human-readable label for the theme." ;
+    rdfs:domain atlas-part-2:ThemeAssertion ;
+    rdfs:range xsd:string .
+
+atlas-part-2:themeDate a owl:DatatypeProperty ;
+    rdfs:label "theme date" ;
+    rdfs:comment "The date the theme was asserted or last updated." ;
+    rdfs:domain atlas-part-2:ThemeAssertion ;
+    rdfs:range xsd:date .

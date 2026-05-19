@@ -1,0 +1,53 @@
+@prefix atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+# -------------------------------------------------------------------
+# atlas-part-2:Referral
+#
+# The business-facing noun for a wealth-eligible customer being routed
+# to an advisor. Distinct from atlas:RoutingDecision, which models the
+# *act* of routing. A Referral has a RoutingDecision.
+#
+# Introduced by Workshop 2. Workshop 1's ontology is not modified.
+# -------------------------------------------------------------------
+
+atlas-part-2:Referral a owl:Class ;
+    rdfs:label "Referral" ;
+    rdfs:comment "A wealth-eligible household being routed from a Consumer Banker to a Wealth Advisor. Carries the approved rationale, the originating signals, and the routing decision that executed the handoff." ;
+    skos:definition "The business-facing noun for the referral event. A Referral is created when a Consumer Banker approves a rationale draft and triggers the referral-orchestrator workflow. It is distinct from atlas:RoutingDecision (which models the act of routing) — a Referral *has* a RoutingDecision." ;
+    rdfs:subClassOf owl:Thing .
+
+# Properties specific to Referral
+atlas-part-2:hasRoutingDecision a owl:ObjectProperty ;
+    rdfs:label "has routing decision" ;
+    rdfs:comment "Links a Referral to the atlas:RoutingDecision that executed the handoff." ;
+    rdfs:domain atlas-part-2:Referral ;
+    rdfs:range atlas:RoutingDecision .
+
+atlas-part-2:hasApprovedRationale a owl:DatatypeProperty ;
+    rdfs:label "has approved rationale" ;
+    rdfs:comment "The human-approved narrative rationale attached to the referral." ;
+    rdfs:domain atlas-part-2:Referral ;
+    rdfs:range xsd:string .
+
+atlas-part-2:originatedBy a owl:ObjectProperty ;
+    rdfs:label "originated by" ;
+    rdfs:comment "The Consumer Banker who initiated the referral." ;
+    rdfs:domain atlas-part-2:Referral ;
+    rdfs:range atlas:Customer .
+
+atlas-part-2:referralDate a owl:DatatypeProperty ;
+    rdfs:label "referral date" ;
+    rdfs:comment "The date the referral was approved and routed." ;
+    rdfs:domain atlas-part-2:Referral ;
+    rdfs:range xsd:dateTime .
+
+atlas-part-2:referencesSignal a owl:ObjectProperty ;
+    rdfs:label "references signal" ;
+    rdfs:comment "Links a Referral to the wealth signals that justified it." ;
+    rdfs:domain atlas-part-2:Referral ;
+    rdfs:range atlas:WealthSignal .

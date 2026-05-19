@@ -1,0 +1,338 @@
+# ATLAS Workshop 2 — FIBO-shaped GraphQL Schema
+#
+# Every type in this schema maps to exactly one ontology class from
+# Workshop 1 (atlas:) or Workshop 2 (atlas-part-2:). Field names are
+# camelCase versions of the ontology property local names.
+#
+# This schema is consumed by both the Wholesale UI and the Wealth UI.
+# The differences between the two UIs are in which fragments they query,
+# not in the schema itself. This is Thesis 2: two UIs, one backbone.
+
+scalar DateTime
+scalar Decimal
+scalar URI
+
+# ─────────────────────────────────────────────────────────────────────
+# Provenance — every entity that carries audit trail
+# ─────────────────────────────────────────────────────────────────────
+
+type Provenance {
+  """The SHACL shape that validated this entity"""
+  validatedBy: String
+  """The R2RML mapping that produced the underlying triple"""
+  derivedFrom: String
+  """The agent or process that generated this entity"""
+  generatedBy: String
+  """When this entity was generated"""
+  generatedAtTime: DateTime
+  """The data source that contributed the raw observation"""
+  sourceDataset: String
+}
+
+# ─────────────────────────────────────────────────────────────────────
+# Core types — from Workshop 1 ontology (atlas:)
+# ─────────────────────────────────────────────────────────────────────
+
+"""
+atlas:Customer — A party holding an active relationship with the institution.
+FIBO alignment: fibo-fnd-pty-pty:IndependentParty
+"""
+type Customer {
+  uri: ID!
+  customerId: String!
+  label: String
+  accounts: [Account!]!
+  household: Household
+  wealthSignals: [WealthSignal!]!
+  advisoryRelationships: [AdvisoryRelationship!]!
+  eligibility: Eligibility
+  previousSurfacings: [PreviousSurfacing!]!
+  provenance: Provenance
+}
+
+"""
+atlas:Account — A financial account held by a Customer.
+FIBO alignment: fibo-fbc-pas-fpas:FinancialAccount
+"""
+type Account {
+  uri: ID!
+  accountId: String!
+  accountType: String!
+  balanceUSD: Decimal
+  holdings: [Holding!]!
+  transactions(limit: Int = 50): [Transaction!]!
+  provenance: Provenance
+}
+
+"""
+atlas:Holding — A position in a financial instrument.
+FIBO alignment: fibo-fbc-fi-ip:InvestmentPosition
+"""
+type Holding {
+  uri: ID!
+  label: String
+  provenance: Provenance
+}
+
+"""
+atlas:Transaction — A discrete financial event against an Account.
+"""
+type Transaction {
+  uri: ID!
+  transactionDate: DateTime!
+  amountUSD: Decimal!
+  transactionType: String!
+  provenance: Provenance
+}
+
+"""
+atlas:Household — A grouping of Customers sharing a residential unit.
+"""
+type Household {
+  uri: ID!
+  label: String
+  members: [Customer!]!
+  memberCount: Int!
+  provenance: Provenance
+}
+
+"""
+atlas:WealthSignal — An observation indicating wealth-management eligibility.
+"""
+type WealthSignal {
+  uri: ID!
+  signalType: String!
+  signalDate: DateTime
+  strength: String
+  evidencedBy: [Transaction!]!
+  score: Score
+  observationWindow: ObservationWindow
+  provenance: Provenance
+}
+
+"""
+atlas:Score — A probabilistic-explainable numeric score.
+"""
+type Score {
+  uri: ID!
+  scoreValue: Decimal!
+  isProbabilistic: Boolean!
+  hasExplainability: Boolean!
+  modelVersion: String
+  confidence: Decimal
+}
+
+"""
+atlas:ObservationWindow — A time-bounded evaluation window.
+"""
+type ObservationWindow {
+  uri: ID!
+  startDate: DateTime!
+  endDate: DateTime!
+}
+
+"""
+atlas:Eligibility — A determination that a Customer meets referral criteria.
+"""
+type Eligibility {
+  uri: ID!
+  routingDecision: RoutingDecision
+  provenance: Provenance
+}
+
+"""
+atlas:RoutingDecision — A decision to route a signal to a downstream handler.
+"""
+type RoutingDecision {
+  uri: ID!
+  selectedRoute: String!
+  humanReview: HumanReview
+  workflowStep: WorkflowStep
+  provenance: Provenance
+}
+
+"""
+atlas:HumanReview — A human reviewer's decision on a routed lead.
+"""
+type HumanReview {
+  uri: ID!
+  reviewOutcome: String!
+  reviewDate: DateTime!
+  reviewer: Advisor
+  provenance: Provenance
+}
+
+"""
+atlas:Advisor — A wealth-management advisor.
+"""
+type Advisor {
+  uri: ID!
+  label: String!
+  specialization: String
+  currentCapacity: Int
+  advisoryRelationships: [AdvisoryRelationship!]!
+}
+
+"""
+atlas:AdvisoryRelationship — A standing advisory coverage assignment.
+"""
+type AdvisoryRelationship {
+  uri: ID!
+  customer: Customer!
+  advisor: Advisor!
+  coverageStartDate: DateTime!
+  coverageEndDate: DateTime
+  relationshipType: String!
+  lineOfBusiness: String
+  isActive: Boolean!
+  provenance: Provenance
+}
+
+"""
+atlas:AuditRecord — A PROV-O-attributed provenance record.
+"""
+type AuditRecord {
+  uri: ID!
+  aboutHousehold: Household
+  routingDecision: RoutingDecision
+  targetAdvisor: Advisor
+  generatedAtTime: DateTime!
+  workflowStatus: String!
+  provenance: Provenance
+}
+
+"""
+atlas:WorkflowStep — A step in the routing state machine.
+"""
+type WorkflowStep {
+  uri: ID!
+  label: String
+  status: String
+}
+
+"""
+atlas:PreviousSurfacing — A historical wealth-candidate evaluation.
+"""
+type PreviousSurfacing {
+  uri: ID!
+  outcome: String!
+  surfacingDate: DateTime!
+}
+
+# ─────────────────────────────────────────────────────────────────────
+# Workshop 2 extension types — from atlas-part-2: namespace
+# ─────────────────────────────────────────────────────────────────────
+
+"""
+atlas-part-2:Referral — The business-facing noun for a routing event.
+"""
+type Referral {
+  uri: ID!
+  household: Household!
+  signals: [WealthSignal!]!
+  approvedRationale: String!
+  routingDecision: RoutingDecision
+  originatedBy: String!
+  referralDate: DateTime!
+  provenance: Provenance
+}
+
+"""
+atlas-part-2:ThemeAssertion — A market or portfolio theme (Phase 2).
+"""
+type ThemeAssertion {
+  uri: ID!
+  themeLabel: String!
+  themeDate: DateTime
+  sourceArticles: [String!]!
+  appliesTo: [Customer!]!
+}
+
+# ─────────────────────────────────────────────────────────────────────
+# Capability palette — from Agent Registry
+# ─────────────────────────────────────────────────────────────────────
+
+"""
+A registered capability (agent or MCP server) discoverable by the current persona.
+Populated live from the Agent Registry, never hardcoded.
+"""
+type Capability {
+  name: String!
+  displayName: String!
+  displayIcon: String!
+  posture: String!
+  capabilityTag: String!
+  phase: Int!
+}
+
+# ─────────────────────────────────────────────────────────────────────
+# Queries
+# ─────────────────────────────────────────────────────────────────────
+
+type Query {
+  """Fetch a customer by URI. Resolver: SPARQL via Ontop."""
+  customer(uri: ID!): Customer
+
+  """Fetch a household by URI. Resolver: SPARQL via Ontop."""
+  household(uri: ID!): Household
+
+  """Search customers by name or ID. Resolver: SPARQL via Ontop."""
+  searchCustomers(query: String!, limit: Int = 20): [Customer!]!
+
+  """Fetch wealth signals for a customer. Resolver: Direct Neptune SPARQL."""
+  wealthSignals(customerUri: ID!): [WealthSignal!]!
+
+  """Fetch advisory relationships for a customer. Resolver: Direct Neptune SPARQL."""
+  advisoryRelationships(customerUri: ID!): [AdvisoryRelationship!]!
+
+  """Fetch referrals for a household. Resolver: Direct Neptune SPARQL."""
+  referrals(householdUri: ID!): [Referral!]!
+
+  """Fetch the capability palette for the current persona. Resolver: atlas-registry-mcp."""
+  capabilities(personaClaim: String!): [Capability!]!
+
+  """Fetch audit trail for a routing decision. Resolver: Direct Neptune SPARQL."""
+  auditTrail(routingDecisionUri: ID!): [AuditRecord!]!
+
+  """Resolve a source-system ID to a canonical URI. Resolver: atlas-er-mcp."""
+  resolveEntity(sourceSystem: String!, sourceId: String!): Customer
+
+  """Fetch themes for the Wealth UI (Phase 2). Resolver: Direct Neptune SPARQL."""
+  themes(limit: Int = 10): [ThemeAssertion!]!
+}
+
+# ─────────────────────────────────────────────────────────────────────
+# Mutations
+# ─────────────────────────────────────────────────────────────────────
+
+type Mutation {
+  """
+  Invoke the referral-orchestrator workflow.
+  Requires: approved rationale (human must approve before calling this).
+  Only callable by atlas-consumer-banker persona.
+  """
+  routeReferral(
+    householdUri: ID!
+    signalUris: [ID!]!
+    approvedRationale: String!
+    originatingBankerId: String!
+  ): Referral
+
+  """
+  Invoke the wealth-signal-detector for a target.
+  Returns newly minted signals.
+  """
+  detectSignals(
+    targetUri: ID!
+    signalTypes: [String!]
+  ): [WealthSignal!]!
+}
+
+# ─────────────────────────────────────────────────────────────────────
+# Subscriptions (Phase 2)
+# ─────────────────────────────────────────────────────────────────────
+
+type Subscription {
+  """Subscribe to new signals for a customer (Phase 2, real-time pattern)."""
+  onNewSignal(customerUri: ID!): WealthSignal
+}
