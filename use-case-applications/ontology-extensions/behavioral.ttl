@@ -1,0 +1,83 @@
+@prefix atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+# -------------------------------------------------------------------
+# atlas-part-2:Session
+#
+# A user interaction session derived from clickstream. Basis for
+# Engagement Decay signals. Phase 2 only.
+#
+# Sessions live in the LGD (raw tier). The behavioral-signal-agent
+# queries them to derive signals that are written to the SLGD.
+# -------------------------------------------------------------------
+
+atlas-part-2:Session a owl:Class ;
+    rdfs:label "Session" ;
+    rdfs:comment "A user interaction session derived from clickstream events. Used by the behavioral-signal-agent to compute Engagement Decay signals." ;
+    skos:definition "A bounded period of user activity on the banking portal. Sessions are derived from raw clickstream events in the LGD and are the input to the Engagement Decay signal computation. They are not stored in the SLGD — only the derived signals are promoted." ;
+    rdfs:subClassOf owl:Thing .
+
+atlas-part-2:forCustomer a owl:ObjectProperty ;
+    rdfs:label "for customer" ;
+    rdfs:comment "The customer whose portal activity produced this session." ;
+    rdfs:domain atlas-part-2:Session ;
+    rdfs:range atlas:Customer .
+
+atlas-part-2:sessionDate a owl:DatatypeProperty ;
+    rdfs:label "session date" ;
+    rdfs:comment "The date the session occurred." ;
+    rdfs:domain atlas-part-2:Session ;
+    rdfs:range xsd:date .
+
+atlas-part-2:sessionDurationMinutes a owl:DatatypeProperty ;
+    rdfs:label "session duration (minutes)" ;
+    rdfs:comment "Duration of the session in minutes." ;
+    rdfs:domain atlas-part-2:Session ;
+    rdfs:range xsd:integer .
+
+atlas-part-2:pageViews a owl:DatatypeProperty ;
+    rdfs:label "page views" ;
+    rdfs:comment "Number of pages viewed during the session." ;
+    rdfs:domain atlas-part-2:Session ;
+    rdfs:range xsd:integer .
+
+# -------------------------------------------------------------------
+# atlas-part-2:NetworkContact
+#
+# A cross-LOB connection between a household member and a non-wealth
+# banker. Basis for Network Influence signals. Phase 2 only.
+# -------------------------------------------------------------------
+
+atlas-part-2:NetworkContact a owl:Class ;
+    rdfs:label "Network Contact" ;
+    rdfs:comment "A cross-line-of-business connection between a household member and a banker in a different LOB. Used by the behavioral-signal-agent to compute Network Influence signals." ;
+    skos:definition "Represents a relationship where a household member has an active banking relationship with a banker in a different line of business (e.g., a commercial banker). The existence of such contacts indicates potential wealth advisory opportunities through the household's broader banking network." ;
+    rdfs:subClassOf owl:Thing .
+
+atlas-part-2:involvesHousehold a owl:ObjectProperty ;
+    rdfs:label "involves household" ;
+    rdfs:comment "The household that has the cross-LOB connection." ;
+    rdfs:domain atlas-part-2:NetworkContact ;
+    rdfs:range atlas:Household .
+
+atlas-part-2:crossLOB a owl:DatatypeProperty ;
+    rdfs:label "cross LOB" ;
+    rdfs:comment "Whether this contact crosses a line-of-business boundary." ;
+    rdfs:domain atlas-part-2:NetworkContact ;
+    rdfs:range xsd:boolean .
+
+atlas-part-2:contactBanker a owl:ObjectProperty ;
+    rdfs:label "contact banker" ;
+    rdfs:comment "The banker in the other LOB who has the relationship." ;
+    rdfs:domain atlas-part-2:NetworkContact ;
+    rdfs:range owl:Thing .
+
+atlas-part-2:contactLOB a owl:ObjectProperty ;
+    rdfs:label "contact line of business" ;
+    rdfs:comment "The line of business the contact banker belongs to." ;
+    rdfs:domain atlas-part-2:NetworkContact ;
+    rdfs:range atlas:LineOfBusiness .

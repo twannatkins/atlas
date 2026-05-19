@@ -1,0 +1,49 @@
+@prefix atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#> .
+@prefix atlas: <https://github.com/your-org/atlas/ontology#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# -------------------------------------------------------------------
+# Workshop 2 signal type SKOS concepts
+#
+# These are added to Workshop 1's existing atlas:WealthSignalType
+# concept scheme. They are validated by Workshop 1's existing
+# atlas:WealthSignalTypeShape — no new SHACL shapes are introduced.
+#
+# Each concept represents a named wealth-readiness signal that the
+# wealth-signal-detector or behavioral-signal-agent can fire.
+# -------------------------------------------------------------------
+
+# Phase 1 signals (fired by wealth-signal-detector)
+
+atlas-part-2:LargeInboundWireSignal a skos:Concept ;
+    skos:inScheme atlas:WealthSignalType ;
+    skos:prefLabel "Large Inbound Wire Signal" ;
+    skos:definition "Fired when a customer receives a wire transfer above the configured threshold within the observation window. Indicates potential wealth accumulation event." ;
+    rdfs:comment "Detected by wealth-signal-detector via SPARQL CONSTRUCT over transaction history. Strength: strong." .
+
+atlas-part-2:SegmentShiftSignal a skos:Concept ;
+    skos:inScheme atlas:WealthSignalType ;
+    skos:prefLabel "Segment Shift Signal" ;
+    skos:definition "Fired when a customer's transaction velocity crosses a segment tier boundary, indicating movement from mass-market to mass-affluent or from mass-affluent to high-net-worth." ;
+    rdfs:comment "Detected by wealth-signal-detector via SPARQL CONSTRUCT over transaction velocity patterns. Strength: moderate." .
+
+atlas-part-2:NoAdvisorCoverageSignal a skos:Concept ;
+    skos:inScheme atlas:WealthSignalType ;
+    skos:prefLabel "No Advisor Coverage Signal" ;
+    skos:definition "Fired when a wealth-eligible customer has no active atlas:AdvisoryRelationship. Indicates a coverage gap that a referral could fill." ;
+    rdfs:comment "Detected by wealth-signal-detector via SPARQL CONSTRUCT over advisory relationship absence. Strength: gap." .
+
+# Phase 2 signals (fired by behavioral-signal-agent)
+
+atlas-part-2:EngagementDecaySignal a skos:Concept ;
+    skos:inScheme atlas:WealthSignalType ;
+    skos:prefLabel "Engagement Decay Signal" ;
+    skos:definition "Fired when a customer's portal session frequency or duration declines significantly over the observation window. Indicates potential disengagement that proactive advisor outreach could address." ;
+    rdfs:comment "Detected by behavioral-signal-agent via SPARQL CONSTRUCT over atlas-part-2:Session instances in the LGD. Strength: moderate. Phase 2 only." .
+
+atlas-part-2:NetworkInfluenceSignal a skos:Concept ;
+    skos:inScheme atlas:WealthSignalType ;
+    skos:prefLabel "Network Influence Signal" ;
+    skos:definition "Fired when a household member has a newly identified cross-LOB connection (e.g., a commercial banking relationship) that suggests wealth advisory potential through the broader household network." ;
+    rdfs:comment "Detected by behavioral-signal-agent via SPARQL CONSTRUCT over atlas-part-2:NetworkContact instances. Strength: moderate. Phase 2 only." .
