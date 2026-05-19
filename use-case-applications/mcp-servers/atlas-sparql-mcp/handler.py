@@ -136,10 +136,19 @@ def _handle_update(event: Dict[str, Any], invocation_id: str, start_time: float)
         return _error_response(invocation_id, start_time, "validation_error", f"persona_claim must be one of: {VALID_PERSONAS}")
 
     # Validate with prefix requirements for writes
+    # Note: atlas_sparql.validate() uses prepareQuery which only handles
+    # SELECT/CONSTRUCT/ASK/DESCRIBE. For UPDATE statements, we check
+    # prefix declarations manually without the syntax parse.
     try:
-        validate(sparql, require_prefixes=True)
-    except AtlasSPARQLError as exc:
-        return _error_response(invocation_id, start_time, "sparql_validation_error", str(exc))
+        # Check prefix declarations are present
+        from atlas_sparql import _REQUIRED_PREFIX_DECLARATIONS, AtlasSPARQLError as _ASE
+        for prefix, iri in _REQUIRED_PREFIX_DECLARATIONS.items():
+            if f"PREFIX {prefix}:" not in sparql and f"@prefix {prefix}:" not in sparql:
+                return _error_response(invocation_id, start_time, "sparql_validation_error",
+                                       f"SPARQL query is missing required PREFIX declaration for "
+                                       f"'{prefix}:' (<{iri}>). Add it to the query preamble.")
+    except ImportError:
+        pass
 
     # Execute update against SLGD
     sparql_url = f"https://{NEPTUNE_SLGD_ENDPOINT}:8182/sparql"

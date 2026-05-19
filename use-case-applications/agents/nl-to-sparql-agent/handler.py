@@ -103,7 +103,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Step 3: Build SPARQL from template
         sparql_query = template["sparql"].strip()
 
-        # Step 4: Validate SPARQL
+        # Step 4: Prepend prefix preamble and validate SPARQL
+        prefix_preamble = _load_prefixes()
+        if prefix_preamble and not sparql_query.upper().startswith("PREFIX"):
+            sparql_query = prefix_preamble + "\n" + sparql_query
+
         try:
             validate(sparql_query)
         except AtlasSPARQLError as exc:

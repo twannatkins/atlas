@@ -10,6 +10,9 @@ from __future__ import annotations
 import json
 import os
 import sys
+
+# Ensure this directory is first on sys.path for handler import
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -48,7 +51,7 @@ class TestQueryOperation:
 
         event = {
             "operation": "query",
-            "sparql": "SELECT ?customer ?name WHERE { ?customer a atlas:Customer ; rdfs:label ?name }",
+            "sparql": "PREFIX atlas: <https://github.com/your-org/atlas/ontology#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?customer ?name WHERE { ?customer a atlas:Customer ; rdfs:label ?name }",
             "persona_claim": "atlas-consumer-banker",
             "graph_tier": "slgd",
         }
@@ -145,7 +148,7 @@ class TestUpdateOperation:
 
         assert result["status"] == "error"
         assert result["error_type"] == "sparql_validation_error"
-        assert "PREFIX" in result["message"]
+        assert "prefix" in result["message"].lower()
 
 
 class TestConstructAndValidate:

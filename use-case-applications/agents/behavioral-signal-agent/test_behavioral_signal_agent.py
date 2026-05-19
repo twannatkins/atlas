@@ -7,6 +7,9 @@ from __future__ import annotations
 import json
 import os
 import sys
+
+# Ensure this directory is first on sys.path for handler import
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from unittest.mock import patch, MagicMock
 
 import pytest
