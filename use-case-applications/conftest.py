@@ -1,8 +1,9 @@
 """
 Root conftest for use-case-applications tests.
 
-Uses pytest_collect_file to ensure each test directory's handler module
-is importable without namespace collisions.
+Each Lambda handler has a unique module name (e.g., wealth_signal_detector.py,
+atlas_sparql_mcp.py) so there are no import collisions. This conftest ensures
+each test directory is on sys.path so imports resolve correctly.
 """
 
 import sys
@@ -11,19 +12,16 @@ import os
 import pytest
 
 
-def pytest_collect_file(parent, file_path):
-    """Before collecting a test file, reset handler module cache."""
-    if file_path.suffix == ".py" and file_path.name.startswith("test_"):
-        test_dir = str(file_path.parent)
+@pytest.hookimpl(tryfirst=True)
+def pytest_collectstart(collector):
+    """Ensure each test directory is on sys.path for local imports."""
+    if not hasattr(collector, "fspath"):
+        return
 
-        # Clear cached handler modules
-        for mod_name in list(sys.modules.keys()):
-            if mod_name in ("handler", "register", "select_advisor",
-                            "validate_routing", "write_routing_decision",
-                            "notify_advisor", "audit_write"):
-                del sys.modules[mod_name]
+    fspath = str(collector.fspath)
+    if not fspath.endswith(".py") or not os.path.basename(fspath).startswith("test_"):
+        return
 
-        # Put this test's directory first on sys.path
-        if test_dir in sys.path:
-            sys.path.remove(test_dir)
+    test_dir = os.path.dirname(fspath)
+    if test_dir not in sys.path:
         sys.path.insert(0, test_dir)

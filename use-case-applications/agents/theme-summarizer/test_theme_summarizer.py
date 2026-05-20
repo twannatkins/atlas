@@ -22,12 +22,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
 
-from handler import handler
+from theme_summarizer import handler
 
 
 class TestHappyPath:
 
-    @patch("handler.boto3")
+    @patch("theme_summarizer.boto3")
     def test_summary_generated_with_flags(self, mock_boto3):
         """A successful summary always carries probabilistic flags."""
         mock_bedrock = MagicMock()
@@ -84,7 +84,7 @@ class TestInputValidation:
 
 class TestDownstreamFailures:
 
-    @patch("handler.boto3")
+    @patch("theme_summarizer.boto3")
     def test_bedrock_failure(self, mock_boto3):
         """When Bedrock fails, handler returns generation_failed with flags."""
         mock_bedrock = MagicMock()
@@ -110,7 +110,7 @@ class TestDownstreamFailures:
         assert result["is_probabilistic"] is True
         assert result["requires_human_review"] is True
 
-    @patch("handler.boto3")
+    @patch("theme_summarizer.boto3")
     def test_sparql_failure(self, mock_boto3):
         """When SPARQL MCP fails, handler returns query_failed."""
         mock_lambda = MagicMock()

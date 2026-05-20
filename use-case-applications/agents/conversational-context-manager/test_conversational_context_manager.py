@@ -22,12 +22,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
 os.environ.setdefault("NL_TO_SPARQL_AGENT_ARN", "arn:aws:lambda:us-east-1:123456789012:function:nl-to-sparql-agent")
 os.environ.setdefault("AGENTCORE_MEMORY_NAMESPACE", "atlas-wealth-conv")
 
-from handler import handler
+from conversational_context_manager import handler
 
 
 class TestHappyPath:
 
-    @patch("handler.boto3")
+    @patch("conversational_context_manager.boto3")
     def test_first_turn_no_prior_context(self, mock_boto3):
         """First turn in a session works without prior context."""
         mock_memory = MagicMock()
@@ -66,7 +66,7 @@ class TestHappyPath:
         assert result["context_used"]["session_id"] == "session-001"
         assert result["context_used"]["prior_turns"] == 0
 
-    @patch("handler.boto3")
+    @patch("conversational_context_manager.boto3")
     def test_follow_up_with_prior_context(self, mock_boto3):
         """Follow-up question uses prior context from memory."""
         mock_memory = MagicMock()
@@ -125,7 +125,7 @@ class TestInputValidation:
 
 class TestDownstreamFailures:
 
-    @patch("handler.boto3")
+    @patch("conversational_context_manager.boto3")
     def test_nl_to_sparql_failure(self, mock_boto3):
         """When nl-to-sparql-agent fails, handler returns query_error."""
         mock_memory = MagicMock()

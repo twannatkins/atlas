@@ -15,12 +15,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 os.environ.setdefault("REGISTRY_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-registry-mcp")
 
-from handler import handler
+from registry_resolver import handler
 
 
 class TestCapabilitiesResolver:
 
-    @patch("handler.boto3")
+    @patch("registry_resolver.boto3")
     def test_returns_capabilities_for_persona(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -47,7 +47,7 @@ class TestCapabilitiesResolver:
         assert result[0]["name"] == "nl-to-sparql-agent"
         assert result[0]["displayName"] == "Ask the graph"
 
-    @patch("handler.boto3")
+    @patch("registry_resolver.boto3")
     def test_registry_failure_raises(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -66,7 +66,7 @@ class TestCapabilitiesResolver:
 
 class TestRouteReferralResolver:
 
-    @patch("handler.boto3")
+    @patch("registry_resolver.boto3")
     def test_invokes_orchestrator_through_registry(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -100,7 +100,7 @@ class TestRouteReferralResolver:
 
 class TestDetectSignalsResolver:
 
-    @patch("handler.boto3")
+    @patch("registry_resolver.boto3")
     def test_returns_minted_signals(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda

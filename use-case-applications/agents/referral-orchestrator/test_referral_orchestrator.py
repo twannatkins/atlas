@@ -24,7 +24,7 @@ os.environ.setdefault("STATE_MACHINE_ARN", "arn:aws:states:us-east-1:12345678901
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 os.environ.setdefault("SHACL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-shacl-mcp")
 
-from handler import handler
+from referral_orchestrator import handler
 from select_advisor import handler as select_advisor_handler
 from validate_routing import handler as validate_routing_handler
 from write_routing_decision import handler as write_routing_decision_handler
@@ -35,7 +35,7 @@ from audit_write import handler as audit_write_handler
 class TestOrchestratorEntryPoint:
     """Tests for the main orchestrator handler."""
 
-    @patch("handler.boto3")
+    @patch("referral_orchestrator.boto3")
     def test_happy_path_starts_execution(self, mock_boto3):
         """Valid input starts a Step Functions execution."""
         mock_sfn = MagicMock()
@@ -87,7 +87,7 @@ class TestOrchestratorEntryPoint:
 
         assert result["status"] == "workflow_error"
 
-    @patch("handler.boto3")
+    @patch("referral_orchestrator.boto3")
     def test_step_functions_failure(self, mock_boto3):
         """When Step Functions fails to start, handler returns workflow_error."""
         mock_sfn = MagicMock()

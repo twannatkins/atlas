@@ -14,13 +14,13 @@ import pytest
 
 os.environ.setdefault("REGISTRY_ENDPOINT", "https://agentcore.us-east-1.amazonaws.com")
 
-from handler import handler
+from atlas_registry_mcp import handler
 
 
 class TestListCapabilities:
     """Tests for the list_capabilities operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_registry_mcp.boto3")
     def test_happy_path_list_capabilities(self, mock_boto3):
         """list_capabilities returns persona-filtered agents and MCP servers."""
         mock_client = MagicMock()
@@ -58,7 +58,7 @@ class TestListCapabilities:
         assert result["status"] == "error"
         assert result["error_type"] == "validation_error"
 
-    @patch("handler.boto3")
+    @patch("atlas_registry_mcp.boto3")
     def test_registry_failure(self, mock_boto3):
         """When registry service fails, handler returns structured error."""
         mock_client = MagicMock()
@@ -79,7 +79,7 @@ class TestListCapabilities:
 class TestGetAgent:
     """Tests for the get_agent operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_registry_mcp.boto3")
     def test_happy_path_get_agent(self, mock_boto3):
         """get_agent returns the agent record."""
         mock_client = MagicMock()
@@ -111,7 +111,7 @@ class TestGetAgent:
 class TestGetMcpServer:
     """Tests for the get_mcp_server operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_registry_mcp.boto3")
     def test_happy_path_get_mcp_server(self, mock_boto3):
         """get_mcp_server returns the MCP server record."""
         mock_client = MagicMock()
@@ -142,7 +142,7 @@ class TestGetMcpServer:
 class TestInvokeCapability:
     """Tests for the invoke_capability operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_registry_mcp.boto3")
     def test_happy_path_invoke(self, mock_boto3):
         """invoke_capability proxies and returns result with audit URI."""
         mock_client = MagicMock()

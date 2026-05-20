@@ -30,7 +30,7 @@ import importlib.util
 # Load handler from this directory explicitly to avoid namespace collision
 _spec = importlib.util.spec_from_file_location(
     "atlas_shacl_mcp_handler",
-    os.path.join(os.path.dirname(__file__), "handler.py"),
+    os.path.join(os.path.dirname(__file__), "atlas_shacl_mcp.py"),
 )
 handler_module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(handler_module)

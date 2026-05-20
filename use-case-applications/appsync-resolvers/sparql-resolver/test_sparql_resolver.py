@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
 
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 
-from handler import handler
+from sparql_resolver import handler
 
 
 def _mock_sparql_response(rows):
@@ -27,7 +27,7 @@ def _mock_sparql_response(rows):
 
 class TestCustomerResolver:
 
-    @patch("handler.boto3")
+    @patch("sparql_resolver.boto3")
     def test_resolves_customer_by_uri(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -47,7 +47,7 @@ class TestCustomerResolver:
         assert result["customerId"] == "CUST-001"
         assert result["label"] == "Anjali Patel"
 
-    @patch("handler.boto3")
+    @patch("sparql_resolver.boto3")
     def test_returns_none_for_missing_customer(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -62,7 +62,7 @@ class TestCustomerResolver:
         result = handler(event, None)
         assert result is None
 
-    @patch("handler.boto3")
+    @patch("sparql_resolver.boto3")
     def test_sparql_mcp_failure_raises(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -81,7 +81,7 @@ class TestCustomerResolver:
 
 class TestSearchCustomers:
 
-    @patch("handler.boto3")
+    @patch("sparql_resolver.boto3")
     def test_returns_list(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -103,7 +103,7 @@ class TestSearchCustomers:
 
 class TestWealthSignals:
 
-    @patch("handler.boto3")
+    @patch("sparql_resolver.boto3")
     def test_returns_signals_for_customer(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -124,7 +124,7 @@ class TestWealthSignals:
 
 class TestPersonaExtraction:
 
-    @patch("handler.boto3")
+    @patch("sparql_resolver.boto3")
     def test_extracts_persona_from_custom_claim(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda

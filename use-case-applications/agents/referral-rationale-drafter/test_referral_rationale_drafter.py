@@ -24,8 +24,8 @@ os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:f
 os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
 os.environ.setdefault("PROMPT_TEMPLATE_S3_URI", "")
 
-import handler as handler_module
-from handler import handler
+import referral_rationale_drafter as handler_module
+from referral_rationale_drafter import handler
 
 
 @pytest.fixture(autouse=True)
@@ -37,7 +37,7 @@ def reset_caches():
 class TestHappyPath:
     """Tests for successful rationale drafting."""
 
-    @patch("handler.boto3")
+    @patch("referral_rationale_drafter.boto3")
     def test_draft_generated_with_probabilistic_flags(self, mock_boto3):
         """A successful draft always carries is_probabilistic=True and requires_human_review=True."""
         mock_bedrock = MagicMock()
@@ -85,7 +85,7 @@ class TestHappyPath:
         assert "provenance" in result
         assert result["provenance"]["model_id"] == "anthropic.claude-sonnet-4-20250514-v1:0"
 
-    @patch("handler.boto3")
+    @patch("referral_rationale_drafter.boto3")
     def test_flags_present_even_on_error(self, mock_boto3):
         """Even on error, is_probabilistic and requires_human_review are present."""
         mock_boto3.client.side_effect = lambda svc, **kw: MagicMock()
@@ -146,7 +146,7 @@ class TestInputValidation:
 class TestDownstreamFailures:
     """Tests for downstream dependency failures."""
 
-    @patch("handler.boto3")
+    @patch("referral_rationale_drafter.boto3")
     def test_bedrock_failure_returns_generation_failed(self, mock_boto3):
         """When Bedrock fails, handler returns generation_failed."""
         mock_bedrock = MagicMock()
@@ -182,7 +182,7 @@ class TestDownstreamFailures:
         assert result["is_probabilistic"] is True
         assert result["requires_human_review"] is True
 
-    @patch("handler.boto3")
+    @patch("referral_rationale_drafter.boto3")
     def test_sparql_mcp_failure_returns_context_query_failed(self, mock_boto3):
         """When SPARQL MCP fails, handler returns context_query_failed."""
         mock_lambda = MagicMock()

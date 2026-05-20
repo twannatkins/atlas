@@ -20,12 +20,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 os.environ.setdefault("SHACL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-shacl-mcp")
 
-from handler import handler
+from behavioral_signal_agent import handler
 
 
 class TestHappyPath:
 
-    @patch("handler.boto3")
+    @patch("behavioral_signal_agent.boto3")
     def test_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns triples, behavioral signals are minted."""
         mock_lambda = MagicMock()
@@ -48,7 +48,7 @@ class TestHappyPath:
         assert result["status"] == "success"
         assert len(result["signals_minted"]) > 0
 
-    @patch("handler.boto3")
+    @patch("behavioral_signal_agent.boto3")
     def test_no_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns empty, status is no_signals_detected."""
         mock_lambda = MagicMock()
@@ -78,7 +78,7 @@ class TestInputValidation:
 
 class TestDownstreamFailures:
 
-    @patch("handler.boto3")
+    @patch("behavioral_signal_agent.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When MCP fails, handler returns gracefully."""
         mock_lambda = MagicMock()

@@ -23,7 +23,7 @@ os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:f
 os.environ.setdefault("SHACL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-shacl-mcp")
 os.environ.setdefault("SIGNAL_QUERIES_S3_URI", "")
 
-from handler import handler
+from wealth_signal_detector import handler
 
 
 def _mock_construct_success(triples=None):
@@ -51,7 +51,7 @@ def _mock_construct_empty():
 class TestHappyPath:
     """Tests for successful signal detection."""
 
-    @patch("handler.boto3")
+    @patch("wealth_signal_detector.boto3")
     def test_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns triples, signals are minted."""
         mock_lambda = MagicMock()
@@ -73,7 +73,7 @@ class TestHappyPath:
         assert "provenance" in result
         assert result["provenance"]["execution_time_ms"] >= 0
 
-    @patch("handler.boto3")
+    @patch("wealth_signal_detector.boto3")
     def test_no_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns empty, status is no_signals_detected."""
         mock_lambda = MagicMock()
@@ -90,7 +90,7 @@ class TestHappyPath:
         assert result["status"] == "no_signals_detected"
         assert result["signals_minted"] == []
 
-    @patch("handler.boto3")
+    @patch("wealth_signal_detector.boto3")
     def test_filtered_signal_types(self, mock_boto3):
         """When signal_types filter is provided, only those signals are checked."""
         mock_lambda = MagicMock()
@@ -137,7 +137,7 @@ class TestInputValidation:
 class TestDownstreamFailures:
     """Tests for downstream dependency failures."""
 
-    @patch("handler.boto3")
+    @patch("wealth_signal_detector.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When atlas-sparql-mcp fails, handler returns gracefully."""
         mock_lambda = MagicMock()

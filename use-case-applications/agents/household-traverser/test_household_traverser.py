@@ -21,13 +21,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
 
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 
-from handler import handler
+from household_traverser import handler
 
 
 class TestHappyPath:
     """Tests for successful household traversal."""
 
-    @patch("handler.boto3")
+    @patch("household_traverser.boto3")
     def test_traversal_returns_nodes(self, mock_boto3):
         """A valid household URI returns 1-hop neighbor nodes."""
         mock_lambda = MagicMock()
@@ -58,7 +58,7 @@ class TestHappyPath:
         assert result["nodes"][0]["relationship"] == "atlas:hasMember"
         assert "execution_time_ms" in result
 
-    @patch("handler.boto3")
+    @patch("household_traverser.boto3")
     def test_empty_household_returns_not_found(self, mock_boto3):
         """A household with no neighbors returns not_found."""
         mock_lambda = MagicMock()
@@ -107,7 +107,7 @@ class TestInputValidation:
 class TestDownstreamFailures:
     """Tests for downstream dependency failures."""
 
-    @patch("handler.boto3")
+    @patch("household_traverser.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When atlas-sparql-mcp fails, handler returns query_error."""
         mock_lambda = MagicMock()

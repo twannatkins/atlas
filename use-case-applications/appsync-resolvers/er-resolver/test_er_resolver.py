@@ -18,12 +18,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
 os.environ.setdefault("ER_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-er-mcp")
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 
-from handler import handler
+from er_resolver import handler
 
 
 class TestResolveEntity:
 
-    @patch("handler.boto3")
+    @patch("er_resolver.boto3")
     def test_resolves_source_id_to_customer(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -50,7 +50,7 @@ class TestResolveEntity:
         assert result["customerId"] == "CUST-9C2A1E"
         assert result["label"] == "Anjali Patel"
 
-    @patch("handler.boto3")
+    @patch("er_resolver.boto3")
     def test_returns_none_when_no_match(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda
@@ -67,7 +67,7 @@ class TestResolveEntity:
         result = handler(event, None)
         assert result is None
 
-    @patch("handler.boto3")
+    @patch("er_resolver.boto3")
     def test_er_failure_returns_none(self, mock_boto3):
         mock_lambda = MagicMock()
         mock_boto3.client.return_value = mock_lambda

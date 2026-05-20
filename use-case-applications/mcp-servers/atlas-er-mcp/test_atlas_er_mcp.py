@@ -18,13 +18,13 @@ import pytest
 
 os.environ.setdefault("ER_WORKFLOW_NAME", "atlas-test-workflow")
 
-from handler import handler
+from atlas_er_mcp import handler
 
 
 class TestLookupOperation:
     """Tests for the lookup operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_er_mcp.boto3")
     def test_happy_path_lookup(self, mock_boto3):
         """A valid lookup returns canonical URI and confidence."""
         mock_er_client = MagicMock()
@@ -47,7 +47,7 @@ class TestLookupOperation:
         assert result["match_confidence"] == 0.98
         assert "execution_time_ms" in result
 
-    @patch("handler.boto3")
+    @patch("atlas_er_mcp.boto3")
     def test_lookup_no_match(self, mock_boto3):
         """When ER returns no match, status is no_match."""
         mock_er_client = MagicMock()
@@ -78,7 +78,7 @@ class TestLookupOperation:
         assert result["error_type"] == "validation_error"
         assert "source_system" in result["message"]
 
-    @patch("handler.boto3")
+    @patch("atlas_er_mcp.boto3")
     def test_er_service_failure(self, mock_boto3):
         """When ER service throws, handler returns structured error."""
         mock_er_client = MagicMock()
@@ -100,7 +100,7 @@ class TestLookupOperation:
 class TestResolveOperation:
     """Tests for the resolve operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_er_mcp.boto3")
     def test_happy_path_resolve(self, mock_boto3):
         """A valid resolve returns match_id and canonical URI."""
         mock_er_client = MagicMock()

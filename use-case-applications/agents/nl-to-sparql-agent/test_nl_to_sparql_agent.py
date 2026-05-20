@@ -27,8 +27,8 @@ os.environ.setdefault("PREFIXES_S3_URI", "")
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 os.environ.setdefault("BEDROCK_EMBEDDING_MODEL_ID", "amazon.titan-embed-text-v2:0")
 
-import handler as handler_module
-from handler import handler
+import nl_to_sparql_agent as handler_module
+from nl_to_sparql_agent import handler
 
 
 # Reset template cache between tests
@@ -50,7 +50,7 @@ def _mock_embedding(text: str) -> list:
 class TestHappyPath:
     """Tests for successful question-to-SPARQL translation."""
 
-    @patch("handler.boto3")
+    @patch("nl_to_sparql_agent.boto3")
     def test_matching_question_returns_sparql(self, mock_boto3):
         """A question matching a template returns the template's SPARQL."""
         # Mock Bedrock embedding calls to return high-similarity vectors
@@ -93,7 +93,7 @@ class TestHappyPath:
         assert result["provenance"]["template_id"] != ""
         assert "invocation_id" in result
 
-    @patch("handler.boto3")
+    @patch("nl_to_sparql_agent.boto3")
     def test_determinism_same_question_same_sparql(self, mock_boto3):
         """Running the same question multiple times produces identical SPARQL (determinism check)."""
         mock_bedrock = MagicMock()
@@ -174,7 +174,7 @@ class TestInputValidation:
 class TestDownstreamFailures:
     """Tests for downstream dependency failures."""
 
-    @patch("handler.boto3")
+    @patch("nl_to_sparql_agent.boto3")
     def test_bedrock_failure_returns_error(self, mock_boto3):
         """When Bedrock embedding call fails, handler returns execution_error."""
         mock_bedrock = MagicMock()
@@ -191,7 +191,7 @@ class TestDownstreamFailures:
 
         assert result["status"] == "execution_error"
 
-    @patch("handler.boto3")
+    @patch("nl_to_sparql_agent.boto3")
     def test_sparql_mcp_failure_returns_execution_error(self, mock_boto3):
         """When atlas-sparql-mcp returns error, handler surfaces it."""
         mock_bedrock = MagicMock()
@@ -228,7 +228,7 @@ class TestDownstreamFailures:
         assert result["status"] == "execution_error"
         assert result["sparql"] != ""  # SPARQL was generated before execution failed
 
-    @patch("handler.boto3")
+    @patch("nl_to_sparql_agent.boto3")
     def test_no_template_match_returns_graceful_refusal(self, mock_boto3):
         """When no template matches, handler returns no_template_match (not an exception)."""
         mock_bedrock = MagicMock()

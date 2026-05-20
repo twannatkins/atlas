@@ -27,14 +27,14 @@ os.environ.setdefault("NEPTUNE_LGD_ENDPOINT", "test-lgd.us-east-1.neptune.amazon
 os.environ.setdefault("ONTOP_ECS_ENDPOINT", "http://ontop.local:8080")
 os.environ.setdefault("SHACL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-shacl-mcp")
 
-from handler import handler
+from atlas_sparql_mcp import handler
 
 
 class TestQueryOperation:
     """Tests for the query operation."""
 
-    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
-    @patch("handler.http_requests")
+    @patch("atlas_sparql_mcp._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("atlas_sparql_mcp.http_requests")
     def test_happy_path_query(self, mock_requests, mock_sigv4):
         """A valid SELECT query returns parsed rows."""
         mock_response = MagicMock()
@@ -93,8 +93,8 @@ class TestQueryOperation:
         assert result["status"] == "error"
         assert result["error_type"] == "sparql_validation_error"
 
-    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
-    @patch("handler.http_requests")
+    @patch("atlas_sparql_mcp._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("atlas_sparql_mcp.http_requests")
     def test_neptune_failure_returns_execution_error(self, mock_requests, mock_sigv4):
         """When Neptune returns an error, the handler surfaces it cleanly."""
         mock_requests.get.side_effect = Exception("Connection refused")
@@ -115,8 +115,8 @@ class TestQueryOperation:
 class TestUpdateOperation:
     """Tests for the update operation."""
 
-    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
-    @patch("handler.http_requests")
+    @patch("atlas_sparql_mcp._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("atlas_sparql_mcp.http_requests")
     def test_happy_path_update(self, mock_requests, mock_sigv4):
         """A valid UPDATE with required prefixes succeeds."""
         mock_response = MagicMock()
@@ -158,9 +158,9 @@ class TestUpdateOperation:
 class TestConstructAndValidate:
     """Tests for the construct_and_validate operation."""
 
-    @patch("handler.boto3")
-    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
-    @patch("handler.http_requests")
+    @patch("atlas_sparql_mcp.boto3")
+    @patch("atlas_sparql_mcp._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("atlas_sparql_mcp.http_requests")
     def test_happy_path_construct_and_validate(self, mock_requests, mock_sigv4, mock_boto3):
         """CONSTRUCT + SHACL validation returns triples and report."""
         # Mock CONSTRUCT HTTP response

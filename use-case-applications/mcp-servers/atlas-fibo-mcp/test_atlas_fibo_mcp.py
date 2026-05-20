@@ -14,7 +14,7 @@ import pytest
 
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
 
-from handler import handler
+from atlas_fibo_mcp import handler
 
 
 def _mock_sparql_response(rows):
@@ -26,7 +26,7 @@ def _mock_sparql_response(rows):
 class TestClassInfoOperation:
     """Tests for the class_info operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_fibo_mcp.boto3")
     def test_happy_path_class_info(self, mock_boto3):
         """class_info returns label, comment, parents, and alignment."""
         mock_lambda = MagicMock()
@@ -57,7 +57,7 @@ class TestClassInfoOperation:
         assert result["status"] == "error"
         assert "class_uri" in result["message"]
 
-    @patch("handler.boto3")
+    @patch("atlas_fibo_mcp.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When atlas-sparql-mcp returns error, handler surfaces it."""
         mock_lambda = MagicMock()
@@ -80,7 +80,7 @@ class TestClassInfoOperation:
 class TestListClassesOperation:
     """Tests for the list_classes operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_fibo_mcp.boto3")
     def test_happy_path_list_classes(self, mock_boto3):
         """list_classes returns classes in the given namespace."""
         mock_lambda = MagicMock()
@@ -114,7 +114,7 @@ class TestListClassesOperation:
 class TestSubclassesOfOperation:
     """Tests for the subclasses_of operation."""
 
-    @patch("handler.boto3")
+    @patch("atlas_fibo_mcp.boto3")
     def test_happy_path_subclasses(self, mock_boto3):
         """subclasses_of returns subclasses of the given class."""
         mock_lambda = MagicMock()
