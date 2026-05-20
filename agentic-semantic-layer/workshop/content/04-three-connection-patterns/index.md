@@ -61,6 +61,9 @@ results — which is really checking that the data needed for CQs is present.
 
 Open `notebooks/04_three_connection_patterns.ipynb`. Run cell 2 (setup) to load
 shared utilities and retrieve the Neptune endpoints from the Module 3 stack.
+The Neptune client authenticates using SigV4 signing — your SageMaker execution
+role's credentials are used automatically, so no connection strings or passwords
+are needed.
 
 Run cell 2. Expected output:
 
@@ -105,7 +108,10 @@ Embedded wealth-signal transactions:
 ### Step 4 — Read the Pattern C explanation and see the event mapping
 
 Read cell 7 (Pattern C explanation). Run cell 8 to see how one event is
-converted to RDF triples.
+converted to RDF triples. Note how the Lambda uses the system trust store for
+TLS verification when connecting to Neptune — the Amazon RDS CA certificates
+are available in the Lambda runtime environment, so the connection is encrypted
+and authenticated without any custom certificate management.
 
 ![Pattern C event mapping](/static/images/04-step-04-pattern-c-mapping.png)
 
@@ -170,6 +176,15 @@ After completing this module:
 Neptune is only accessible from within the VPC. Ensure you are running the
 notebook from a SageMaker instance in the same VPC as the Neptune clusters.
 Check the security group allows port 8182 traffic.
+
+**Cell 10 fails with "SSL: CERTIFICATE_VERIFY_FAILED"**
+
+The Lambda connects to Neptune over HTTPS using the system trust store, which
+includes the Amazon RDS root CA. If you see certificate errors, ensure your
+Lambda runtime is up to date (Python 3.10+) and that the Neptune cluster
+endpoint matches the certificate's Common Name. Do not disable certificate
+verification — the Amazon RDS CA is trusted by default in all current Lambda
+runtimes.
 
 **Cell 12 Gate 1 fails with "0 Customer nodes"**
 

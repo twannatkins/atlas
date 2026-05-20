@@ -97,7 +97,7 @@ Workshop 2's notebooks and agents directly read these Workshop 1 artifacts:
 | `agentic-semantic-layer/docs/model-risk-review.md` | Inherited as-is for MRM submission; Workshop 2 does not re-litigate |
 | `agentic-semantic-layer/docs/runbook.md` | CIO-level demo runbook; Workshop 2 extends but does not modify |
 | `agentic-semantic-layer/notebooks/shared/atlas_neptune.py` | Neptune connection helpers reused by Workshop 2 notebooks |
-| `agentic-semantic-layer/notebooks/shared/atlas_sparql.py` | SPARQL client reused by Workshop 2 notebooks |
+| `agentic-semantic-layer/notebooks/shared/atlas_sparql.py` | SPARQL client, URI sanitization, and query validation reused by Workshop 2 notebooks and resolvers |
 | `agentic-semantic-layer/notebooks/shared/atlas_synthetic.py` | Synthetic data utilities for substitution-guide testing |
 | `agentic-semantic-layer/notebooks/shared/atlas_validators.py` | SHACL validation helpers |
 | `agentic-semantic-layer/infrastructure/atlas-neptune-twotier.yaml` | The Neptune CFN template; Workshop 2 expects a cluster deployed from this template to be standing with the SLGD populated |

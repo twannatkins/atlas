@@ -24,6 +24,8 @@ This means:
 - Never edit any file in `../agentic-semantic-layer/ontology/`. If Workshop 2 needs a new class or property, add it to `use-case-applications/ontology-extensions/` under the `atlas-part-2:` namespace.
 - Never edit any file in `../agentic-semantic-layer/mappings/`. If Workshop 2 needs additional federation, add the new R2RML mapping under `use-case-applications/mappings/` and reference it from Workshop 2's Ontop configuration.
 - Never edit any file in `../agentic-semantic-layer/notebooks/`. If Workshop 2 needs a helper that doesn't exist in `shared/`, add it to `use-case-applications/notebooks/shared/` instead.
+
+Workshop 2 *does* use Workshop 1's shared utilities directly — in particular, `atlas_sparql.py` provides `safe_uri()` and `safe_int()` for URI sanitization and bounded integer coercion. Every resolver and agent that interpolates user-supplied values into SPARQL templates must pass those values through these functions before interpolation. This is the query-layer enforcement of the deterministic boundary: malformed or adversarial URIs are rejected before they reach Neptune.
 - Never edit `../agentic-semantic-layer/data/synthetic/`. The substitution guide (`09-substitution-guide.md`) explains how to use real data without modifying the synthetic seed.
 
 If you find yourself wanting to modify a Workshop 1 file, stop. The intent is almost certainly addressable as a Workshop 2 extension. If it genuinely is not — if Workshop 1 has a bug that blocks Workshop 2 — open the change as a Workshop 1 commit with a clear bug label, not as a Workshop 2 modification.

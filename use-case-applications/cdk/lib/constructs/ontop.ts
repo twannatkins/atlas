@@ -4,18 +4,24 @@
  * Translates SPARQL queries into SQL against Lake Formation Iceberg tables.
  * Minimum task count of 1 to avoid cold starts (Ontop caches R2RML mappings
  * and maintains a JDBC connection pool).
+ *
+ * The internal ALB uses HTTPS with an ACM certificate to encrypt SPARQL
+ * queries in transit between Lambda and Ontop.
  */
 
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import { Construct } from "constructs";
 
 export interface OntopProps {
   vpc: ec2.IVpc;
   securityGroup: ec2.SecurityGroup;
   neptuneEndpoint: string;
+  /** ACM certificate ARN for the internal ALB HTTPS listener. */
+  certificateArn?: string;
 }
 
 export class OntopConstruct extends Construct {
@@ -67,13 +73,35 @@ export class OntopConstruct extends Construct {
       internetFacing: false,
     });
 
-    const listener = alb.addListener("Listener", { port: 80 });
-    listener.addTargets("OntopTarget", {
-      port: 8080,
-      targets: [service],
-      healthCheck: { path: "/health" },
-    });
-
-    this.endpoint = `http://${alb.loadBalancerDnsName}`;
+    if (props.certificateArn) {
+      // Production / deployed workshop: HTTPS listener with ACM certificate
+      const certificate = acm.Certificate.fromCertificateArn(
+        this,
+        "Cert",
+        props.certificateArn,
+      );
+      const listener = alb.addListener("Listener", {
+        port: 443,
+        certificates: [certificate],
+      });
+      listener.addTargets("OntopTarget", {
+        port: 8080,
+        targets: [service],
+        healthCheck: { path: "/health" },
+      });
+      this.endpoint = `https://${alb.loadBalancerDnsName}`;
+    } else {
+      // Local development / workshop without a custom domain: HTTP listener.
+      // Acceptable only because the ALB is internal (not internet-facing)
+      // and traffic stays within the VPC. For production, always provide
+      // a certificateArn.
+      const listener = alb.addListener("Listener", { port: 80 });
+      listener.addTargets("OntopTarget", {
+        port: 8080,
+        targets: [service],
+        healthCheck: { path: "/health" },
+      });
+      this.endpoint = `http://${alb.loadBalancerDnsName}`;
+    }
   }
 }

@@ -6,6 +6,10 @@ to Neptune. This is the enforcement point for the deterministic-vs-probabilistic
 boundary at the query layer: any query that would write probabilistic-opaque
 data to the SLGD is caught here by a pattern check before the wire call.
 
+URI parameters are sanitized via atlas_sparql.safe_uri() before interpolation
+into query templates. This prevents SPARQL injection by rejecting URIs that
+contain characters capable of breaking out of an IRI reference (<...>).
+
 Component class: DETERMINISTIC — given the same query string and graph state,
 validate() always returns the same result.
 """
@@ -21,6 +25,92 @@ from rdflib.plugins.sparql.processor import prepareUpdate
 
 class AtlasSPARQLError(Exception):
     """Raised when a SPARQL query fails validation."""
+
+
+# ---------------------------------------------------------------------------
+# URI sanitization — prevents SPARQL injection via crafted IRI values
+# ---------------------------------------------------------------------------
+
+# Valid IRI characters per RFC 3987. We reject anything that could close an
+# IRI reference or inject SPARQL syntax: angle brackets, braces, backtick,
+# pipe, caret, whitespace, and quotes. The hash character (#) is permitted
+# because it is a standard fragment separator in RDF namespace IRIs.
+_UNSAFE_URI_CHARS = re.compile(r'[<>{}\[\]`|^\\"\'\s]')
+
+# Known safe namespace prefixes for ATLAS URIs
+_SAFE_URI_PREFIXES = (
+    "https://github.com/your-org/atlas/",
+    "http://www.w3.org/",
+    "https://spec.edmcouncil.org/fibo/",
+    "urn:atlas:",
+)
+
+
+def safe_uri(uri: str, *, allow_any_scheme: bool = False) -> str:
+    """Validate and return a URI safe for interpolation into SPARQL queries.
+
+    Parameters
+    ----------
+    uri:
+        The URI string to validate.
+    allow_any_scheme:
+        When False (default), the URI must start with one of the known ATLAS
+        namespace prefixes. Set True for URIs from trusted internal sources
+        (e.g., Entity Resolution canonical URIs).
+
+    Returns
+    -------
+    str
+        The original URI string if it passes validation.
+
+    Raises
+    ------
+    AtlasSPARQLError
+        If the URI contains unsafe characters or does not match a known prefix.
+    """
+    if not uri or not isinstance(uri, str):
+        raise AtlasSPARQLError("URI must be a non-empty string")
+
+    if _UNSAFE_URI_CHARS.search(uri):
+        raise AtlasSPARQLError(
+            f"URI contains characters that are not permitted in an IRI reference: "
+            f"{uri!r}"
+        )
+
+    if not allow_any_scheme:
+        if not any(uri.startswith(prefix) for prefix in _SAFE_URI_PREFIXES):
+            raise AtlasSPARQLError(
+                f"URI does not start with a known ATLAS namespace prefix: {uri!r}. "
+                f"Expected one of: {_SAFE_URI_PREFIXES}"
+            )
+
+    return uri
+
+
+def safe_int(value, *, min_val: int = 1, max_val: int = 1000, default: int = 20) -> int:
+    """Coerce a value to a bounded integer, safe for use in SPARQL LIMIT clauses.
+
+    Parameters
+    ----------
+    value:
+        The value to coerce (typically from user input).
+    min_val:
+        Minimum allowed value.
+    max_val:
+        Maximum allowed value (prevents unbounded result sets).
+    default:
+        Value to use if coercion fails.
+
+    Returns
+    -------
+    int
+        A bounded integer safe for interpolation into SPARQL.
+    """
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(min_val, min(n, max_val))
 
 
 _FORBIDDEN_WRITE_PATTERNS = [

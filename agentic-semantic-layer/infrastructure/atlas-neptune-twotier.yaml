@@ -60,8 +60,18 @@ Resources:
             Principal:
               Service: rds.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Policies:
+        - PolicyName: atlas-neptune-s3-read
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::atlas-ontology-staging-${AWS::AccountId}'
+                  - !Sub 'arn:aws:s3:::atlas-ontology-staging-${AWS::AccountId}/*'
       Tags:
         - Key: Project
           Value: !Ref ProjectTag
@@ -78,7 +88,7 @@ Resources:
       VpcSecurityGroupIds:
         - !Ref NeptuneSecurityGroup
       DBSubnetGroupName: !Ref NeptuneSubnetGroup
-      IamAuthEnabled: false
+      IamAuthEnabled: true
       AssociatedRoles:
         - RoleArn: !GetAtt NeptuneS3Role.Arn
       Tags:
@@ -110,7 +120,7 @@ Resources:
       VpcSecurityGroupIds:
         - !Ref NeptuneSecurityGroup
       DBSubnetGroupName: !Ref NeptuneSubnetGroup
-      IamAuthEnabled: false
+      IamAuthEnabled: true
       AssociatedRoles:
         - RoleArn: !GetAtt NeptuneS3Role.Arn
       Tags:
@@ -135,10 +145,41 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub 'atlas-ontology-staging-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       Tags:
         - Key: Project
           Value: !Ref ProjectTag
     DeletionPolicy: Delete
+
+  # IAM policy for Neptune IAM auth — attach to any role that needs graph access
+  NeptuneIamAuthPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: atlas-neptune-iam-auth
+      Description: >
+        Grants SigV4-authenticated access to both Neptune clusters.
+        Attach to SageMaker execution roles, Lambda execution roles,
+        and ECS task roles that need to query or update the graph.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - neptune-db:ReadDataViaQuery
+              - neptune-db:WriteDataViaQuery
+              - neptune-db:GetQueryStatus
+              - neptune-db:CancelQuery
+            Resource:
+              - !Sub 'arn:aws:neptune-db:${AWS::Region}:${AWS::AccountId}:${LGDCluster}/*'
+              - !Sub 'arn:aws:neptune-db:${AWS::Region}:${AWS::AccountId}:${SLGDCluster}/*'
 
 Outputs:
   LGDEndpoint:
@@ -178,3 +219,9 @@ Outputs:
     Value: !GetAtt NeptuneS3Role.Arn
     Export:
       Name: atlas-neptune-s3-role-arn
+
+  NeptuneIamAuthPolicyArn:
+    Description: Managed policy ARN for Neptune IAM auth — attach to execution roles
+    Value: !Ref NeptuneIamAuthPolicy
+    Export:
+      Name: atlas-neptune-iam-auth-policy

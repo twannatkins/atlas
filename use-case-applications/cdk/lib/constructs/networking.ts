@@ -3,6 +3,10 @@
  *
  * Does NOT create the VPC (that belongs to Workshop 1). Looks up the
  * existing VPC by ID and adds the security group rules Workshop 2 needs.
+ *
+ * Security groups follow least-privilege egress: Lambda functions can
+ * reach Neptune (8182), Ontop (8080), and HTTPS (443 for Bedrock via NAT).
+ * ECS tasks can reach Neptune (8182) and ECR/S3 (443 for image pulls).
  */
 
 import * as cdk from "aws-cdk-lib";
@@ -27,33 +31,66 @@ export class NetworkingConstruct extends Construct {
       vpcId: props.vpcId || undefined,
     });
 
-    // Security group for Lambda functions — allows outbound to Neptune (8182)
-    // and outbound HTTPS (443) for Bedrock API calls via NAT
+    // Security group for Lambda functions — restricted egress
     this.lambdaSecurityGroup = new ec2.SecurityGroup(this, "LambdaSG", {
       vpc: this.vpc,
       description: "ATLAS Workshop 2 — Lambda functions",
-      allowAllOutbound: true, // NAT for Bedrock; Neptune on 8182
+      allowAllOutbound: false,
     });
 
-    // Security group for Ontop ECS Fargate — allows inbound from Lambda SG
+    // Security group for Ontop ECS Fargate — restricted egress
     this.ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSG", {
       vpc: this.vpc,
       description: "ATLAS Workshop 2 — Ontop ECS Fargate",
-      allowAllOutbound: true,
+      allowAllOutbound: false,
     });
+
+    // --- Lambda egress rules ---
+
+    // Lambda → Neptune on port 8182 (SPARQL queries)
+    this.lambdaSecurityGroup.addEgressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(8182),
+      "Lambda to Neptune SPARQL",
+    );
+
+    // Lambda → Ontop on port 8080 (SPARQL-over-relational federation)
+    this.lambdaSecurityGroup.addEgressRule(
+      this.ecsSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Lambda to Ontop SPARQL endpoint",
+    );
+
+    // Lambda → HTTPS (443) for Bedrock API calls via NAT and AWS service endpoints
+    this.lambdaSecurityGroup.addEgressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      "Lambda to Bedrock and AWS APIs via NAT",
+    );
+
+    // --- ECS egress rules ---
+
+    // ECS → Neptune on port 8182 (Ontop queries Neptune for R2RML federation)
+    this.ecsSecurityGroup.addEgressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(8182),
+      "Ontop to Neptune SPARQL",
+    );
+
+    // ECS → HTTPS (443) for ECR image pulls and S3 access
+    this.ecsSecurityGroup.addEgressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      "Ontop to ECR and S3 for image pulls",
+    );
+
+    // --- ECS ingress rules ---
 
     // Allow Lambda → Ontop on port 8080
     this.ecsSecurityGroup.addIngressRule(
       this.lambdaSecurityGroup,
       ec2.Port.tcp(8080),
       "Lambda to Ontop SPARQL endpoint",
-    );
-
-    // Allow Lambda → Neptune on port 8182
-    this.lambdaSecurityGroup.addEgressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(8182),
-      "Lambda to Neptune SPARQL",
     );
   }
 }

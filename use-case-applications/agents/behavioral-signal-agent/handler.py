@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
                                 "agentic-semantic-layer", "notebooks", "shared"))
 
-from atlas_sparql import validate, AtlasSPARQLError
+from atlas_sparql import validate, AtlasSPARQLError, safe_uri
 
 import boto3
 
@@ -95,6 +95,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if not customer_uri or not isinstance(customer_uri, str):
             return _error_response(invocation_id, start_time, "validation_failed",
                                    "customer_uri is required")
+        # Validate URI before interpolation into SPARQL templates
+        customer_uri = safe_uri(customer_uri)
+
         if not persona_claim or persona_claim not in VALID_PERSONAS:
             return _error_response(invocation_id, start_time, "validation_failed",
                                    f"persona_claim must be one of: {VALID_PERSONAS}")

@@ -7,6 +7,8 @@ Exposes three operations:
   - construct_and_validate: CONSTRUCT + SHACL validation before returning
 
 All operations require a persona_claim. Anonymous queries are rejected.
+All Neptune requests are authenticated via SigV4 signing using the
+Lambda execution role's credentials.
 
 Component class: DETERMINISTIC gateway — the server itself adds no
 probabilistic behavior; it translates, scopes, and forwards.
@@ -21,6 +23,7 @@ import sys
 import time
 import uuid
 from typing import Any, Dict
+from urllib.parse import quote as url_quote
 
 # Add shared modules to path for Workshop 1 helpers
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
@@ -29,7 +32,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
 from atlas_sparql import validate, AtlasSPARQLError, prefixed
 
 import boto3
-from SPARQLWrapper import SPARQLWrapper, JSON, POST, POSTDIRECTLY
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+import requests as http_requests
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -39,6 +44,7 @@ NEPTUNE_SLGD_ENDPOINT = os.environ.get("NEPTUNE_SLGD_ENDPOINT", "")
 NEPTUNE_LGD_ENDPOINT = os.environ.get("NEPTUNE_LGD_ENDPOINT", "")
 ONTOP_ECS_ENDPOINT = os.environ.get("ONTOP_ECS_ENDPOINT", "")
 SHACL_MCP_ARN = os.environ.get("SHACL_MCP_ARN", "")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 VALID_PERSONAS = [
     "atlas-consumer-banker",
@@ -47,6 +53,17 @@ VALID_PERSONAS = [
     "atlas-ontology-steward",
     "atlas-auditor",
 ]
+
+# SigV4 session — reused across invocations for connection pooling
+_boto_session = boto3.Session()
+
+
+def _sigv4_headers(method: str, url: str, headers: Dict[str, str], body: str = "") -> Dict[str, str]:
+    """Sign an HTTP request with SigV4 for Neptune IAM auth."""
+    credentials = _boto_session.get_credentials().get_frozen_credentials()
+    request = AWSRequest(method=method, url=url, headers=headers, data=body)
+    SigV4Auth(credentials, "neptune-db", AWS_REGION).add_auth(request)
+    return dict(request.headers)
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -104,12 +121,14 @@ def _handle_query(event: Dict[str, Any], invocation_id: str, start_time: float) 
     endpoint = NEPTUNE_SLGD_ENDPOINT if graph_tier == "slgd" else NEPTUNE_LGD_ENDPOINT
     sparql_url = f"https://{endpoint}:8182/sparql"
 
-    # Execute query
+    # Execute query with SigV4-signed request
     try:
-        wrapper = SPARQLWrapper(sparql_url)
-        wrapper.setQuery(validated_sparql)
-        wrapper.setReturnFormat(JSON)
-        results = wrapper.query().convert()
+        query_url = f"{sparql_url}?query={url_quote(validated_sparql)}"
+        headers = {"Accept": "application/sparql-results+json"}
+        signed_headers = _sigv4_headers("GET", query_url, headers)
+        response = http_requests.get(query_url, headers=signed_headers, timeout=30)
+        response.raise_for_status()
+        results = response.json()
         rows = _parse_sparql_results(results)
     except Exception as exc:
         return _error_response(invocation_id, start_time, "execution_error", f"Neptune query failed: {exc}")
@@ -154,14 +173,14 @@ def _handle_update(event: Dict[str, Any], invocation_id: str, start_time: float)
     except ImportError:
         pass
 
-    # Execute update against SLGD
+    # Execute update against SLGD with SigV4-signed request
     sparql_url = f"https://{NEPTUNE_SLGD_ENDPOINT}:8182/sparql"
     try:
-        wrapper = SPARQLWrapper(sparql_url)
-        wrapper.setQuery(sparql)
-        wrapper.setMethod(POST)
-        wrapper.setRequestMethod(POSTDIRECTLY)
-        wrapper.query()
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        body = f"update={url_quote(sparql)}"
+        signed_headers = _sigv4_headers("POST", sparql_url, headers, body)
+        response = http_requests.post(sparql_url, data=body, headers=signed_headers, timeout=30)
+        response.raise_for_status()
     except Exception as exc:
         return _error_response(invocation_id, start_time, "execution_error", f"Neptune update failed: {exc}")
 
@@ -195,13 +214,15 @@ def _handle_construct_and_validate(event: Dict[str, Any], invocation_id: str, st
     except AtlasSPARQLError as exc:
         return _error_response(invocation_id, start_time, "sparql_validation_error", str(exc))
 
-    # Execute CONSTRUCT
+    # Execute CONSTRUCT with SigV4-signed request
     sparql_url = f"https://{NEPTUNE_SLGD_ENDPOINT}:8182/sparql"
     try:
-        wrapper = SPARQLWrapper(sparql_url)
-        wrapper.setQuery(validated_sparql)
-        wrapper.setReturnFormat(JSON)
-        results = wrapper.query().convert()
+        query_url = f"{sparql_url}?query={url_quote(validated_sparql)}"
+        headers = {"Accept": "application/sparql-results+json"}
+        signed_headers = _sigv4_headers("GET", query_url, headers)
+        response = http_requests.get(query_url, headers=signed_headers, timeout=30)
+        response.raise_for_status()
+        results = response.json()
         triples_minted = _parse_construct_results(results)
     except Exception as exc:
         return _error_response(invocation_id, start_time, "execution_error", f"CONSTRUCT query failed: {exc}")

@@ -25,7 +25,7 @@ from typing import Any, Dict, List
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
                                 "agentic-semantic-layer", "notebooks", "shared"))
 
-from atlas_sparql import prefixed
+from atlas_sparql import prefixed, safe_uri, safe_int
 
 import boto3
 
@@ -97,7 +97,7 @@ def _extract_persona(identity: Dict[str, Any]) -> str:
 
 def _resolve_customer(args: Dict, persona: str) -> Dict[str, Any]:
     """Resolve a single customer by URI."""
-    uri = args.get("uri", "")
+    uri = safe_uri(args.get("uri", ""))
     sparql = prefixed(f"""
         SELECT ?customerId ?label WHERE {{
             <{uri}> a atlas:Customer ;
@@ -118,7 +118,7 @@ def _resolve_customer(args: Dict, persona: str) -> Dict[str, Any]:
 
 def _resolve_household(args: Dict, persona: str) -> Dict[str, Any]:
     """Resolve a household by URI with members."""
-    uri = args.get("uri", "")
+    uri = safe_uri(args.get("uri", ""))
     sparql = prefixed(f"""
         SELECT ?label ?memberUri ?memberLabel WHERE {{
             <{uri}> a atlas:Household .
@@ -147,7 +147,7 @@ def _resolve_household(args: Dict, persona: str) -> Dict[str, Any]:
 
 def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
     """Search customers — returns persona-scoped results."""
-    limit = args.get("limit", 20)
+    limit = safe_int(args.get("limit", 20), max_val=100)
     sparql = prefixed(f"""
         SELECT ?uri ?customerId ?label WHERE {{
             ?uri a atlas:Customer ;
@@ -165,7 +165,7 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
 
 def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
     """Resolve wealth signals for a customer."""
-    customer_uri = args.get("customerUri", "")
+    customer_uri = safe_uri(args.get("customerUri", ""))
     sparql = prefixed(f"""
         SELECT ?uri ?signalType ?strength ?signalDate WHERE {{
             ?uri a atlas:WealthSignal ;
@@ -189,7 +189,7 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
 
 def _resolve_advisory_relationships(args: Dict, persona: str) -> List[Dict]:
     """Resolve advisory relationships for a customer."""
-    customer_uri = args.get("customerUri", "")
+    customer_uri = safe_uri(args.get("customerUri", ""))
     sparql = prefixed(f"""
         SELECT ?uri ?advisorUri ?advisorLabel ?startDate ?endDate ?relType WHERE {{
             <{customer_uri}> atlas:hasAdvisor ?uri .
@@ -216,7 +216,7 @@ def _resolve_advisory_relationships(args: Dict, persona: str) -> List[Dict]:
 
 def _resolve_referrals(args: Dict, persona: str) -> List[Dict]:
     """Resolve referrals for a household."""
-    household_uri = args.get("householdUri", "")
+    household_uri = safe_uri(args.get("householdUri", ""))
     sparql = prefixed(f"""
         SELECT ?uri ?rationale ?referralDate ?originatedBy ?routeUri ?selectedRoute WHERE {{
             ?uri a <https://github.com/your-org/atlas/ontology/part2#Referral> ;
@@ -246,7 +246,7 @@ def _resolve_referrals(args: Dict, persona: str) -> List[Dict]:
 
 def _resolve_audit_trail(args: Dict, persona: str) -> List[Dict]:
     """Resolve audit records for a routing decision."""
-    routing_uri = args.get("routingDecisionUri", "")
+    routing_uri = safe_uri(args.get("routingDecisionUri", ""))
     sparql = prefixed(f"""
         SELECT ?uri ?generatedAtTime ?workflowStatus WHERE {{
             ?uri a atlas:AuditRecord ;
@@ -268,7 +268,7 @@ def _resolve_audit_trail(args: Dict, persona: str) -> List[Dict]:
 
 def _resolve_themes(args: Dict, persona: str) -> List[Dict]:
     """Resolve market themes (Phase 2)."""
-    limit = args.get("limit", 10)
+    limit = safe_int(args.get("limit", 10), max_val=50)
     sparql = f"""
         PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>

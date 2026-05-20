@@ -10,6 +10,8 @@ Workshop 2's CDK stack deploys the application layer. It does **not** deploy Nep
 
 **Why the boundary exists here.** Neptune is a shared substrate that outlives any single application. Workshop 1 deploys it because Workshop 1 owns the ontology, the SHACL shapes, and the data loading pipelines. Workshop 2 consumes it. If Workshop 2 deployed its own Neptune, you'd have two graphs, two ontologies, and zero composability — the exact failure mode Thesis 2 (two UIs, one backbone) exists to prevent.
 
+Workshop 1's Neptune template also provisions the ontology staging bucket (SSE-S3 encrypted, public access blocked) and a scoped IAM role that grants Neptune read access to that bucket alone. The role uses an inline policy rather than a managed policy — this ensures Neptune cannot read from any other S3 bucket in the account, which matters when the same account hosts other workloads with sensitive data in S3.
+
 ## Stack parameters
 
 | Parameter | Source | Purpose |
@@ -29,11 +31,13 @@ The stack is organized as nested constructs. Each construct owns a single concer
 
 **Why.** Lambda functions in private subnets need outbound internet for Bedrock API calls (the LLM-at-the-edges pattern). Neptune access requires private subnet placement. NAT bridges both requirements. The VPC itself is not created here — it belongs to Workshop 1. We add only the NAT gateway and the security group rules Workshop 2 needs.
 
+**Egress scoping.** Security groups use explicit egress rules rather than `allowAllOutbound`. Lambda functions can reach Neptune (8182), Ontop (8080), and HTTPS (443 for Bedrock and AWS APIs). ECS tasks can reach Neptune (8182) and HTTPS (443 for ECR image pulls). No other outbound traffic is permitted — this limits the blast radius if a workload is compromised.
+
 **Why not a VPC endpoint for Bedrock?** VPC endpoints for Bedrock are region-limited and don't cover all model invocation paths. NAT is the reliable path today. When Bedrock VPC endpoints reach GA in all target regions, this construct should be updated.
 
 ### 2. Ontop on ECS Fargate
 
-**What.** An ECS Fargate service running the Ontop SPARQL-over-relational translation layer. Sits in private subnets with Neptune access. Exposes an internal ALB endpoint consumed by `atlas-sparql-mcp`.
+**What.** An ECS Fargate service running the Ontop SPARQL-over-relational translation layer. Sits in private subnets with Neptune access. Exposes an internal ALB endpoint consumed by `atlas-sparql-mcp`. When a `certificateArn` is provided, the ALB uses HTTPS to encrypt SPARQL queries in transit; without one (local development), it falls back to HTTP on the internal network.
 
 **Why.** Ontop translates SPARQL queries into SQL against Lake Formation Iceberg tables. This is how Workshop 2 federates relational data into the knowledge graph without materializing triples. The alternative — bulk-loading relational data into Neptune — violates the "single source of truth" principle and creates a stale-data problem that no ETL schedule solves.
 
@@ -52,6 +56,8 @@ The stack is organized as nested constructs. Each construct owns a single concer
 | `atlas-auditor` | Same | Read-only audit trail access across all UIs |
 
 **Why Cognito and not IDC alone?** IDC handles *identity* (who you are). Cognito handles *application-layer permissions* (what UI routes you can render, what Agent Registry capabilities you see). This is Layer 2 of the four-layer permission model from `01-architecture.md`. Without Cognito, the UI would need to parse raw IDC SAML assertions to determine group membership — fragile, non-standard, and untestable in local development.
+
+**How the persona flows.** The client sends only the Cognito JWT in the Authorization header. AppSync validates the token and extracts the `cognito:groups` claim server-side — the persona is never sent as a client-supplied header. This prevents privilege escalation via localStorage manipulation. The resolver passes the server-extracted persona to the MCP servers for Lake Formation scoping.
 
 **Why federate rather than manage users directly in Cognito?** Because the enterprise already has IDC. Duplicating user management in Cognito creates identity drift. Federation means a single source of truth for group membership, with Cognito as the application-facing token issuer.
 
