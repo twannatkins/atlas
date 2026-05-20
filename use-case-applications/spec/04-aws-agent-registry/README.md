@@ -80,3 +80,15 @@ Each agent has its own markdown explainer and JSON descriptor under `agents/`. D
 ## The MCP servers directory
 
 Each MCP server has its own markdown explainer and JSON descriptor under `mcp-servers/`. Detail in those files.
+
+## Test file naming convention
+
+Future agents and MCP servers must follow these conventions for their test files:
+
+1. **Test files are named `test_<component_name>.py`** (not `test_handler.py`). Every component directory contains a `handler.py`, and pytest's default import mode caches module names globally. Identically-named test files across directories cause import collisions when collecting tests. Unique names (`test_atlas_sparql_mcp.py`, `test_nl_to_sparql_agent.py`, etc.) avoid this.
+
+2. **Each component directory contains a `conftest.py`** that adds the directory to `sys.path`. This ensures `from handler import handler` resolves to the local `handler.py` regardless of collection order.
+
+3. **`pytest.ini` at the workspace root uses `--import-mode=importlib`**. This enables pytest's module isolation mode, which treats each test file as an independent import namespace rather than sharing a flat `sys.modules` cache.
+
+All three are required together. Missing any one causes test collection failures when running `pytest use-case-applications/` across all 13 components simultaneously.
