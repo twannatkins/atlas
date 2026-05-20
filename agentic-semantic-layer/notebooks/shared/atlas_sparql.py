@@ -45,6 +45,18 @@ _SAFE_URI_PREFIXES = (
     "urn:atlas:",
 )
 
+# Compact prefix forms used in GraphQL arguments (resolved by SPARQL PREFIX declarations)
+_SAFE_COMPACT_PREFIXES = (
+    "atlas:",
+    "atlas-part-2:",
+    "fibo-",
+    "prov:",
+    "rdfs:",
+    "rdf:",
+    "skos:",
+    "dcat:",
+)
+
 
 def safe_uri(uri: str, *, allow_any_scheme: bool = False) -> str:
     """Validate and return a URI safe for interpolation into SPARQL queries.
@@ -52,11 +64,14 @@ def safe_uri(uri: str, *, allow_any_scheme: bool = False) -> str:
     Parameters
     ----------
     uri:
-        The URI string to validate.
+        The URI string to validate. Can be a full IRI
+        (https://github.com/your-org/atlas/instance#customer-123) or a
+        compact prefixed name (atlas:cust/9c2a1e) that will be resolved
+        by SPARQL PREFIX declarations.
     allow_any_scheme:
         When False (default), the URI must start with one of the known ATLAS
-        namespace prefixes. Set True for URIs from trusted internal sources
-        (e.g., Entity Resolution canonical URIs).
+        namespace prefixes or compact prefix forms. Set True for URIs from
+        trusted internal sources (e.g., Entity Resolution canonical URIs).
 
     Returns
     -------
@@ -78,10 +93,14 @@ def safe_uri(uri: str, *, allow_any_scheme: bool = False) -> str:
         )
 
     if not allow_any_scheme:
-        if not any(uri.startswith(prefix) for prefix in _SAFE_URI_PREFIXES):
+        is_safe = (
+            any(uri.startswith(prefix) for prefix in _SAFE_URI_PREFIXES) or
+            any(uri.startswith(prefix) for prefix in _SAFE_COMPACT_PREFIXES)
+        )
+        if not is_safe:
             raise AtlasSPARQLError(
                 f"URI does not start with a known ATLAS namespace prefix: {uri!r}. "
-                f"Expected one of: {_SAFE_URI_PREFIXES}"
+                f"Expected one of: {_SAFE_URI_PREFIXES + _SAFE_COMPACT_PREFIXES}"
             )
 
     return uri

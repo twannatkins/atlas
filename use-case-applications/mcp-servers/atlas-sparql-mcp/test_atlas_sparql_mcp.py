@@ -33,13 +33,13 @@ from handler import handler
 class TestQueryOperation:
     """Tests for the query operation."""
 
-    @patch("handler.SPARQLWrapper")
-    def test_happy_path_query(self, mock_sparql_wrapper_cls):
+    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("handler.http_requests")
+    def test_happy_path_query(self, mock_requests, mock_sigv4):
         """A valid SELECT query returns parsed rows."""
-        # Mock SPARQLWrapper to return a valid SPARQL JSON response
-        mock_instance = MagicMock()
-        mock_sparql_wrapper_cls.return_value = mock_instance
-        mock_instance.query.return_value.convert.return_value = {
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
             "head": {"vars": ["customer", "name"]},
             "results": {
                 "bindings": [
@@ -48,6 +48,8 @@ class TestQueryOperation:
                 ]
             },
         }
+        mock_response.raise_for_status = MagicMock()
+        mock_requests.get.return_value = mock_response
 
         event = {
             "operation": "query",
@@ -91,12 +93,11 @@ class TestQueryOperation:
         assert result["status"] == "error"
         assert result["error_type"] == "sparql_validation_error"
 
-    @patch("handler.SPARQLWrapper")
-    def test_neptune_failure_returns_execution_error(self, mock_sparql_wrapper_cls):
+    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("handler.http_requests")
+    def test_neptune_failure_returns_execution_error(self, mock_requests, mock_sigv4):
         """When Neptune returns an error, the handler surfaces it cleanly."""
-        mock_instance = MagicMock()
-        mock_sparql_wrapper_cls.return_value = mock_instance
-        mock_instance.query.side_effect = Exception("Connection refused")
+        mock_requests.get.side_effect = Exception("Connection refused")
 
         event = {
             "operation": "query",
@@ -114,11 +115,14 @@ class TestQueryOperation:
 class TestUpdateOperation:
     """Tests for the update operation."""
 
-    @patch("handler.SPARQLWrapper")
-    def test_happy_path_update(self, mock_sparql_wrapper_cls):
+    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("handler.http_requests")
+    def test_happy_path_update(self, mock_requests, mock_sigv4):
         """A valid UPDATE with required prefixes succeeds."""
-        mock_instance = MagicMock()
-        mock_sparql_wrapper_cls.return_value = mock_instance
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+        mock_requests.post.return_value = mock_response
 
         sparql = (
             "PREFIX atlas: <https://github.com/your-org/atlas/ontology#>\n"
@@ -155,13 +159,14 @@ class TestConstructAndValidate:
     """Tests for the construct_and_validate operation."""
 
     @patch("handler.boto3")
-    @patch("handler.SPARQLWrapper")
-    def test_happy_path_construct_and_validate(self, mock_sparql_wrapper_cls, mock_boto3):
+    @patch("handler._sigv4_headers", return_value={"Authorization": "AWS4-HMAC-SHA256 ..."})
+    @patch("handler.http_requests")
+    def test_happy_path_construct_and_validate(self, mock_requests, mock_sigv4, mock_boto3):
         """CONSTRUCT + SHACL validation returns triples and report."""
-        # Mock CONSTRUCT result
-        mock_instance = MagicMock()
-        mock_sparql_wrapper_cls.return_value = mock_instance
-        mock_instance.query.return_value.convert.return_value = {
+        # Mock CONSTRUCT HTTP response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
             "head": {"vars": ["s", "p", "o"]},
             "results": {
                 "bindings": [
@@ -169,6 +174,8 @@ class TestConstructAndValidate:
                 ]
             },
         }
+        mock_response.raise_for_status = MagicMock()
+        mock_requests.get.return_value = mock_response
 
         # Mock SHACL MCP Lambda invocation
         mock_lambda_client = MagicMock()
