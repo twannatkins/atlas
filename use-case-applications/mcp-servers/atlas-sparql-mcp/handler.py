@@ -135,10 +135,14 @@ def _handle_update(event: Dict[str, Any], invocation_id: str, start_time: float)
     if not persona_claim or persona_claim not in VALID_PERSONAS:
         return _error_response(invocation_id, start_time, "validation_error", f"persona_claim must be one of: {VALID_PERSONAS}")
 
-    # Validate with prefix requirements for writes
-    # Note: atlas_sparql.validate() uses prepareQuery which only handles
-    # SELECT/CONSTRUCT/ASK/DESCRIBE. For UPDATE statements, we check
-    # prefix declarations manually without the syntax parse.
+    # WORKAROUND: Workshop 1's atlas_sparql.validate() calls rdflib's prepareQuery(),
+    # which only supports SELECT/CONSTRUCT/ASK/DESCRIBE — not INSERT/UPDATE/DELETE.
+    # Passing an UPDATE statement to validate() raises a parse error, so we cannot
+    # use the shared validator here. Instead, we perform a prefix-declaration check
+    # manually (the same check validate(require_prefixes=True) would do, minus the
+    # syntax parse). The proper fix is extending Workshop 1's shared validator to
+    # handle SPARQL Update syntax — that should be done in a separate Workshop 1 PR,
+    # not by modifying Workshop 1 files from Workshop 2.
     try:
         # Check prefix declarations are present
         from atlas_sparql import _REQUIRED_PREFIX_DECLARATIONS, AtlasSPARQLError as _ASE
