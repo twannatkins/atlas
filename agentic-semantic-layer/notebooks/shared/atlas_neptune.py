@@ -1,10 +1,11 @@
 """
-atlas_neptune — thin Neptune SPARQL endpoint client.
+atlas_neptune — thin Neptune SPARQL endpoint client with IAM auth.
 
 Wraps the Neptune SPARQL HTTP endpoint. All queries pass through
-atlas_sparql.validate() before submission. The client is intentionally
-thin: it does not retry on failure, does not cache results, and does
-not manage connections beyond what the requests library provides.
+atlas_sparql.validate() before submission. Requests are authenticated
+using SigV4 signing via the boto3 credential chain — the caller's IAM
+role must have neptune-db:ReadDataViaQuery and/or
+neptune-db:WriteDataViaQuery permissions on the cluster resource.
 
 Component class: DETERMINISTIC — given the same endpoint state and
 query, the client always submits the same wire request and returns
@@ -16,13 +17,21 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
 
+import boto3
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
 import requests
 
 from atlas_sparql import validate, AtlasSPARQLError
 
 
 class NeptuneClient:
-    """SPARQL client for an Amazon Neptune endpoint.
+    """SPARQL client for an Amazon Neptune endpoint with IAM auth.
+
+    Authenticates requests using SigV4 signing. The IAM principal
+    (Lambda execution role, SageMaker execution role, etc.) must have
+    the neptune-db:* permissions granted by the NeptuneIamAuthPolicy
+    managed policy exported from the atlas-neptune-twotier stack.
 
     Parameters
     ----------
@@ -33,8 +42,9 @@ class NeptuneClient:
         ``ATLAS_NEPTUNE_ENDPOINT``.
     port:
         Neptune SPARQL port. Default 8182.
-    use_https:
-        Whether to use HTTPS. Default True.
+    region:
+        AWS region for SigV4 signing. Default reads from
+        ``AWS_REGION`` or ``AWS_DEFAULT_REGION`` environment variable.
     timeout:
         Request timeout in seconds. Default 30.
     """
@@ -43,7 +53,7 @@ class NeptuneClient:
         self,
         endpoint: Optional[str] = None,
         port: int = 8182,
-        use_https: bool = True,
+        region: Optional[str] = None,
         timeout: int = 30,
     ) -> None:
         host = endpoint or os.environ.get("ATLAS_NEPTUNE_ENDPOINT")
@@ -52,9 +62,17 @@ class NeptuneClient:
                 "Neptune endpoint not specified. Pass 'endpoint=' or set "
                 "the ATLAS_NEPTUNE_ENDPOINT environment variable."
             )
-        scheme = "https" if use_https else "http"
-        self._sparql_url = f"{scheme}://{host}:{port}/sparql"
+        self._sparql_url = f"https://{host}:{port}/sparql"
         self._timeout = timeout
+        self._region = region or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+        self._session = boto3.Session()
+
+    def _sign_request(self, method: str, url: str, headers: Dict[str, str], data: Optional[str] = None) -> Dict[str, str]:
+        """Sign an HTTP request with SigV4 for Neptune IAM auth."""
+        credentials = self._session.get_credentials().get_frozen_credentials()
+        request = AWSRequest(method=method, url=url, headers=headers, data=data or "")
+        SigV4Auth(credentials, "neptune-db", self._region).add_auth(request)
+        return dict(request.headers)
 
     def query(self, sparql: str, named_graph: Optional[str] = None) -> List[Dict[str, Any]]:
         """Execute a SPARQL SELECT query and return bindings as a list of dicts.
@@ -76,10 +94,13 @@ class NeptuneClient:
         if named_graph:
             validated = f"FROM <{named_graph}>\n{validated}"
 
+        headers = {"Accept": "application/sparql-results+json"}
+        url = f"{self._sparql_url}?query={requests.utils.quote(validated)}"
+        signed_headers = self._sign_request("GET", url, headers)
+
         response = requests.get(
-            self._sparql_url,
-            params={"query": validated},
-            headers={"Accept": "application/sparql-results+json"},
+            url,
+            headers=signed_headers,
             timeout=self._timeout,
         )
         response.raise_for_status()
@@ -97,10 +118,14 @@ class NeptuneClient:
         require_prefixes=True before submission.
         """
         validate(sparql, require_prefixes=True)
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        body = f"update={requests.utils.quote(sparql)}"
+        signed_headers = self._sign_request("POST", self._sparql_url, headers, body)
+
         response = requests.post(
             self._sparql_url,
-            data={"update": sparql},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data=body,
+            headers=signed_headers,
             timeout=self._timeout,
         )
         response.raise_for_status()

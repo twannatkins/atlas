@@ -1,9 +1,11 @@
 /**
  * Apollo Client configuration for ATLAS Workshop 2.
  *
- * Connects to the AppSync GraphQL endpoint. The persona claim is
- * extracted from the Cognito JWT and passed as a header on every request.
- * Resolvers use this header to scope data via Lake Formation.
+ * Connects to the AppSync GraphQL endpoint. Authentication is handled
+ * via the Cognito JWT — AppSync extracts the persona claim from the
+ * token's cognito:groups claim server-side. The client never sends the
+ * persona as a separate header; doing so would allow client-side
+ * privilege escalation by modifying localStorage.
  */
 
 import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
@@ -17,19 +19,22 @@ const httpLink = createHttpLink({
 });
 
 /**
- * Auth link that attaches the Cognito JWT and persona claim to every request.
- * The persona claim is what the MCP servers use for Lake Formation scoping.
+ * Auth link that attaches the Cognito JWT to every request.
+ *
+ * The persona claim is extracted server-side from the JWT's
+ * cognito:groups claim by the AppSync resolver. This ensures the
+ * persona cannot be spoofed by modifying client-side state.
  */
 const authLink = setContext((_, { headers }) => {
-  // In production, this comes from Cognito via useAuth hook
-  const token = typeof window !== "undefined" ? localStorage.getItem("atlas_token") : null;
-  const personaClaim = typeof window !== "undefined" ? localStorage.getItem("atlas_persona") : null;
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("atlas_token")
+      : null;
 
   return {
     headers: {
       ...headers,
       authorization: token ? `Bearer ${token}` : "",
-      "x-atlas-persona": personaClaim || "",
     },
   };
 });

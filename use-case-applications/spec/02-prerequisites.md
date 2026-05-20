@@ -42,7 +42,7 @@ If you are coming from Workshop 1, most of what's here is familiar. The exceptio
 
 **Why it matters.** Workshop 2 runs from SageMaker Studio just like Workshop 1. Notebooks live in `use-case-applications/notebooks/`; you open them in Studio and execute cells. Studio is also where Kiro and Claude Code run if you choose to use either of them.
 
-**Image choice.** The standard SageMaker Studio image (`sagemaker-distribution:cpu` or `data-science-3.0`) is sufficient. Workshop 2's `notebooks/shared/requirements.txt` lists the additional Python packages (boto3 minimums, AppSync SDK, agent registry SDK, MCP client). The first notebook installs them.
+**Image choice.** The standard SageMaker Studio image (`sagemaker-distribution:cpu` or `data-science-3.0`) is sufficient. Workshop 2's `notebooks/shared/requirements.txt` lists the additional Python packages with pinned versions for reproducibility (boto3, AppSync SDK, agent registry SDK, MCP client). The first notebook installs them. Pinned versions ensure every attendee runs against the same tested dependency set regardless of when they run the workshop.
 
 ### Ontop on ECS — deployed by Workshop 2, not Workshop 1
 

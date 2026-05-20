@@ -36,14 +36,22 @@ import urllib.parse
 import ssl
 from datetime import datetime
 
+import boto3
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+
 
 # Neptune LGD connection details from environment
 LGD_ENDPOINT = os.environ.get("NEPTUNE_LGD_ENDPOINT", "")
 LGD_PORT = os.environ.get("NEPTUNE_LGD_PORT", "8182")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # ATLAS ontology namespace
 ATLAS_NS = "https://github.com/your-org/atlas/ontology#"
 INSTANCE_NS = "https://github.com/your-org/atlas/instance#"
+
+# SigV4 session — reused across invocations
+_boto_session = boto3.Session()
 
 
 def event_to_triples(event: dict) -> str:
@@ -129,6 +137,7 @@ def _signal_type_to_iri(signal_type: str) -> str:
 def write_to_lgd(triples_block: str) -> bool:
     """Write a block of N-Triples to the LGD via SPARQL UPDATE.
 
+    Authenticates using SigV4 signing against the Neptune IAM auth endpoint.
     Returns True on success, False on failure.
     """
     if not LGD_ENDPOINT:
@@ -137,18 +146,23 @@ def write_to_lgd(triples_block: str) -> bool:
 
     sparql_update = f"INSERT DATA {{\n{triples_block}\n}}"
 
-    # Neptune in VPC without IAM auth uses HTTPS with self-signed cert
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
     url = f"https://{LGD_ENDPOINT}:{LGD_PORT}/sparql"
     data = urllib.parse.urlencode({"update": sparql_update}).encode()
+
+    # Sign the request with SigV4 for Neptune IAM auth
+    credentials = _boto_session.get_credentials().get_frozen_credentials()
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    request = AWSRequest(method="POST", url=url, headers=headers, data=data)
+    SigV4Auth(credentials, "neptune-db", AWS_REGION).add_auth(request)
+
+    # Neptune uses a certificate signed by the Amazon RDS CA. The system trust
+    # store includes the Amazon Root CAs.
+    ctx = ssl.create_default_context()
 
     req = urllib.request.Request(
         url,
         data=data,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers=dict(request.headers),
         method="POST",
     )
 

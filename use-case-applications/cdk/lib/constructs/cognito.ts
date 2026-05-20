@@ -4,6 +4,10 @@
  * Five groups corresponding to the five ATLAS personas. Cognito handles
  * application-layer permissions (Layer 2 of the four-layer model).
  * IDC handles identity (Layer 1).
+ *
+ * The OAuth callback URLs are environment-aware: localhost is only
+ * included when the CDK context flag `includeLocalCallbacks` is true
+ * (used during workshop development). Production deployments omit it.
  */
 
 import * as cdk from "aws-cdk-lib";
@@ -18,12 +22,19 @@ export const ATLAS_PERSONAS = [
   "atlas-auditor",
 ] as const;
 
+export interface CognitoProps {
+  /** The production callback URL (CloudFront distribution). */
+  productionCallbackUrl?: string;
+  /** Include http://localhost:3000/callback for local development. Default false. */
+  includeLocalCallbacks?: boolean;
+}
+
 export class CognitoConstruct extends Construct {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
   public readonly personas: string[];
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props?: CognitoProps) {
     super(scope, id);
 
     this.personas = [...ATLAS_PERSONAS];
@@ -54,13 +65,25 @@ export class CognitoConstruct extends Construct {
       });
     }
 
+    // Build callback URLs — localhost only included for local development
+    const callbackUrls: string[] = [];
+    if (props?.includeLocalCallbacks) {
+      callbackUrls.push("http://localhost:3000/callback");
+    }
+    if (props?.productionCallbackUrl) {
+      callbackUrls.push(props.productionCallbackUrl);
+    } else {
+      // Default production callback — replaced during deployment
+      callbackUrls.push("https://atlas.example.com/callback");
+    }
+
     // App client for the React UIs
     this.userPoolClient = this.userPool.addClient("WebClient", {
       authFlows: { userSrp: true },
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
-        callbackUrls: ["http://localhost:3000/callback", "https://atlas.example.com/callback"],
+        callbackUrls,
       },
       generateSecret: false,
     });

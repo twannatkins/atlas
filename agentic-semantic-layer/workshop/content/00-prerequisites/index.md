@@ -80,7 +80,9 @@ cd atlas
 pip install -r notebooks/shared/requirements.txt
 ```
 
-3. Wait for the install to complete (30–60 seconds)
+3. Wait for the install to complete (30–60 seconds). All dependencies are pinned
+   to exact versions for reproducibility — every attendee runs against the same
+   tested package set.
 4. In the left file browser, click the folder icon to refresh, then navigate into
    the `atlas/` folder. You'll see: `notebooks/`, `ontology/`, `data/`,
    `infrastructure/`, etc.
@@ -169,6 +171,13 @@ additional permissions for Neptune, CloudFormation, and Bedrock.
    - `AWSGlueServiceRole`
    - `AWSCloudFormationFullAccess`
 7. Choose **Add permissions**
+
+> **Note:** After deploying the Neptune clusters in Module 3, you will also
+> attach the `atlas-neptune-iam-auth` managed policy (exported by the
+> CloudFormation stack). This grants SigV4-authenticated access to the
+> specific Neptune clusters rather than the broad `NeptuneFullAccess` policy.
+> For the workshop, both are attached; in production, only the scoped policy
+> would be used.
 
 ### Add Bedrock inline policy
 

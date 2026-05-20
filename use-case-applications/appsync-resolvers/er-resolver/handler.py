@@ -26,7 +26,7 @@ SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
                                 "agentic-semantic-layer", "notebooks", "shared"))
 
-from atlas_sparql import prefixed
+from atlas_sparql import prefixed, safe_uri
 
 
 def handler(event: Dict[str, Any], context: Any) -> Any:
@@ -77,6 +77,10 @@ def _resolve_entity(args: Dict, persona: str) -> Dict[str, Any] | None:
     canonical_uri = er_result.get("canonical_uri", "")
     if not canonical_uri:
         return None
+
+    # Validate the canonical URI before interpolation — the ER MCP is a trusted
+    # internal source but we still enforce IRI-safety as defense in depth.
+    canonical_uri = safe_uri(canonical_uri, allow_any_scheme=True)
 
     # Step 2: Fetch customer data via SPARQL
     sparql = prefixed(f"""
