@@ -16,6 +16,7 @@ import re
 from typing import Optional
 
 from rdflib.plugins.sparql import prepareQuery
+from rdflib.plugins.sparql.processor import prepareUpdate
 
 
 class AtlasSPARQLError(Exception):
@@ -56,8 +57,16 @@ def validate(query: str, *, require_prefixes: bool = False) -> str:
         If the query is syntactically invalid or violates a boundary rule.
     """
     # Syntactic parse via rdflib (raises prepareQuery exceptions on bad syntax)
+    # Use prepareUpdate for INSERT/DELETE/LOAD/CLEAR/DROP/CREATE statements;
+    # use prepareQuery for SELECT/CONSTRUCT/ASK/DESCRIBE.
+    _UPDATE_KEYWORDS = re.compile(
+        r"(?:^|\n)\s*(?:INSERT|DELETE|LOAD|CLEAR|DROP|CREATE|COPY|MOVE|ADD)\b", re.IGNORECASE
+    )
     try:
-        prepareQuery(query)
+        if _UPDATE_KEYWORDS.search(query):
+            prepareUpdate(query)
+        else:
+            prepareQuery(query)
     except Exception as exc:
         raise AtlasSPARQLError(f"SPARQL syntax error: {exc}") from exc
 
