@@ -1,0 +1,9 @@
+{
+  "app": "npx ts-node bin/atlas-workshop-2.ts",
+  "context": {
+    "neptuneClusterEndpoint": "",
+    "neptuneClusterArn": "",
+    "vpcId": "",
+    "privateSubnetIds": ""
+  }
+}
