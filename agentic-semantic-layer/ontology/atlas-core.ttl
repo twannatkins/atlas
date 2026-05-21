@@ -203,6 +203,22 @@ atlas:AuditRecord
     skos:definition
         "A PROV-O-attributed record linking a derived graph entity to the source observations and processes that produced it."@en .
 
+# referencesSignal — added 2026-05-21 as a deliberate Workshop 1 exception
+# during Workshop 2 spec refresh. The audit_write agent in Workshop 2 emits
+# this property on atlas:AuditRecord instances to link an audit record to
+# the atlas:WealthSignal it audited. Adding the declaration here completes
+# Workshop 1's audit-trail vocabulary, which is properly a Workshop 1 concern
+# (atlas:AuditRecord is a Workshop 1 class). Workshop 2's agent code remains
+# unchanged.
+
+atlas:referencesSignal
+    a owl:ObjectProperty ;
+    rdfs:label "references signal"@en ;
+    rdfs:domain atlas:AuditRecord ;
+    rdfs:range  atlas:WealthSignal ;
+    rdfs:comment
+        "Links an AuditRecord to the WealthSignal whose creation or routing it audits. Used by Workshop 2's audit_write agent to maintain the audit trail required by SR 11-7 model risk explainability."@en .
+
 
 ##############################################################################
 # 12. Advisor
