@@ -51,3 +51,30 @@ atlas-part-2:referencesSignal a owl:ObjectProperty ;
     rdfs:comment "Links a Referral to the wealth signals that justified it." ;
     rdfs:domain atlas-part-2:Referral ;
     rdfs:range atlas:WealthSignal .
+
+# Lifecycle state — added during Workshop 2 spec refresh.
+# Required by the Wholesale UI's Referral Detail route to render different
+# UI states (draft, pending review, approved, routed, declined). The
+# rationale lifecycle modeled separately by hasApprovedRationale + a future
+# atlas:HumanReview link.
+
+atlas-part-2:referralState
+    a owl:DatatypeProperty ;
+    rdfs:label "referral state"@en ;
+    rdfs:domain atlas-part-2:Referral ;
+    rdfs:range  xsd:string ;
+    rdfs:comment
+        "Lifecycle state of the Referral. Permitted values: 'draft' (visible to banker, no rationale approval yet), 'pending_review' (rationale drafted, awaiting HumanReview), 'approved' (rationale approved, ready for routing), 'routed' (atlas:RoutingDecision exists), 'declined' (banker declined to route). Enforced as a closed list at Workshop 2 runtime ingestion."@en .
+
+
+# Household link — added during Workshop 2 spec refresh.
+# Required by the Wholesale UI's relationship strip to render household
+# context for the customer being referred without re-querying for membership.
+
+atlas-part-2:referralForHousehold
+    a owl:ObjectProperty ;
+    rdfs:label "referral for household"@en ;
+    rdfs:domain atlas-part-2:Referral ;
+    rdfs:range  atlas:Household ;
+    rdfs:comment
+        "Links a Referral to the Household whose advisor coverage gap it addresses. A Referral has at most one Household; if the customer is not in a household, this property is absent."@en .
