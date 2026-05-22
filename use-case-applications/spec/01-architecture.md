@@ -10,13 +10,17 @@ Workshop 2's architecture rests on four theses. Each is a deliberate choice with
 
 ### Thesis 1 — Registry-first agent discovery
 
-Every agent and every MCP server is registered in AWS Agent Registry before any UI knows it exists. The UI queries the registry to learn what capabilities to render; the registry filters its response by the user's persona claim. This is the *capability palette* you see on every Workshop 2 screen.
+Every agent and every MCP server is registered in AWS Agent Registry — the managed AWS service for agent and tool discovery — before any UI knows it exists. The UI queries the registry to learn what capabilities to render; the registry filters its response by the user's persona claim. This is the *capability palette* you see on every Workshop 2 screen.
+
+**MCP-first by design.** AWS Agent Registry supports three record types — MCP, Agent (A2A), and CUSTOM. Workshop 2 uses MCP for nearly everything because the MCP protocol fits the way our components are actually invoked: a UI or an agent sends a structured request, the component returns a structured response, the round-trip is synchronous. This applies to our five capability servers (`atlas-sparql-mcp`, `atlas-shacl-mcp`, `atlas-er-mcp`, `atlas-fibo-mcp`, `atlas-registry-mcp`) and to all seven of our standalone agents (`nl-to-sparql-agent`, `wealth-signal-detector`, `household-traverser`, `referral-rationale-drafter`, `behavioral-signal-agent`, `theme-summarizer`, `conversational-context-manager`). Twelve MCP records, one uniform discovery and invocation interface.
+
+**The one exception.** `referral-orchestrator` wraps a Step Functions state machine and runs asynchronously — the caller starts a workflow, gets an execution ARN, and polls for completion later. The MCP protocol assumes synchronous request-response semantics; pretending Step Functions fits that model would hide its actual async nature from callers. So `referral-orchestrator` is registered as CUSTOM, with metadata describing its workflow lifecycle. This is the only architectural carve-out for a non-MCP record type in Workshop 2.
 
 **The alternative considered and rejected.** Hardcoding agent endpoints in the UI. This works on day one and rots immediately — every new agent requires a UI deploy, every persona change requires a UI deploy, every capability sunset requires a UI deploy. The registry-first pattern decouples the UI from the agent inventory.
 
-**The deeper reason.** Governance. Every registered agent is a new MRM submission, a new attack surface, a new auditable component. An organization that lets developers wire agents directly into UIs has no central place to review what agents exist, who can invoke them, or which ones touch regulated data. The registry is the gate.
+**The deeper reason.** Governance. AWS Agent Registry's DRAFT → PENDING_APPROVAL → APPROVED workflow makes every registered capability a deliberate act with explicit human review. Every approved record is a documented attack surface, a documented MRM submission, a documented auditable component. The registry's approval workflow is the gate — an organization that lets developers wire agents directly into UIs has no equivalent control point.
 
-**Where the novice meets this.** Notebook `03_agent_registry.ipynb` — the first time you query the registry from a UI and see the capability palette populate live.
+**Where the novice meets this.** Notebook `03_agent_registry.ipynb` — the first time you query the registry from a UI and see the capability palette populate live, and the first time you push a new agent through the DRAFT → PENDING_APPROVAL → APPROVED workflow.
 
 ### Thesis 2 — Two UIs, one backbone
 
