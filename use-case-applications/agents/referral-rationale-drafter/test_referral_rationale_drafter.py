@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
                                 "agentic-semantic-layer", "notebooks", "shared"))
 
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
-os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
+os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 os.environ.setdefault("PROMPT_TEMPLATE_S3_URI", "")
 
 import referral_rationale_drafter as handler_module
@@ -83,7 +83,7 @@ class TestHappyPath:
         assert result["is_probabilistic"] is True
         assert result["requires_human_review"] is True
         assert "provenance" in result
-        assert result["provenance"]["model_id"] == "anthropic.claude-sonnet-4-20250514-v1:0"
+        assert result["provenance"]["model_id"] == "us.anthropic.claude-sonnet-4-6"
 
     @patch("referral_rationale_drafter.boto3")
     def test_flags_present_even_on_error(self, mock_boto3):

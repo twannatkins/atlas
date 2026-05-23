@@ -35,7 +35,7 @@ logger.setLevel(logging.INFO)
 
 # Environment
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
-BEDROCK_TEXT_MODEL_ID = os.environ.get("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
+BEDROCK_TEXT_MODEL_ID = os.environ.get("BEDROCK_TEXT_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 PROMPT_TEMPLATE_S3_URI = os.environ.get("PROMPT_TEMPLATE_S3_URI", "")
 
 VALID_PERSONAS = ["atlas-consumer-banker"]
