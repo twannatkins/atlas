@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "SPARQL query/update over Neptune SLGD (and LGD when explicitly scoped). Persona-aware via Lake Formation tag translation.",
   "owner": "atlas-platform-team",
+  "registry_record_type": "MCP",
   "runtime": {
     "type": "lambda",
     "handler": "atlas_sparql_mcp.handler",
@@ -16,12 +17,87 @@
       "SHACL_MCP_ARN": "${atlas_shacl_mcp_arn}"
     }
   },
-  "iam_policy": {"inline_policy": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["neptune-db:*"], "Resource": "${neptune_cluster_arn}"}, {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": "${atlas_shacl_mcp_arn}"}, {"Effect": "Allow", "Action": ["lakeformation:GetDataAccess"], "Resource": "*"}, {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/atlas-sparql-mcp:*"}]}},
-  "operations": {
-    "query": {"input": {"sparql": "string", "persona_claim": "string", "graph_tier": "enum[slgd,lgd]"}, "output": {"rows": "array", "execution_time_ms": "number"}},
-    "update": {"input": {"sparql": "string", "persona_claim": "string"}, "output": {"triples_affected": "number"}},
-    "construct_and_validate": {"input": {"construct_sparql": "string", "shape_uri": "string", "persona_claim": "string"}, "output": {"triples_minted": "array", "validation_report": "object"}}
+  "iam_policy": {
+    "inline_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "neptune-db:*"
+          ],
+          "Resource": "${neptune_cluster_arn}"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "lambda:InvokeFunction"
+          ],
+          "Resource": "${atlas_shacl_mcp_arn}"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "lakeformation:GetDataAccess"
+          ],
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/atlas-sparql-mcp:*"
+        }
+      ]
+    }
   },
-  "registry_metadata": {"discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward", "atlas-auditor"]},
-  "dependencies": {"workshop_1_artifacts": ["agentic-semantic-layer/infrastructure/atlas-neptune-twotier.yaml"]}
+  "operations": {
+    "query": {
+      "input": {
+        "sparql": "string",
+        "persona_claim": "string",
+        "graph_tier": "enum[slgd,lgd]"
+      },
+      "output": {
+        "rows": "array",
+        "execution_time_ms": "number"
+      }
+    },
+    "update": {
+      "input": {
+        "sparql": "string",
+        "persona_claim": "string"
+      },
+      "output": {
+        "triples_affected": "number"
+      }
+    },
+    "construct_and_validate": {
+      "input": {
+        "construct_sparql": "string",
+        "shape_uri": "string",
+        "persona_claim": "string"
+      },
+      "output": {
+        "triples_minted": "array",
+        "validation_report": "object"
+      }
+    }
+  },
+  "registry_metadata": {
+    "discoverable_by": [
+      "atlas-consumer-banker",
+      "atlas-wealth-advisor",
+      "atlas-bsa-analyst",
+      "atlas-ontology-steward",
+      "atlas-auditor"
+    ]
+  },
+  "dependencies": {
+    "workshop_1_artifacts": [
+      "agentic-semantic-layer/infrastructure/atlas-neptune-twotier.yaml"
+    ]
+  }
 }

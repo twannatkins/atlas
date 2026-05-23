@@ -7,6 +7,7 @@
   "owner": "atlas-platform-team",
   "model_risk_classification": "tier-1-deterministic",
   "mrm_submission_ref": "agentic-semantic-layer/docs/model-risk-review.md#wealth-signals",
+  "registry_record_type": "MCP",
   "runtime": {
     "type": "lambda",
     "handler": "wealth_signal_detector.handler",
@@ -23,39 +24,131 @@
     "inline_policy": {
       "Version": "2012-10-17",
       "Statement": [
-        {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": ["${atlas_sparql_mcp_arn}", "${atlas_shacl_mcp_arn}"]},
-        {"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "arn:aws:s3:::atlas-workshop-2/signal-queries/*"},
-        {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/wealth-signal-detector:*"}
+        {
+          "Effect": "Allow",
+          "Action": [
+            "lambda:InvokeFunction"
+          ],
+          "Resource": [
+            "${atlas_sparql_mcp_arn}",
+            "${atlas_shacl_mcp_arn}"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject"
+          ],
+          "Resource": "arn:aws:s3:::atlas-workshop-2/signal-queries/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/wealth-signal-detector:*"
+        }
       ]
     }
   },
   "input_schema": {
     "type": "object",
-    "required": ["target_uri", "persona_claim"],
+    "required": [
+      "target_uri",
+      "persona_claim"
+    ],
     "properties": {
-      "target_uri": {"type": "string", "description": "atlas:Customer or atlas:Household URI"},
-      "signal_types": {"type": "array", "items": {"type": "string"}, "description": "Optional filter; defaults to all Phase 1 signals"},
-      "persona_claim": {"type": "string"}
+      "target_uri": {
+        "type": "string",
+        "description": "atlas:Customer or atlas:Household URI"
+      },
+      "signal_types": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional filter; defaults to all Phase 1 signals"
+      },
+      "persona_claim": {
+        "type": "string"
+      }
     }
   },
   "output_schema": {
     "type": "object",
-    "required": ["status", "signals_minted", "provenance"],
+    "required": [
+      "status",
+      "signals_minted",
+      "provenance"
+    ],
     "properties": {
-      "status": {"type": "string", "enum": ["success", "partial", "no_signals_detected", "validation_failed"]},
-      "signals_minted": {"type": "array", "items": {"type": "object", "properties": {"signal_uri": {"type": "string"}, "signal_type": {"type": "string"}, "strength": {"type": "string", "enum": ["strong", "moderate", "weak", "gap"]}}}},
-      "provenance": {"type": "object", "properties": {"queries_executed": {"type": "array"}, "shapes_validated": {"type": "array"}, "execution_time_ms": {"type": "number"}}}
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "no_signals_detected",
+          "validation_failed"
+        ]
+      },
+      "signals_minted": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "signal_uri": {
+              "type": "string"
+            },
+            "signal_type": {
+              "type": "string"
+            },
+            "strength": {
+              "type": "string",
+              "enum": [
+                "strong",
+                "moderate",
+                "weak",
+                "gap"
+              ]
+            }
+          }
+        }
+      },
+      "provenance": {
+        "type": "object",
+        "properties": {
+          "queries_executed": {
+            "type": "array"
+          },
+          "shapes_validated": {
+            "type": "array"
+          },
+          "execution_time_ms": {
+            "type": "number"
+          }
+        }
+      }
     }
   },
   "registry_metadata": {
-    "discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-ontology-steward"],
+    "discoverable_by": [
+      "atlas-consumer-banker",
+      "atlas-wealth-advisor",
+      "atlas-ontology-steward"
+    ],
     "display_name": "Detect wealth signals",
     "display_icon": "radar",
     "capability_tag": "deterministic",
     "phase": 1
   },
   "dependencies": {
-    "mcp_servers": ["atlas-sparql-mcp", "atlas-shacl-mcp"],
-    "workshop_1_artifacts": ["agentic-semantic-layer/ontology/atlas-shapes.ttl"]
+    "mcp_servers": [
+      "atlas-sparql-mcp",
+      "atlas-shacl-mcp"
+    ],
+    "workshop_1_artifacts": [
+      "agentic-semantic-layer/ontology/atlas-shapes.ttl"
+    ]
   }
 }

@@ -11,16 +11,16 @@ Both files are required for each agent and each MCP server. The markdown is read
 
 Phase 1 registers five agents. Phase 2 adds three more.
 
-| Phase | Agent | Posture |
-|---|---|---|
-| 1 | `nl-to-sparql-agent` | Deterministic-output, audited |
-| 1 | `wealth-signal-detector` | Deterministic, SHACL-driven |
-| 1 | `referral-rationale-drafter` | Probabilistic, human-in-the-loop |
-| 1 | `household-traverser` | Read-only, SPARQL |
-| 1 | `referral-orchestrator` | Workflow, Step Functions |
-| 2 | `behavioral-signal-agent` | Deterministic, runs over LGD-derived sessions |
-| 2 | `theme-summarizer` | Probabilistic, draft-only |
-| 2 | `conversational-context-manager` | Memory-backed, session-scoped |
+| Phase | Agent | Posture | Record type |
+|---|---|---|---|
+| 1 | `nl-to-sparql-agent` | Deterministic-output, audited | MCP |
+| 1 | `wealth-signal-detector` | Deterministic, SHACL-driven | MCP |
+| 1 | `referral-rationale-drafter` | Probabilistic, human-in-the-loop | MCP |
+| 1 | `household-traverser` | Read-only, SPARQL | MCP |
+| 1 | `referral-orchestrator` | Workflow, Step Functions | CUSTOM |
+| 2 | `behavioral-signal-agent` | Deterministic, runs over LGD-derived sessions | MCP |
+| 2 | `theme-summarizer` | Probabilistic, draft-only | MCP |
+| 2 | `conversational-context-manager` | Memory-backed, session-scoped | MCP |
 
 ## The five MCP servers
 

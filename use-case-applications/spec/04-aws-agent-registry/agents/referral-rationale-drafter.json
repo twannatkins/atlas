@@ -7,6 +7,7 @@
   "owner": "atlas-platform-team",
   "model_risk_classification": "tier-3-probabilistic",
   "mrm_submission_ref": "agentic-semantic-layer/docs/model-risk-review.md#rationale-drafter",
+  "registry_record_type": "MCP",
   "runtime": {
     "type": "lambda",
     "handler": "referral_rationale_drafter.handler",
@@ -23,42 +24,124 @@
     "inline_policy": {
       "Version": "2012-10-17",
       "Statement": [
-        {"Effect": "Allow", "Action": ["bedrock:InvokeModel"], "Resource": "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-*"},
-        {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": "${atlas_sparql_mcp_arn}"},
-        {"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "arn:aws:s3:::atlas-workshop-2/prompts/*"},
-        {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/referral-rationale-drafter:*"}
+        {
+          "Effect": "Allow",
+          "Action": [
+            "bedrock:InvokeModel"
+          ],
+          "Resource": "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "lambda:InvokeFunction"
+          ],
+          "Resource": "${atlas_sparql_mcp_arn}"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject"
+          ],
+          "Resource": "arn:aws:s3:::atlas-workshop-2/prompts/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/referral-rationale-drafter:*"
+        }
       ]
     }
   },
   "input_schema": {
     "type": "object",
-    "required": ["household_uri", "signal_uris", "persona_claim"],
+    "required": [
+      "household_uri",
+      "signal_uris",
+      "persona_claim"
+    ],
     "properties": {
-      "household_uri": {"type": "string"},
-      "signal_uris": {"type": "array", "items": {"type": "string"}},
-      "persona_claim": {"type": "string"}
+      "household_uri": {
+        "type": "string"
+      },
+      "signal_uris": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "persona_claim": {
+        "type": "string"
+      }
     }
   },
   "output_schema": {
     "type": "object",
-    "required": ["status", "draft_narrative", "is_probabilistic", "requires_human_review", "provenance"],
+    "required": [
+      "status",
+      "draft_narrative",
+      "is_probabilistic",
+      "requires_human_review",
+      "provenance"
+    ],
     "properties": {
-      "status": {"type": "string", "enum": ["success", "context_query_failed", "generation_failed"]},
-      "draft_narrative": {"type": "string", "description": "The drafted rationale; never committed without human approval"},
-      "is_probabilistic": {"type": "boolean", "const": true},
-      "requires_human_review": {"type": "boolean", "const": true},
-      "provenance": {"type": "object", "properties": {"signals_referenced": {"type": "array"}, "context_queries": {"type": "array"}, "prompt_template_version": {"type": "string"}, "model_id": {"type": "string"}}}
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "context_query_failed",
+          "generation_failed"
+        ]
+      },
+      "draft_narrative": {
+        "type": "string",
+        "description": "The drafted rationale; never committed without human approval"
+      },
+      "is_probabilistic": {
+        "type": "boolean",
+        "const": true
+      },
+      "requires_human_review": {
+        "type": "boolean",
+        "const": true
+      },
+      "provenance": {
+        "type": "object",
+        "properties": {
+          "signals_referenced": {
+            "type": "array"
+          },
+          "context_queries": {
+            "type": "array"
+          },
+          "prompt_template_version": {
+            "type": "string"
+          },
+          "model_id": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "registry_metadata": {
-    "discoverable_by": ["atlas-consumer-banker"],
+    "discoverable_by": [
+      "atlas-consumer-banker"
+    ],
     "display_name": "Draft referral rationale",
     "display_icon": "message-2",
     "capability_tag": "human-in-loop",
     "phase": 1
   },
   "dependencies": {
-    "mcp_servers": ["atlas-sparql-mcp"],
-    "workshop_1_artifacts": ["agentic-semantic-layer/ontology/atlas-shapes.ttl"]
+    "mcp_servers": [
+      "atlas-sparql-mcp"
+    ],
+    "workshop_1_artifacts": [
+      "agentic-semantic-layer/ontology/atlas-shapes.ttl"
+    ]
   }
 }

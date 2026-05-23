@@ -7,7 +7,7 @@
   "owner": "atlas-platform-team",
   "model_risk_classification": "tier-2-interface",
   "mrm_submission_ref": "agentic-semantic-layer/docs/model-risk-review.md#nl-to-sparql",
-
+  "registry_record_type": "MCP",
   "runtime": {
     "type": "lambda",
     "handler": "nl_to_sparql_agent.handler",
@@ -21,7 +21,6 @@
       "BEDROCK_EMBEDDING_MODEL_ID": "amazon.titan-embed-text-v2:0"
     }
   },
-
   "iam_policy": {
     "managed_policies": [],
     "inline_policy": {
@@ -29,12 +28,16 @@
       "Statement": [
         {
           "Effect": "Allow",
-          "Action": ["bedrock:InvokeModel"],
+          "Action": [
+            "bedrock:InvokeModel"
+          ],
           "Resource": "arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0"
         },
         {
           "Effect": "Allow",
-          "Action": ["s3:GetObject"],
+          "Action": [
+            "s3:GetObject"
+          ],
           "Resource": [
             "arn:aws:s3:::atlas-workshop-1/prompts/ground-truth.yaml",
             "arn:aws:s3:::atlas-workshop-1/prompts/prefixes.txt"
@@ -42,21 +45,28 @@
         },
         {
           "Effect": "Allow",
-          "Action": ["lambda:InvokeFunction"],
+          "Action": [
+            "lambda:InvokeFunction"
+          ],
           "Resource": "${atlas_sparql_mcp_arn}"
         },
         {
           "Effect": "Allow",
-          "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
           "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/nl-to-sparql-agent:*"
         }
       ]
     }
   },
-
   "input_schema": {
     "type": "object",
-    "required": ["question", "persona_claim"],
+    "required": [
+      "question",
+      "persona_claim"
+    ],
     "properties": {
       "question": {
         "type": "string",
@@ -80,14 +90,23 @@
       }
     }
   },
-
   "output_schema": {
     "type": "object",
-    "required": ["status", "sparql", "result", "provenance"],
+    "required": [
+      "status",
+      "sparql",
+      "result",
+      "provenance"
+    ],
     "properties": {
       "status": {
         "type": "string",
-        "enum": ["success", "no_template_match", "parameter_extraction_failed", "execution_error"]
+        "enum": [
+          "success",
+          "no_template_match",
+          "parameter_extraction_failed",
+          "execution_error"
+        ]
       },
       "sparql": {
         "type": "string",
@@ -99,11 +118,21 @@
       },
       "provenance": {
         "type": "object",
-        "required": ["template_id", "parameters", "execution_time_ms"],
+        "required": [
+          "template_id",
+          "parameters",
+          "execution_time_ms"
+        ],
         "properties": {
-          "template_id": {"type": "string"},
-          "parameters": {"type": "object"},
-          "execution_time_ms": {"type": "number"}
+          "template_id": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "execution_time_ms": {
+            "type": "number"
+          }
         }
       },
       "clarification_request": {
@@ -112,29 +141,36 @@
       }
     }
   },
-
   "registry_metadata": {
-    "discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward"],
+    "discoverable_by": [
+      "atlas-consumer-banker",
+      "atlas-wealth-advisor",
+      "atlas-bsa-analyst",
+      "atlas-ontology-steward"
+    ],
     "display_name": "Ask the graph",
     "display_icon": "search",
     "capability_tag": "deterministic",
     "phase": 1
   },
-
   "dependencies": {
-    "mcp_servers": ["atlas-sparql-mcp"],
+    "mcp_servers": [
+      "atlas-sparql-mcp"
+    ],
     "workshop_1_artifacts": [
       "agentic-semantic-layer/prompts/ground-truth.yaml",
       "agentic-semantic-layer/prompts/prefixes.txt"
     ]
   },
-
   "verification": {
     "test_questions": [
       {
         "question": "Which customers had a wire over $500k in the last 30 days?",
         "expected_template_id": "large-wire-customers",
-        "expected_parameters": {"threshold_amount": 500000, "window_days": 30}
+        "expected_parameters": {
+          "threshold_amount": 500000,
+          "window_days": 30
+        }
       },
       {
         "question": "Show me households with no advisor coverage.",

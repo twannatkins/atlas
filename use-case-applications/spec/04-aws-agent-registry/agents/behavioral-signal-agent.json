@@ -6,6 +6,7 @@
   "description": "Detects behavioral signals (EngagementDecay, NetworkInfluence) by querying LGD-derived sessions and cross-LOB traversals.",
   "owner": "atlas-platform-team",
   "model_risk_classification": "tier-1-deterministic",
+  "registry_record_type": "MCP",
   "runtime": {
     "type": "lambda",
     "handler": "behavioral_signal_agent.handler",
@@ -17,9 +18,74 @@
       "SHACL_MCP_ARN": "${atlas_shacl_mcp_arn}"
     }
   },
-  "iam_policy": {"inline_policy": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": ["${atlas_sparql_mcp_arn}", "${atlas_shacl_mcp_arn}"]}, {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/behavioral-signal-agent:*"}]}},
-  "input_schema": {"type": "object", "required": ["customer_uri", "persona_claim"], "properties": {"customer_uri": {"type": "string"}, "persona_claim": {"type": "string"}}},
-  "output_schema": {"type": "object", "required": ["status", "signals_minted"], "properties": {"status": {"type": "string"}, "signals_minted": {"type": "array"}}},
-  "registry_metadata": {"discoverable_by": ["atlas-wealth-advisor"], "display_name": "Detect behavioral signals", "display_icon": "activity", "capability_tag": "deterministic", "phase": 2},
-  "dependencies": {"mcp_servers": ["atlas-sparql-mcp", "atlas-shacl-mcp"]}
+  "iam_policy": {
+    "inline_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "lambda:InvokeFunction"
+          ],
+          "Resource": [
+            "${atlas_sparql_mcp_arn}",
+            "${atlas_shacl_mcp_arn}"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/behavioral-signal-agent:*"
+        }
+      ]
+    }
+  },
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "customer_uri",
+      "persona_claim"
+    ],
+    "properties": {
+      "customer_uri": {
+        "type": "string"
+      },
+      "persona_claim": {
+        "type": "string"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": [
+      "status",
+      "signals_minted"
+    ],
+    "properties": {
+      "status": {
+        "type": "string"
+      },
+      "signals_minted": {
+        "type": "array"
+      }
+    }
+  },
+  "registry_metadata": {
+    "discoverable_by": [
+      "atlas-wealth-advisor"
+    ],
+    "display_name": "Detect behavioral signals",
+    "display_icon": "activity",
+    "capability_tag": "deterministic",
+    "phase": 2
+  },
+  "dependencies": {
+    "mcp_servers": [
+      "atlas-sparql-mcp",
+      "atlas-shacl-mcp"
+    ]
+  }
 }
