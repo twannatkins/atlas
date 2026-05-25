@@ -1,0 +1,15 @@
+# Build outputs
+dist/
+*.js
+*.d.ts
+
+# CDK CLI outputs
+cdk.out/
+cdk.context.json
+
+# Dependencies
+node_modules/
+
+# Logs and editor files
+*.log
+.DS_Store
