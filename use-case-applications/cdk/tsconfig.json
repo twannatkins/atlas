@@ -10,7 +10,7 @@
     "noImplicitThis": true,
     "alwaysStrict": true,
     "outDir": "./dist",
-    "rootDir": "./lib",
+    "rootDir": ".",
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
