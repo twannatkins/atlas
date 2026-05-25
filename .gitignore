@@ -23,3 +23,4 @@ notebooks/**/output/
 .uv/
 .pytest_cache/
 .ruff_cache/
+delivery-plan/
