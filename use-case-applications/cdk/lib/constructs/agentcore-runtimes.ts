@@ -85,24 +85,8 @@ export class AgentCoreRuntimesConstruct extends Construct {
     );
 
     // ── MCP Servers ──────────────────────────────────────────────────────────
-
-    this.atlasSparqlMcp = new agentcore.Runtime(this, "AtlasSparqlMcp", {
-      runtimeName: "atlas_sparql_mcp",
-      description: "SPARQL query execution against Neptune SLGD/LGD and Ontop",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("mcp-servers/atlas-sparql-mcp"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
-      authorizerConfiguration: authConfig,
-      environmentVariables: {
-        NEPTUNE_SLGD_ENDPOINT: props.neptuneSlgdEndpoint,
-        NEPTUNE_LGD_ENDPOINT: props.neptuneLgdEndpoint,
-        ONTOP_ECS_ENDPOINT: props.ontopEndpoint,
-        SHACL_MCP_ARN: "", // resolved post-creation; set via SSM or env update
-      },
-      tags: { Workshop: "atlas-workshop-2", Component: "atlas-sparql-mcp" },
-    });
+    // atlasShaclMcp first: it has no peer dependencies, and atlasSparqlMcp
+    // needs its ARN for the construct_and_validate operation.
 
     this.atlasShaclMcp = new agentcore.Runtime(this, "AtlasShaclMcp", {
       runtimeName: "atlas_shacl_mcp",
@@ -117,6 +101,24 @@ export class AgentCoreRuntimesConstruct extends Construct {
         SHAPES_S3_URI: "s3://atlas-workshop-1/ontology/atlas-shapes.ttl",
       },
       tags: { Workshop: "atlas-workshop-2", Component: "atlas-shacl-mcp" },
+    });
+
+    this.atlasSparqlMcp = new agentcore.Runtime(this, "AtlasSparqlMcp", {
+      runtimeName: "atlas_sparql_mcp",
+      description: "SPARQL query execution against Neptune SLGD/LGD and Ontop",
+      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
+        path: componentPath("mcp-servers/atlas-sparql-mcp"),
+        runtime: PYTHON_3_12,
+        entrypoint: ENTRYPOINT,
+      }),
+      authorizerConfiguration: authConfig,
+      environmentVariables: {
+        NEPTUNE_SLGD_ENDPOINT: props.neptuneSlgdEndpoint,
+        NEPTUNE_LGD_ENDPOINT: props.neptuneLgdEndpoint,
+        ONTOP_ECS_ENDPOINT: props.ontopEndpoint,
+        SHACL_MCP_ARN: this.atlasShaclMcp.agentRuntimeArn,
+      },
+      tags: { Workshop: "atlas-workshop-2", Component: "atlas-sparql-mcp" },
     });
 
     this.atlasErMcp = new agentcore.Runtime(this, "AtlasErMcp", {
