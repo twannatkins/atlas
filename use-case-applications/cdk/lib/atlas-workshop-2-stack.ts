@@ -19,6 +19,7 @@ import { StepFunctionsConstruct } from "./constructs/step-functions";
 import { LakeFormationConstruct } from "./constructs/lake-formation";
 import { AgentCoreMemoryConstruct } from "./constructs/agentcore-memory";
 import { AgentCoreRuntimesConstruct } from "./constructs/agentcore-runtimes";
+import { OrchestratorRegistrationConstruct } from "./constructs/orchestrator-registration";
 
 export class AtlasWorkshop2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -65,6 +66,12 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       writeRoutingDecisionFn: lambdas.getFunction("write-routing-decision"),
       notifyAdvisorFn: lambdas.getFunction("notify-advisor"),
       auditWriteFn: lambdas.getFunction("audit-write"),
+    });
+
+    // ─── 6b. Register referral-orchestrator CUSTOM record ───────────
+    // Must follow StepFunctions so stateMachineArn is a resolved token.
+    new OrchestratorRegistrationConstruct(this, "OrchestratorRegistration", {
+      stateMachineArn: stepFunctions.stateMachineArn,
     });
 
     // ─── 7. CloudFront distributions ────────────────────────────────
