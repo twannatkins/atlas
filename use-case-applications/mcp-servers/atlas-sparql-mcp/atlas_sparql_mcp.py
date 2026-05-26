@@ -224,17 +224,17 @@ def _handle_construct_and_validate(event: Dict[str, Any], invocation_id: str, st
 
     # Validate via atlas-shacl-mcp
     try:
-        lambda_client = boto3.client("lambda")
-        shacl_response = lambda_client.invoke(
-            FunctionName=SHACL_MCP_ARN,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({
+        agentcore_client = boto3.client("bedrock-agentcore")
+        shacl_response = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=SHACL_MCP_ARN,
+            payload=json.dumps({
                 "operation": "validate",
                 "triples": triples_minted,
                 "shape_uris": [shape_uri],
-            }),
+            }).encode(),
+            contentType="application/json",
         )
-        shacl_result = json.loads(shacl_response["Payload"].read())
+        shacl_result = json.loads(shacl_response["response"].read())
     except Exception as exc:
         return _error_response(invocation_id, start_time, "shacl_invocation_error", f"SHACL MCP call failed: {exc}")
 

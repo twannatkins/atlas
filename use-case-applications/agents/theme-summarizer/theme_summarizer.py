@@ -91,18 +91,18 @@ def _get_theme_articles(theme_uri: str, persona_claim: str) -> list:
         OPTIONAL {{ ?article atlas-part-2:source ?source }}
     }}
     """
-    lambda_client = boto3.client("lambda")
-    response = lambda_client.invoke(
-        FunctionName=SPARQL_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
+    agentcore_client = boto3.client("bedrock-agentcore")
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=SPARQL_MCP_ARN,
+        payload=json.dumps({
             "operation": "query",
             "sparql": sparql,
             "persona_claim": persona_claim,
             "graph_tier": "slgd",
-        }),
+        }).encode(),
+        contentType="application/json",
     )
-    result = json.loads(response["Payload"].read())
+    result = json.loads(response["response"].read())
     if result.get("status") == "error":
         raise RuntimeError(result.get("message", "SPARQL query failed"))
     return result.get("rows", [])

@@ -27,7 +27,7 @@
         {
           "Effect": "Allow",
           "Action": [
-            "lambda:InvokeFunction"
+            "bedrock-agentcore:InvokeAgentRuntime"
           ],
           "Resource": [
             "${atlas_sparql_mcp_arn}",

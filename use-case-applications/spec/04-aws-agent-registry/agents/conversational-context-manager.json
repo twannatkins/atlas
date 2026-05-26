@@ -25,7 +25,7 @@
         {
           "Effect": "Allow",
           "Action": [
-            "lambda:InvokeFunction"
+            "bedrock-agentcore:InvokeAgentRuntime"
           ],
           "Resource": "${nl_to_sparql_agent_arn}"
         },

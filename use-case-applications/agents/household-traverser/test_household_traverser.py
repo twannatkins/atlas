@@ -30,8 +30,8 @@ class TestHappyPath:
     @patch("household_traverser.boto3")
     def test_traversal_returns_nodes(self, mock_boto3):
         """A valid household URI returns 1-hop neighbor nodes."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         sparql_result = json.dumps({
             "status": "success",
@@ -40,8 +40,8 @@ class TestHappyPath:
                 {"uri": "atlas:acct/002", "type": "atlas:Account", "label": "Checking 4421", "relationship": "atlas:hasAccount"},
             ],
         }).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=sparql_result))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=sparql_result))
         }
 
         event = {
@@ -61,12 +61,12 @@ class TestHappyPath:
     @patch("household_traverser.boto3")
     def test_empty_household_returns_not_found(self, mock_boto3):
         """A household with no neighbors returns not_found."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         sparql_result = json.dumps({"status": "success", "rows": []}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=sparql_result))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=sparql_result))
         }
 
         event = {
@@ -110,12 +110,12 @@ class TestDownstreamFailures:
     @patch("household_traverser.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When atlas-sparql-mcp fails, handler returns query_error."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         error_payload = json.dumps({"status": "error", "message": "Neptune timeout"}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=error_payload))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=error_payload))
         }
 
         event = {

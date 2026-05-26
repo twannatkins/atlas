@@ -20,7 +20,7 @@ from atlas_fibo_mcp import handler
 def _mock_sparql_response(rows):
     """Helper to create a mock Lambda invoke response."""
     payload = json.dumps({"status": "success", "rows": rows}).encode()
-    return {"Payload": MagicMock(read=MagicMock(return_value=payload))}
+    return {"response": MagicMock(read=MagicMock(return_value=payload))}
 
 
 class TestClassInfoOperation:
@@ -29,9 +29,9 @@ class TestClassInfoOperation:
     @patch("atlas_fibo_mcp.boto3")
     def test_happy_path_class_info(self, mock_boto3):
         """class_info returns label, comment, parents, and alignment."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-        mock_lambda.invoke.return_value = _mock_sparql_response([
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
+        mock_agentcore.invoke_agent_runtime.return_value = _mock_sparql_response([
             {"label": "Customer", "comment": "A banking customer", "parent": "fibo:Party", "alignment": "fibo:LegalPerson"},
         ])
 
@@ -60,10 +60,10 @@ class TestClassInfoOperation:
     @patch("atlas_fibo_mcp.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When atlas-sparql-mcp returns error, handler surfaces it."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
         error_payload = json.dumps({"status": "error", "message": "Neptune timeout"}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=error_payload))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=error_payload))}
 
         event = {
             "operation": "class_info",
@@ -83,9 +83,9 @@ class TestListClassesOperation:
     @patch("atlas_fibo_mcp.boto3")
     def test_happy_path_list_classes(self, mock_boto3):
         """list_classes returns classes in the given namespace."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-        mock_lambda.invoke.return_value = _mock_sparql_response([
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
+        mock_agentcore.invoke_agent_runtime.return_value = _mock_sparql_response([
             {"class": "atlas:Customer", "label": "Customer"},
             {"class": "atlas:Account", "label": "Account"},
         ])
@@ -117,9 +117,9 @@ class TestSubclassesOfOperation:
     @patch("atlas_fibo_mcp.boto3")
     def test_happy_path_subclasses(self, mock_boto3):
         """subclasses_of returns subclasses of the given class."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-        mock_lambda.invoke.return_value = _mock_sparql_response([
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
+        mock_agentcore.invoke_agent_runtime.return_value = _mock_sparql_response([
             {"subclass": "atlas:WealthSignal", "label": "Wealth Signal"},
         ])
 

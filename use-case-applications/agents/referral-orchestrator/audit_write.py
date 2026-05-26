@@ -60,17 +60,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
 
     try:
-        lambda_client = boto3.client("lambda")
-        response = lambda_client.invoke(
-            FunctionName=SPARQL_MCP_ARN,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({
+        agentcore_client = boto3.client("bedrock-agentcore")
+        response = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=SPARQL_MCP_ARN,
+            payload=json.dumps({
                 "operation": "update",
                 "sparql": insert_sparql,
                 "persona_claim": persona_claim,
-            }),
+            }).encode(),
+            contentType="application/json",
         )
-        result = json.loads(response["Payload"].read())
+        result = json.loads(response["response"].read())
         if result.get("status") == "error":
             return {**event, "status": "workflow_error", "error": result.get("message", "Audit write failed")}
     except Exception as exc:

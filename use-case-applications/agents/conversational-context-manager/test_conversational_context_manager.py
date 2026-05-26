@@ -30,20 +30,11 @@ class TestHappyPath:
     @patch("conversational_context_manager.boto3")
     def test_first_turn_no_prior_context(self, mock_boto3):
         """First turn in a session works without prior context."""
-        mock_memory = MagicMock()
-        mock_lambda = MagicMock()
-
-        def client_factory(service_name, **kwargs):
-            if service_name == "bedrock-agentcore":
-                return mock_memory
-            elif service_name == "lambda":
-                return mock_lambda
-            return MagicMock()
-
-        mock_boto3.client.side_effect = client_factory
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         # No prior memory
-        mock_memory.get_memory.side_effect = Exception("Not found")
+        mock_agentcore.get_memory.side_effect = Exception("Not found")
 
         # nl-to-sparql-agent returns success
         nl_result = json.dumps({
@@ -51,7 +42,7 @@ class TestHappyPath:
             "sparql": "SELECT ?s WHERE { ?s ?p ?o }",
             "result": [{"s": "atlas:cust/001"}],
         }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=nl_result))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=nl_result))}
 
         event = {
             "question": "Which customers have a wealth signal?",
@@ -69,21 +60,12 @@ class TestHappyPath:
     @patch("conversational_context_manager.boto3")
     def test_follow_up_with_prior_context(self, mock_boto3):
         """Follow-up question uses prior context from memory."""
-        mock_memory = MagicMock()
-        mock_lambda = MagicMock()
-
-        def client_factory(service_name, **kwargs):
-            if service_name == "bedrock-agentcore":
-                return mock_memory
-            elif service_name == "lambda":
-                return mock_lambda
-            return MagicMock()
-
-        mock_boto3.client.side_effect = client_factory
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         # Prior context exists
         prior = json.dumps({"turns": [{"question": "Which customers?", "sparql": "SELECT ?s WHERE { ?s ?p ?o }", "result_count": 5}]})
-        mock_memory.get_memory.return_value = {"content": prior}
+        mock_agentcore.get_memory.return_value = {"content": prior}
 
         # nl-to-sparql-agent returns success
         nl_result = json.dumps({
@@ -91,7 +73,7 @@ class TestHappyPath:
             "sparql": "SELECT ?s WHERE { ?s ?p ?o . FILTER(?s IN (...)) }",
             "result": [{"s": "atlas:cust/002"}],
         }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=nl_result))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=nl_result))}
 
         event = {
             "question": "Of those, which have no advisor?",
@@ -128,19 +110,10 @@ class TestDownstreamFailures:
     @patch("conversational_context_manager.boto3")
     def test_nl_to_sparql_failure(self, mock_boto3):
         """When nl-to-sparql-agent fails, handler returns query_error."""
-        mock_memory = MagicMock()
-        mock_lambda = MagicMock()
-
-        def client_factory(service_name, **kwargs):
-            if service_name == "bedrock-agentcore":
-                return mock_memory
-            elif service_name == "lambda":
-                return mock_lambda
-            return MagicMock()
-
-        mock_boto3.client.side_effect = client_factory
-        mock_memory.get_memory.side_effect = Exception("Not found")
-        mock_lambda.invoke.side_effect = Exception("Lambda timeout")
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
+        mock_agentcore.get_memory.side_effect = Exception("Not found")
+        mock_agentcore.invoke_agent_runtime.side_effect = Exception("AgentCore timeout")
 
         event = {"question": "Which?", "session_id": "s1", "persona_claim": "atlas-wealth-advisor"}
         result = handler(event, None)

@@ -35,7 +35,7 @@ def _mock_construct_success(triples=None):
         "triples_minted": triples,
         "validation_report": {"conforms": True},
     }).encode()
-    return {"Payload": MagicMock(read=MagicMock(return_value=payload))}
+    return {"response": MagicMock(read=MagicMock(return_value=payload))}
 
 
 def _mock_construct_empty():
@@ -45,7 +45,7 @@ def _mock_construct_empty():
         "triples_minted": [],
         "validation_report": {"conforms": True},
     }).encode()
-    return {"Payload": MagicMock(read=MagicMock(return_value=payload))}
+    return {"response": MagicMock(read=MagicMock(return_value=payload))}
 
 
 class TestHappyPath:
@@ -54,9 +54,9 @@ class TestHappyPath:
     @patch("wealth_signal_detector.boto3")
     def test_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns triples, signals are minted."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-        mock_lambda.invoke.return_value = _mock_construct_success()
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
+        mock_agentcore.invoke_agent_runtime.return_value = _mock_construct_success()
 
         event = {
             "target_uri": "atlas:cust/9c2a1e",
@@ -76,9 +76,9 @@ class TestHappyPath:
     @patch("wealth_signal_detector.boto3")
     def test_no_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns empty, status is no_signals_detected."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-        mock_lambda.invoke.return_value = _mock_construct_empty()
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
+        mock_agentcore.invoke_agent_runtime.return_value = _mock_construct_empty()
 
         event = {
             "target_uri": "atlas:cust/no-signals",
@@ -93,9 +93,9 @@ class TestHappyPath:
     @patch("wealth_signal_detector.boto3")
     def test_filtered_signal_types(self, mock_boto3):
         """When signal_types filter is provided, only those signals are checked."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-        mock_lambda.invoke.return_value = _mock_construct_success()
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
+        mock_agentcore.invoke_agent_runtime.return_value = _mock_construct_success()
 
         event = {
             "target_uri": "atlas:cust/9c2a1e",
@@ -140,12 +140,12 @@ class TestDownstreamFailures:
     @patch("wealth_signal_detector.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When atlas-sparql-mcp fails, handler returns gracefully."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         error_payload = json.dumps({"status": "error", "message": "Neptune timeout"}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=error_payload))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=error_payload))
         }
 
         event = {

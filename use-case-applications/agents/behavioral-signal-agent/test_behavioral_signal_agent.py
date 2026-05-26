@@ -28,15 +28,15 @@ class TestHappyPath:
     @patch("behavioral_signal_agent.boto3")
     def test_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns triples, behavioral signals are minted."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         payload = json.dumps({
             "status": "success",
             "triples_minted": [{"s": "atlas:sig/001", "p": "rdf:type", "o": "atlas:WealthSignal"}],
             "validation_report": {"conforms": True},
         }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=payload))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=payload))}
 
         event = {
             "customer_uri": "atlas:cust/9c2a1e",
@@ -51,11 +51,11 @@ class TestHappyPath:
     @patch("behavioral_signal_agent.boto3")
     def test_no_signals_detected(self, mock_boto3):
         """When CONSTRUCT returns empty, status is no_signals_detected."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         payload = json.dumps({"status": "success", "triples_minted": [], "validation_report": {"conforms": True}}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=payload))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=payload))}
 
         event = {"customer_uri": "atlas:cust/no-signals", "persona_claim": "atlas-wealth-advisor"}
         result = handler(event, None)
@@ -81,11 +81,11 @@ class TestDownstreamFailures:
     @patch("behavioral_signal_agent.boto3")
     def test_sparql_mcp_failure(self, mock_boto3):
         """When MCP fails, handler returns gracefully."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         error_payload = json.dumps({"status": "error", "message": "timeout"}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=error_payload))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=error_payload))}
 
         event = {"customer_uri": "atlas:cust/001", "persona_claim": "atlas-wealth-advisor"}
         result = handler(event, None)
