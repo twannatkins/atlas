@@ -17,6 +17,8 @@ import { LambdaConstruct } from "./constructs/lambdas";
 import { CloudFrontConstruct } from "./constructs/cloudfront";
 import { StepFunctionsConstruct } from "./constructs/step-functions";
 import { LakeFormationConstruct } from "./constructs/lake-formation";
+import { AgentCoreMemoryConstruct } from "./constructs/agentcore-memory";
+import { AgentCoreRuntimesConstruct } from "./constructs/agentcore-runtimes";
 
 export class AtlasWorkshop2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -84,13 +86,22 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     const cloudfront = new CloudFrontConstruct(this, "CloudFront");
 
     // ─── 8. Lake Formation tag policies ─────────────────────────────
-    const lakeFormation = new LakeFormationConstruct(
-      this,
-      "LakeFormation",
-      {
-        personas: cognito.personas,
-      },
-    );
+    new LakeFormationConstruct(this, "LakeFormation", {
+      personas: cognito.personas,
+    });
+
+    // ─── 9. AgentCore Memory store ──────────────────────────────────
+    const memory = new AgentCoreMemoryConstruct(this, "Memory");
+
+    // ─── 10. AgentCore Runtimes (12 MCP-shaped components) ──────────
+    const runtimes = new AgentCoreRuntimesConstruct(this, "Runtimes", {
+      userPool: cognito.userPool,
+      userPoolClient: cognito.userPoolClient,
+      memory,
+      neptuneSlgdEndpoint: neptuneEndpoint ?? "",
+      neptuneLgdEndpoint: neptuneEndpoint ?? "",
+      ontopEndpoint: ontop.endpoint,
+    });
 
     // ─── Outputs ────────────────────────────────────────────────────
     new cdk.CfnOutput(this, "AppSyncEndpoint", {
@@ -112,6 +123,18 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     new cdk.CfnOutput(this, "StateMachineArn", {
       value: stepFunctions.stateMachineArn,
       description: "Referral orchestrator Step Functions ARN",
+    });
+    new cdk.CfnOutput(this, "MemoryId", {
+      value: memory.memoryId,
+      description: "AgentCore Memory store ID",
+    });
+    new cdk.CfnOutput(this, "AtlasSparqlMcpArn", {
+      value: runtimes.atlasSparqlMcp.agentRuntimeArn,
+      description: "atlas-sparql-mcp AgentCore Runtime ARN",
+    });
+    new cdk.CfnOutput(this, "ConversationalContextManagerArn", {
+      value: runtimes.conversationalContextManager.agentRuntimeArn,
+      description: "conversational-context-manager AgentCore Runtime ARN",
     });
   }
 }

@@ -69,9 +69,12 @@ export class AgentCoreMemoryConstruct extends Construct {
       },
     });
 
-    // Apply removal policy: workshop teardown should clean up cleanly.
+    // Apply removal policy on the underlying CfnMemory — the L2 Memory class
+    // stores its CfnResource as a private field and does not wire
+    // applyRemovalPolicy through. Find the CfnResource by its construct id.
     // Production deployments override to RETAIN before deploy.
-    this.memory.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+    const cfnMemory = this.memory.node.findChild("Memory") as cdk.CfnResource;
+    cfnMemory.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
 
     this.memoryArn = this.memory.memoryArn;
     this.memoryId = this.memory.memoryId;
