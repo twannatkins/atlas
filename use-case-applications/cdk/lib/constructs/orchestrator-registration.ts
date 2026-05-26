@@ -8,10 +8,19 @@
  * resolve to the real ARN during the CloudFormation deploy, so the
  * registration is atomic with the rest of the stack.
  *
- * The provider Lambda calls bedrock-agentcore:CreateAgent on Create/Update
- * and bedrock-agentcore:DeleteAgent on Delete. The registration payload is
- * passed via environment variables so the Lambda code itself is static and
- * can use Code.fromInline.
+ * Control-plane service: bedrock-agentcore-control (not bedrock-agentcore).
+ * The data-plane service (bedrock-agentcore) only exposes runtime operations
+ * like InvokeAgentRuntime and SearchRegistryRecords. Registry management
+ * (CreateRegistryRecord, DeleteRegistryRecord) lives on the control plane.
+ * Both share the same IAM action prefix: bedrock-agentcore:.
+ *
+ * The provider Lambda:
+ *   Create: ensures the atlas-workshop-2 registry exists (creates it if not
+ *     found), then calls CreateRegistryRecord with descriptorType=CUSTOM and
+ *     descriptors.custom.inlineContent set to the workflow payload JSON.
+ *   Update: re-creates the record inline (CloudFormation replaces on ARN change).
+ *   Delete: parses registryId and recordId from the stored PhysicalResourceId
+ *     (the record ARN), then calls DeleteRegistryRecord.
  *
  * Caveat (DECISION 04-A): this Custom Resource code cannot be verified
  * end-to-end until Phase 05 deploys it. Phase 04 verifies only that
@@ -29,6 +38,11 @@ import { Construct } from "constructs";
 export interface OrchestratorRegistrationProps {
   /** Step Functions state machine ARN — resolved as a CDK token at synth time. */
   readonly stateMachineArn: string;
+  /**
+   * Agent Registry name to create or reuse.
+   * @default "atlas-workshop-2"
+   */
+  readonly registryName?: string;
 }
 
 /** Inline Python for the Custom Resource provider Lambda. */
@@ -39,16 +53,14 @@ import urllib.request
 AGENT_NAME        = os.environ["AGENT_NAME"]
 AGENT_DESCRIPTION = os.environ["AGENT_DESCRIPTION"]
 AGENT_VERSION     = os.environ["AGENT_VERSION"]
-INPUT_SCHEMA      = json.loads(os.environ["INPUT_SCHEMA_JSON"])
-OUTPUT_SCHEMA     = json.loads(os.environ["OUTPUT_SCHEMA_JSON"])
-REGISTRY_META     = json.loads(os.environ["REGISTRY_META_JSON"])
+REGISTRY_NAME     = os.environ["REGISTRY_NAME"]
 STATE_MACHINE_ARN = os.environ["STATE_MACHINE_ARN"]
 
-def cfn_send(event, context, status, data=None, reason=None):
+def cfn_send(event, context, status, data=None, reason=None, physical_id=None):
     body = json.dumps({
         "Status": status,
         "Reason": reason or status,
-        "PhysicalResourceId": event.get("PhysicalResourceId", AGENT_NAME),
+        "PhysicalResourceId": physical_id or event.get("PhysicalResourceId", AGENT_NAME),
         "StackId": event["StackId"],
         "RequestId": event["RequestId"],
         "LogicalResourceId": event["LogicalResourceId"],
@@ -59,27 +71,55 @@ def cfn_send(event, context, status, data=None, reason=None):
     req.add_header("Content-Type", "")
     urllib.request.urlopen(req)
 
+def ensure_registry(client):
+    """Return registryId for REGISTRY_NAME, creating the registry if absent."""
+    resp = client.list_registries()
+    for reg in resp.get("registries", []):
+        if reg["name"] == REGISTRY_NAME:
+            return reg["registryId"]
+    create_resp = client.create_registry(
+        name=REGISTRY_NAME,
+        description="ATLAS Workshop 2 agent registry",
+    )
+    # registryArn: arn:aws:bedrock-agentcore:region:account:registry/{registryId}
+    return create_resp["registryArn"].split("/")[-1]
+
 def handler(event, context):
     request_type = event["RequestType"]
-    client = boto3.client("bedrock-agentcore")
+    client = boto3.client("bedrock-agentcore-control")
     try:
         if request_type in ("Create", "Update"):
-            meta = dict(REGISTRY_META)
-            meta["workflowArn"] = STATE_MACHINE_ARN
-            resp = client.create_agent(
-                agentName=AGENT_NAME,
+            registry_id = ensure_registry(client)
+            inline_content = json.dumps({
+                "workflowArn": STATE_MACHINE_ARN,
+                "workflowType": "StepFunctions",
+                "agentName": AGENT_NAME,
+                "version": AGENT_VERSION,
+            })
+            resp = client.create_registry_record(
+                registryId=registry_id,
+                name=AGENT_NAME,
                 description=AGENT_DESCRIPTION,
-                version=AGENT_VERSION,
-                inputSchema=INPUT_SCHEMA,
-                outputSchema=OUTPUT_SCHEMA,
-                registryMetadata=meta,
+                descriptorType="CUSTOM",
+                descriptors={"custom": {"inlineContent": inline_content}},
+                recordVersion=AGENT_VERSION,
             )
+            record_arn = resp["recordArn"]
             cfn_send(event, context, "SUCCESS",
-                     data={"AgentId": resp.get("agentId", "")})
+                     data={"RecordArn": record_arn},
+                     physical_id=record_arn)
         elif request_type == "Delete":
-            agent_id = event.get("PhysicalResourceId", "")
-            if agent_id and agent_id != AGENT_NAME:
-                client.delete_agent(agentId=agent_id)
+            # PhysicalResourceId is the record ARN:
+            # arn:aws:...:registry/{registryId}/record/{recordId}
+            physical_id = event.get("PhysicalResourceId", "")
+            parts = physical_id.split("/")
+            if len(parts) >= 4:
+                registry_id = parts[-3]
+                record_id = parts[-1]
+                try:
+                    client.delete_registry_record(registryId=registry_id, recordId=record_id)
+                except Exception:
+                    pass  # idempotent — already deleted is fine
             cfn_send(event, context, "SUCCESS")
     except Exception as exc:
         cfn_send(event, context, "FAILED", reason=str(exc))
@@ -104,8 +144,8 @@ export class OrchestratorRegistrationConstruct extends Construct {
       "referral-orchestrator.json",
     );
     const descriptor = JSON.parse(fs.readFileSync(specPath, "utf-8"));
+    const registryName = props.registryName ?? "atlas-workshop-2";
 
-    // Provider Lambda — runs on Create, Update, Delete
     const providerFn = new lambda.Function(this, "ProviderFn", {
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: "index.handler",
@@ -115,19 +155,20 @@ export class OrchestratorRegistrationConstruct extends Construct {
         AGENT_NAME: descriptor.agent_name,
         AGENT_DESCRIPTION: descriptor.description,
         AGENT_VERSION: descriptor.version,
-        INPUT_SCHEMA_JSON: JSON.stringify(descriptor.input_schema),
-        OUTPUT_SCHEMA_JSON: JSON.stringify(descriptor.output_schema),
-        REGISTRY_META_JSON: JSON.stringify(descriptor.registry_metadata),
+        REGISTRY_NAME: registryName,
         STATE_MACHINE_ARN: props.stateMachineArn,
       },
     });
 
     providerFn.addToRolePolicy(
       new iam.PolicyStatement({
+        // bedrock-agentcore-control shares the bedrock-agentcore IAM namespace
         actions: [
-          "bedrock-agentcore:CreateAgent",
-          "bedrock-agentcore:UpdateAgent",
-          "bedrock-agentcore:DeleteAgent",
+          "bedrock-agentcore:ListRegistries",
+          "bedrock-agentcore:CreateRegistry",
+          "bedrock-agentcore:CreateRegistryRecord",
+          "bedrock-agentcore:UpdateRegistryRecord",
+          "bedrock-agentcore:DeleteRegistryRecord",
         ],
         resources: ["*"],
       }),
@@ -141,7 +182,7 @@ export class OrchestratorRegistrationConstruct extends Construct {
       serviceToken: provider.serviceToken,
       resourceType: "Custom::AgentRegistryRecord",
       properties: {
-        // Force re-registration on state machine ARN change
+        // Changing StateMachineArn triggers Update, which re-registers
         StateMachineArn: props.stateMachineArn,
       },
     });
