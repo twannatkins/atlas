@@ -68,7 +68,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       auditWriteFn: lambdas.getFunction("audit-write"),
     });
 
-    // ─── 6b. Register referral-orchestrator CUSTOM record ───────────
+    // ─── 6. Register referral-orchestrator CUSTOM record ────────────
     // Must follow StepFunctions so stateMachineArn is a resolved token.
     new OrchestratorRegistrationConstruct(this, "OrchestratorRegistration", {
       stateMachineArn: stepFunctions.stateMachineArn,
@@ -96,9 +96,9 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       ontopEndpoint: ontop.endpoint,
     });
 
-    // ─── 6. AppSync GraphQL API ─────────────────────────────────────
-    // Numbered 6 in the teaching sequence but created after Runtimes (10) so
-    // the proxy Lambdas can reference Runtime ARNs as CDK tokens.
+    // ─── 11. AppSync GraphQL API ────────────────────────────────────
+    // AppSync is created last so the proxy Lambdas (defined inline below) can
+    // reference Runtime ARNs as CDK tokens.
     const appsync = new AppSyncConstruct(this, "AppSync", {
       userPool: cognito.userPool,
       sparqlMcpArn: runtimes.atlasSparqlMcp.agentRuntimeArn,
