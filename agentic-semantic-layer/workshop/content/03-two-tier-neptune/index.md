@@ -135,7 +135,7 @@ Run cell 9. Expected output (excerpt):
 ```
 Query 1: All OWL classes in the SLGD
 ------------------------------------------------------------
-Classes found: 21
+Classes found: 22
   Account                        Account
   Advisor                        Advisor
   ...
@@ -182,7 +182,7 @@ Run cell 12. Expected output:
 ============================================================
 MODULE 3 VALIDATION GATE
 ============================================================
-[PASS] Gate 1 — SLGD has 21 atlas: classes (expected >= 18)
+[PASS] Gate 1 — SLGD has 22 atlas: classes (expected >= 18)
 [PASS] Gate 2 — LGD is empty (0 triples)
 [PASS] Gate 3 — SLGD queryable (353 total triples)
 [PASS] Gate 4 — atlas-lgd status: available

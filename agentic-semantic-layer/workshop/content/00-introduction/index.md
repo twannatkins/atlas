@@ -37,7 +37,7 @@ By module 8 you will see, end to end, how a customer event flows from a source s
 
 ## What you'll have at the end
 
-A FIBO-aligned ontology of 22 classes covering customers, accounts, holdings, transactions, advisors, households, signals, and the governance scaffolding around all of it. Six SHACL shapes that draw the deterministic boundary. Three R2RML mappings that federate enterprise data sources without copying their bytes. A two-tier Neptune deployment populated with 200 synthetic customers, 3,747 transactions, 10 advisors, and 105 advisory relationships. Bedrock at the edges, translating natural language to SPARQL through a ground-truth set of question-answer pairs.
+A FIBO-aligned ontology of 24 classes (19 core domain + 3 FIBO alignment + 2 governance) covering customers, accounts, holdings, transactions, advisors, households, signals, and the governance scaffolding around all of it. Six SHACL shapes that draw the deterministic boundary. Three R2RML mappings that federate enterprise data sources without copying their bytes. A two-tier Neptune deployment populated with 200 synthetic customers, 3,747 transactions, 10 advisors, and 105 advisory relationships. Bedrock at the edges, translating natural language to SPARQL through a ground-truth set of question-answer pairs.
 
 You will have this in a working AWS environment. You will be able to query it. You will be able to extend it. And tomorrow, when you move to Workshop 2, you will be able to point agents at it.
 

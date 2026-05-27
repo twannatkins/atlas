@@ -94,7 +94,7 @@ Over the course of this workshop, you built:
 
 | Layer | What | Where |
 |-------|------|-------|
-| Ontology | 19-class FIBO-aligned ontology with SHACL shapes | `ontology/` |
+| Ontology | 24-class FIBO-aligned ontology (19 core + 3 FIBO + 2 governance) with 6 SHACL shapes | `ontology/` |
 | Infrastructure | Two-tier Neptune (LGD + SLGD) | CloudFormation (now deleted) |
 | Data Integration | Three connection patterns (Iceberg, Athena, Lambda) | `mappings/` |
 | Application | NL↔SPARQL, bounded agent, human-in-the-loop | Notebooks 7–8 |
