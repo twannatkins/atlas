@@ -400,9 +400,8 @@ atlas:hasEligibility
 atlas:triggersRouting
     a owl:ObjectProperty ;
     rdfs:label "triggers routing"@en ;
-    rdfs:domain atlas:Eligibility ;
     rdfs:range  atlas:RoutingDecision ;
-    rdfs:comment "Links an Eligibility determination to the resulting RoutingDecision."@en .
+    rdfs:comment "Links a WealthSignal or Eligibility determination to the resulting RoutingDecision. Polymorphic: a signal can trigger routing directly when it alone is sufficient, or via an Eligibility intermediate when scoring and policy rules need to weigh in."@en .
 
 atlas:reviewedBy
     a owl:ObjectProperty ;
