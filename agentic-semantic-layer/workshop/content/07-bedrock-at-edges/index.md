@@ -62,6 +62,10 @@ The lifecycle of a single Competency Question across this workshop:
 
 ## Steps
 
+Before running any code, read cell 1 of the notebook — it contains the module
+introduction and a Key Terms table. The vocabulary defined there is referenced
+throughout the rest of the module.
+
 ### Step 1 — Open the notebook and configure Bedrock
 
 Open `notebooks/07_bedrock_at_edges.ipynb`. Run cell 2 to initialize the Bedrock

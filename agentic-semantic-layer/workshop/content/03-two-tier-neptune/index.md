@@ -50,6 +50,10 @@ against real infrastructure from this point forward.
 
 ## Steps
 
+Before running any code, read cell 1 of the notebook — it contains the module
+introduction and a Key Terms table. The vocabulary defined there is referenced
+throughout the rest of the module.
+
 ### Step 1 — Deploy the CloudFormation stack
 
 If you have not already deployed the Neptune stack, run the following in a terminal

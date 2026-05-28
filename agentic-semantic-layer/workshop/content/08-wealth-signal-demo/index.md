@@ -60,6 +60,10 @@ This completes the Competency Question lifecycle:
 
 ## Steps
 
+Before running any code, read cell 1 of the notebook — it contains the module
+introduction and a Key Terms table. The vocabulary defined there is referenced
+throughout the rest of the module.
+
 ### Step 1 — Open the notebook and review the workflow
 
 Open `notebooks/08_wealth_signal_demo.ipynb`. Read cell 1 (the module introduction)

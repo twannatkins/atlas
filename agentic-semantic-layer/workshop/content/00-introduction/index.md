@@ -1,3 +1,8 @@
+---
+title: "Welcome to ATLAS"
+weight: 1
+---
+
 # Welcome
 
 Over the next day, you are going to build an **ontology**.
