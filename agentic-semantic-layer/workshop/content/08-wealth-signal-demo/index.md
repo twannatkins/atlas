@@ -147,6 +147,49 @@ Step 5: Audit Trail Written to SLGD
   Audit trail triples generated: NN
 ```
 
+### Engagement vs Coverage: the two outputs of Module 8
+
+When the workflow approves a lead, two distinct kinds of artifacts are written
+to the SLGD:
+
+1. **HumanReview** (the *engagement event*) — records what happened: who
+   reviewed, when, what the outcome was. This is a PROV-O activity in the
+   audit chain. It answers: "what actions were taken on this signal?"
+
+2. **AdvisoryRelationship** (the *coverage assertion*) — records who is
+   responsible: which advisor covers this customer, starting when, under what
+   relationship type. This is a standing assignment that persists beyond the
+   workflow execution. It answers: "who is this customer's advisor right now?"
+
+The distinction matters because:
+
+- **Engagement is an event chain.** It has a start, a middle, and an end.
+  Once the workflow closes, the HumanReview is historical.
+- **Coverage is a standing assertion.** It remains active until explicitly ended.
+  It is what downstream systems (CRM, communications, reporting) query when
+  routing future interactions with the customer.
+
+Coverage is *derived from* engagement: the `atlas:AdvisoryRelationship` is
+minted with `prov:wasGeneratedBy` pointing back to the HumanReview that created
+it. This means you can always trace a coverage assignment back to the engagement
+event that authorized it.
+
+**Two provenance patterns coexist in the SLGD:**
+
+- **Workflow-minted coverage** (the Module 8 path): `prov:wasGeneratedBy ?humanReview`
+  — created by an APPROVED HumanReview outcome.
+- **Legacy coverage** (pre-existing): `prov:wasAttributedTo atlas:LegacyDataMigration`
+  — migrated from the institution's prior systems. The 105 entries in
+  `data/synthetic/advisory-relationships.json` carry this stamp; they predate
+  the ATLAS workflow.
+
+A query like "show me all coverage assignments created in the last 90 days by
+this workflow" against the SLGD filters on `prov:wasGeneratedBy` and excludes
+legacy data. The provenance stamp is the disambiguator. For MRM and audit,
+this distinction is not optional — workflow-minted coverage has a full audit
+chain back to a human decision; legacy coverage has a different (and shorter)
+attribution.
+
 ### Step 7 — Run the CIO demo query
 
 Run cell 14 to execute the one-query audit trail — the query you show a CIO.

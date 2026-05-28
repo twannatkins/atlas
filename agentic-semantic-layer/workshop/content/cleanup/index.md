@@ -106,5 +106,13 @@ stack from Module 3.
 
 ## Thank You
 
-You have completed the ATLAS workshop. The architecture is defensible, the boundary
-is enforced in code, and the audit trail is queryable end-to-end.
+You have completed the ATLAS workshop. You built a working reference implementation
+of the three-layer architecture on a synthetic dataset, with the boundary mechanisms
+operational (Module 6 SHACL shapes and Module 7's `atlas_sparql.validate()` pre-check)
+and the audit trail queryable end-to-end in SPARQL.
+
+Moving from this reference implementation to production requires real data via the
+R2RML mappings, a real scoring model in Module 8's place, and the operational
+processes around the human-in-the-loop step. The mechanisms you built here are the
+load-bearing pieces — the rest is configuration, integration, and operational
+discipline.

@@ -134,6 +134,40 @@ MODULE 6 VALIDATION: PASS
 You may proceed to Module 7.
 ```
 
+## The SR 11-7 connection
+
+The shapes you ran in this module are not abstract data quality rules. They are
+the architectural primitive that satisfies a specific clause of US bank
+supervisory guidance.
+
+**SR 11-7** (Federal Reserve, "Guidance on Model Risk Management") and the
+parallel **OCC Bulletin 2011-12** require that any model used in consequential
+banking decisions be:
+
+1. **Reproducible** — the same inputs must produce the same outputs, and the
+   model artifact must be versioned and retrievable.
+2. **Subject to independent validation** — a party other than the model
+   developer must be able to verify the model's behavior on holdout data.
+3. **Bounded in its effects** — the model's outputs must not silently influence
+   decisions outside its validated scope.
+
+The ATLAS SHACL boundary addresses clause (3) at the data layer. The
+`atlas:ScoreExplainabilityShape` you ran in Step 4 enforces that every Score node
+carrying probabilistic output must declare `atlas:probabilistic=true` and carry
+an `atlas:confidence` value. The counter-example in cell 6 demonstrates exactly
+what the shape catches: a probabilistic score attempting to enter the SLGD
+without its explainability metadata. The graph database rejects the write.
+
+This is the SR 11-7 boundary expressed as code. A probabilistic model output
+cannot silently cross into the deterministic decision path. The boundary is
+not enforced by policy documentation or by reviewer vigilance — it is enforced
+by `pyshacl` refusing to mark the graph as conforming and by Neptune refusing
+to accept the write.
+
+For an MRM reviewer, this is a defensible artifact: "show me a write that
+violates the boundary" can be answered with a real example (Step 4) and a
+real rejection.
+
 ## Expected Outputs
 
 - `ontology/atlas-shapes.ttl` — six SHACL shapes (already present in repo)
