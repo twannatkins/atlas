@@ -34,6 +34,7 @@ This module produces:
 - A counter-example demonstrating what happens when probabilistic data enters
   a compliance-bound path without explanation
 - Evidence that a reviewer can run one command and produce a compliance report
+- A plain-English shape-explanation document at `docs/model-risk-review.md` for MRM reviewers (143 lines, hand-authored — covers each shape's purpose, what a violation looks like, and how to fix it)
 
 The notebook is `notebooks/06_shacl_boundary.ipynb`.
 
