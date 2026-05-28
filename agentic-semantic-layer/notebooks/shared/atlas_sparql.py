@@ -133,9 +133,35 @@ def safe_int(value, *, min_val: int = 1, max_val: int = 1000, default: int = 20)
 
 
 _FORBIDDEN_WRITE_PATTERNS = [
-    # Prohibit direct INSERT of triples tagged atlas:probabilisticOpaque
+    # Pattern 1: Prohibit direct INSERT of triples tagged atlas:probabilisticOpaque
     # without an accompanying atlas:explainability predicate.
-    re.compile(r"INSERT\s+DATA\s*\{[^}]*atlas:probabilisticOpaque\s+true", re.IGNORECASE),
+    (
+        re.compile(r"INSERT\s+DATA\s*\{[^}]*atlas:probabilisticOpaque\s+true", re.IGNORECASE),
+        "INSERT contains atlas:probabilisticOpaque=true without atlas:explainability. "
+        "Probabilistic-opaque writes are not permitted at the SLGD boundary. "
+        "Either route through the LGD promotion path (Module 5) or add "
+        "atlas:explainability=true with a verified atlas:modelVersion."
+    ),
+    # Pattern 2: Reject any SPARQL write operation from LLM-generated queries.
+    # The LLM at the edges (Module 7) translates natural language to SELECT
+    # queries only. Any INSERT, DELETE, UPDATE, DROP, CLEAR, CREATE, LOAD,
+    # COPY, MOVE, or ADD operation is a violation of the bounded-LLM contract.
+    (
+        re.compile(
+            r"(?:^|\n|\s)(?:INSERT\s+DATA|INSERT\s+WHERE|INSERT\s*\{|"
+            r"DELETE\s+DATA|DELETE\s+WHERE|DELETE\s*\{|"
+            r"DROP\s+(?:GRAPH|ALL|NAMED|DEFAULT|SILENT)|"
+            r"CLEAR\s+(?:GRAPH|ALL|NAMED|DEFAULT|SILENT)|"
+            r"CREATE\s+(?:GRAPH|SILENT)|LOAD\s+(?:SILENT\s+)?<|"
+            r"COPY\s+|MOVE\s+|ADD\s+(?:SILENT\s+)?)",
+            re.IGNORECASE
+        ),
+        "Query contains a SPARQL write operation (INSERT/DELETE/DROP/CLEAR/"
+        "CREATE/LOAD/COPY/MOVE/ADD). The bounded-LLM contract permits only "
+        "SELECT/CONSTRUCT/ASK/DESCRIBE queries. If this is a legitimate write, "
+        "route it through the Module 5 promotion path with PROV-O attribution, "
+        "not through the NL-to-SPARQL component."
+    ),
 ]
 
 _REQUIRED_PREFIX_DECLARATIONS = {
@@ -168,8 +194,22 @@ def validate(query: str, *, require_prefixes: bool = False) -> str:
     # Syntactic parse via rdflib (raises prepareQuery exceptions on bad syntax)
     # Use prepareUpdate for INSERT/DELETE/LOAD/CLEAR/DROP/CREATE statements;
     # use prepareQuery for SELECT/CONSTRUCT/ASK/DESCRIBE.
+    # Update-vs-query dispatch: match SPARQL update keywords followed by their
+    # required syntactic tokens (DATA/WHERE/{/etc) anywhere in the query string,
+    # not just at the start of a line. This handles PREFIX-prefixed queries
+    # (e.g., "PREFIX atlas: <...> INSERT DATA { ... }") where the update
+    # keyword appears mid-line after the PREFIX declaration. Each branch
+    # requires syntactically-meaningful following tokens, eliminating false
+    # positives on SELECT queries that might contain bare words like "INSERT"
+    # inside string literals.
     _UPDATE_KEYWORDS = re.compile(
-        r"(?:^|\n)\s*(?:INSERT|DELETE|LOAD|CLEAR|DROP|CREATE|COPY|MOVE|ADD)\b", re.IGNORECASE
+        r"\b(?:"
+        r"INSERT\s+(?:DATA|INTO)|INSERT\s*\{|"
+        r"DELETE\s+(?:DATA|WHERE)|DELETE\s*\{|"
+        r"LOAD\s+|CLEAR\s+|DROP\s+|"
+        r"CREATE\s+|COPY\s+|MOVE\s+|ADD\s+"
+        r")",
+        re.IGNORECASE
     )
     try:
         if _UPDATE_KEYWORDS.search(query):
@@ -179,15 +219,11 @@ def validate(query: str, *, require_prefixes: bool = False) -> str:
     except Exception as exc:
         raise AtlasSPARQLError(f"SPARQL syntax error: {exc}") from exc
 
-    # Boundary pattern checks
-    for pattern in _FORBIDDEN_WRITE_PATTERNS:
+    # Boundary pattern checks: reject queries that violate the deterministic-
+    # vs-probabilistic boundary or that perform unauthorized writes.
+    for pattern, message in _FORBIDDEN_WRITE_PATTERNS:
         if pattern.search(query):
-            raise AtlasSPARQLError(
-                "Query attempts to write probabilistic-opaque data to the SLGD "
-                "without an explainability attribute. Add atlas:explainability "
-                "true and atlas:modelVersion to the INSERT block, or route this "
-                "write through the LGD promotion path."
-            )
+            raise AtlasSPARQLError(message)
 
     if require_prefixes:
         for prefix, iri in _REQUIRED_PREFIX_DECLARATIONS.items():

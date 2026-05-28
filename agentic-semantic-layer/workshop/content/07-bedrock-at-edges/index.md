@@ -102,8 +102,12 @@ Read cell 5. It explains the translation function's architecture:
 1. Build a prompt with few-shot examples
 2. Send to Bedrock
 3. Extract SPARQL from response
-4. Validate syntax
-5. SHACL pre-check (reject any write queries)
+4. Validate syntax via `atlas_sparql.validate()` (raises on parse errors)
+5. SHACL pre-check enforced by `atlas_sparql.validate()`'s `_FORBIDDEN_WRITE_PATTERNS`:
+   any INSERT, DELETE, DROP, CLEAR, CREATE, LOAD, COPY, MOVE, or ADD
+   operation is rejected before reaching Neptune. The LLM at the edges
+   is bounded to SELECT/CONSTRUCT/ASK/DESCRIBE queries by mechanical
+   enforcement, not just by prompt instruction.
 
 ### Step 5 — Define the translation function
 
@@ -142,7 +146,7 @@ MODULE 7 VALIDATION GATE
 ============================================================
 [PASS] Gate 1 - nl_to_sparql() function is defined and callable
 [PASS] Gate 2 - 7/7 questions produce valid SPARQL (threshold: 5)
-[PASS] Gate 3 - No INSERT/UPDATE queries generated (SHACL pre-check active)
+[PASS] Gate 3 - SHACL pre-check rejected 4/4 adversarial write attempts
 [PASS] Gate 4 - 7 ground-truth pairs defined (threshold: 7)
 [PASS] Gate 5 - Bedrock accessible (us.anthropic.claude-sonnet-4-6)
 
