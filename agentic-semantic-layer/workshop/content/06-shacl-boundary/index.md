@@ -55,81 +55,107 @@ module *enforces* that every Score instance actually carries the required
 
 ## Steps
 
-### Step 1 — Open the notebook and load the shapes
+### Step 1 — Open the notebook and read the Key Terms
 
-Open `notebooks/06_shacl_boundary.ipynb`. Run cell 2 to load the SHACL shapes
-file and the ontology.
+Open `notebooks/06_shacl_boundary.ipynb`. Read cell 1 (the module introduction
+and Key Terms table). This module introduces dense vocabulary — SHACL, shapes,
+conformance, violations, target classes, validation reports, plus the regulatory
+acronyms SR 11-7 and OCC 2011-12. Pause on the Key Terms cell before running
+any code.
 
-Run cell 2. Expected output:
+### Step 2 — Read the counter-example introduction (cells 1b and 3)
 
-```
-ATLAS Module 6 — SHACL: Making the Boundary Mechanical
-Shapes loaded: 6 shapes from ontology/atlas-shapes.ttl
-Ontology loaded: atlas-core.ttl + atlas-fibo-alignment.ttl
-```
+Read cell 1b (How This Connects to Competency Questions) and cell 3 ("The
+Counter-Example: Why SHACL Exists"). Cell 3 sets up the teaching approach:
+we build a deliberately bad graph first, show what a compliance query returns
+without shapes (a confident-looking number with no provenance), then introduce
+the shapes that catch it. Understanding the pain before the solution is the
+module's teaching structure.
 
-### Step 2 — Read the SHACL introduction
+### Step 3 — Build the counter-example (cell 4)
 
-Read cells 3 and 4. These explain:
-- What SHACL is (a W3C standard for validating RDF graphs against constraints)
-- Why SHACL matters for MRM (it makes the boundary machine-checkable)
-- The six shapes in ATLAS and what each one enforces
+Run cell 4. This constructs a Score node with no provenance, no confidence
+value, no model version, no explainability flag — the kind of write the SHACL
+boundary is designed to prevent. It also runs a bare SPARQL query against the
+bad graph to show that, without shapes, the query returns a result as if the
+data were valid.
 
-### Step 3 — Validate the conforming graph
-
-Run cell 4 to validate the promoted SLGD data against the SHACL shapes.
-A conforming graph should pass all shapes.
-
-Run cell 4. Expected output:
-
-```
-Validating conforming graph against SHACL shapes...
-  Conforms: True
-  Violations: 0
-
-[PASS] The promoted data conforms to all 6 SHACL shapes.
-```
-
-### Step 4 — Run the counter-example
-
-Run cell 6 to construct a deliberately non-conforming graph (one that violates
-the boundary) and validate it. This demonstrates what the shapes catch.
-
-Run cell 6. Expected output:
+Expected output (excerpt):
 
 ```
-Counter-example: Probabilistic score without explainability flag
-------------------------------------------------------------
-Validating non-conforming graph...
-  Conforms: False
-  Violations: 1
+Without SHACL: bare compliance query returns a result from an
+unattributed probabilistic score.
+  score-BAD-001: 0.87
 
-  Violation 1:
-    Focus node: inst:score-bad-example
-    Shape: atlas:ScoreExplainabilityShape
-    Message: A Score used in a compliance path must have explainability=true
+This is the problem. The number looks fine. SHACL exists to
+make the missing provenance visible.
 ```
 
-### Step 5 — Review the routing-policy shape
+### Step 4 — Read the six shapes table (cell 5)
 
-Run cell 8 to demonstrate the routing-policy shape that enforces the closed
-route enumeration. This shape prevents the LLM from inventing routes.
+Read cell 5 (markdown). It introduces the six shapes in ATLAS and what each
+enforces: ProvenanceShape, BoundaryShape, ComplianceInputShape,
+RoutingPolicyShape, WealthSignalTypeShape, and CoverageRelationshipShape.
+No code to run — this cell is the vocabulary for what the validator will report.
 
-### Step 6 — Run the validation gate
+### Step 5 — Write the shapes file and validate the counter-example (cells 6 and 8)
 
-Run cell 10 (Module 6 validation gate).
+Run cell 6. This writes `ontology/atlas-shapes.ttl` with all six shapes. The
+file is written to the repository path — you can open it in a text editor to
+inspect the Turtle syntax.
 
-Run cell 10. Expected output:
+Expected output:
+
+```
+SHACL shapes file written: ontology/atlas-shapes.ttl
+  6 shapes defined
+```
+
+Then run cell 8. This loads the shapes file and validates the counter-example
+graph from cell 4. The bad graph should fail validation.
+
+Expected output:
+
+```
+Validating counter-example (BAD graph) against SHACL shapes...
+============================================================
+Conforms: False
+
+VIOLATIONS FOUND (this is expected - the counter-example is deliberately bad):
+...
+The validator caught the missing attributes. This is exactly what SHACL
+is for: making the boundary mechanical rather than conventional.
+```
+
+### Step 6 — Validate correct data (cell 10)
+
+Run cell 10. This builds a properly attributed graph — a Score with all
+required fields (confidence, model version, explainability flag, PROV-O
+attribution) — and confirms it passes all shapes.
+
+Expected output (excerpt):
+
+```
+Validating GOOD graph against SHACL shapes...
+Conforms: True
+Good graph passes all 6 SHACL shapes.
+```
+
+### Step 7 — Run the validation gate (cell 12)
+
+Run cell 12 (Module 6 validation gate).
+
+Expected output:
 
 ```
 ============================================================
 MODULE 6 VALIDATION GATE
 ============================================================
-[PASS] Gate 1 — 6 SHACL shapes loaded
-[PASS] Gate 2 — Conforming graph passes validation
-[PASS] Gate 3 — Counter-example fails validation (expected)
-[PASS] Gate 4 — Routing-policy shape enforces closed set
-[PASS] Gate 5 — atlas-shapes.ttl is valid Turtle
+[PASS] Gate 1 - atlas-shapes.ttl parses (N triples)
+[PASS] Gate 2 - Counter-example correctly fails validation
+[PASS] Gate 3 - Good graph correctly passes validation
+[PASS] Gate 4 - All 6 shape categories present
+[PASS] Gate 5 - Shapes file is N bytes (non-trivial)
 
 MODULE 6 VALIDATION: PASS
 You may proceed to Module 7.
