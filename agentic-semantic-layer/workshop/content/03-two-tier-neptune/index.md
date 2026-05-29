@@ -90,7 +90,41 @@ S3 bucket:     atlas-ontology-staging-XXXXXXXXXXXX
 Neptune role:  arn:aws:iam::XXXXXXXXXXXX:role/atlas-neptune-s3-access
 ```
 
-### Step 3 — Upload ontology files to S3
+### Step 3 — Attach the Neptune IAM auth policy to your execution role
+
+The CloudFormation stack created a managed policy named `atlas-neptune-iam-auth`
+that grants SigV4-authenticated read and write access to both Neptune clusters.
+Your SageMaker execution role needs this policy attached before any cell can query
+or load the graph — Neptune does not accept unauthenticated connections.
+
+Attach the policy to your SageMaker execution role using the console or the CLI.
+
+**Console:**
+
+1. Open the [IAM console](https://console.aws.amazon.com/iam/) → **Roles**
+2. Find your SageMaker execution role (from the Prerequisites step — its name
+   usually contains `AmazonSageMaker-ExecutionRole` or your project name)
+3. Choose **Add permissions** → **Attach policies**
+4. Search for `atlas-neptune-iam-auth`, select it, and choose **Add permissions**
+
+**CLI** (replace the role name with your own; the policy ARN is in the
+CloudFormation stack Outputs under `NeptuneIamAuthPolicyArn`):
+
+```bash
+aws iam attach-role-policy \
+  --role-name <your-sagemaker-execution-role-name> \
+  --policy-arn arn:aws:iam::<account-id>:policy/atlas-neptune-iam-auth
+```
+
+Attach the policy before running cell 5 and beyond. The bulk load (cell 7) and the
+SPARQL discovery queries (cell 9) authenticate to Neptune with SigV4; without this
+policy they fail with an authorization error.
+
+> If a later cell already failed with an authorization error, attach the policy,
+> then restart the kernel and re-run from cell 3. IAM changes can take up to a
+> minute to propagate.
+
+### Step 4 — Upload ontology files to S3
 
 Run cell 5 to upload the four ontology files to the S3 staging bucket.
 
@@ -107,7 +141,7 @@ Uploading ontology files to s3://atlas-ontology-staging-XXXXXXXXXXXX/ontology/
 Upload complete.
 ```
 
-### Step 4 — Bulk load ontology into the SLGD
+### Step 5 — Bulk load ontology into the SLGD
 
 Run cell 7 to trigger Neptune's bulk loader. This loads all four Turtle files into
 the SLGD in a single operation.
@@ -128,7 +162,7 @@ Load initiated. Load ID: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
 Bulk load complete.
 ```
 
-### Step 5 — Run SPARQL discovery queries
+### Step 6 — Run SPARQL discovery queries
 
 Run cell 9 to execute the four discovery queries against the SLGD.
 
@@ -158,7 +192,7 @@ Object properties found: 18
   ...
 ```
 
-### Step 6 — Verify LGD is empty
+### Step 7 — Verify LGD is empty
 
 Run cell 10 to confirm the LGD has zero triples and the SLGD has the ontology loaded.
 
@@ -174,7 +208,7 @@ SLGD triples: 353
 [PASS] SLGD has ontology data loaded.
 ```
 
-### Step 7 — Run the validation gate
+### Step 8 — Run the validation gate
 
 Run cell 12 (the Module 3 validation gate). All four sub-gates must pass.
 
