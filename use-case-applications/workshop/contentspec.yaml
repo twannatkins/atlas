@@ -1,0 +1,74 @@
+---
+title: "ATLAS — Use Case Applications (Workshop 2)"
+description: >
+  Workshop 2 takes the FIBO-aligned semantic layer from Workshop 1 and builds
+  two governed banking applications on top of it: a Wholesale UI for Consumer
+  Banker referrals and a Wealth UI for the advisor workbench, both backed by
+  registered agents, AgentCore Runtimes, and a FIBO-shaped GraphQL API.
+version: "1.0.0"
+theme: "default"
+
+navigation:
+  - title: "Introduction"
+    path: "00-introduction"
+    weight: 0
+
+  - title: "Prerequisites"
+    path: "00-prerequisites"
+    weight: 5
+
+  - title: "Module 1 — Pre-flight: Is Workshop 1 Ready?"
+    path: "01-preflight"
+    weight: 10
+
+  - title: "Module 2 — Why Agents at All?"
+    path: "02-why-agents"
+    weight: 20
+
+  - title: "Module 3 — MCP Servers: The Capability Surface"
+    path: "03-mcp-servers"
+    weight: 30
+
+  - title: "Module 4 — Agent Registry: Discovery and Governance"
+    path: "04-agent-registry"
+    weight: 40
+
+  - title: "Module 5 — GraphQL Federation: The FIBO-Shaped API"
+    path: "05-graphql-federation"
+    weight: 50
+
+  - title: "Module 6 — The Wholesale UI"
+    path: "06-wholesale-ui"
+    weight: 60
+
+  - title: "Module 7 — Phase 1 Acceptance"
+    path: "07-phase-1-acceptance"
+    weight: 70
+
+  - title: "Module 8 — Phase 2 Agents"
+    path: "08-phase-2-agents"
+    weight: 80
+
+  - title: "Module 9 — AgentCore Memory"
+    path: "09-agentcore-memory"
+    weight: 90
+
+  - title: "Module 10 — The Wealth UI"
+    path: "10-wealth-ui"
+    weight: 100
+
+  - title: "Module 11 — JWT Authorization"
+    path: "11-jwt-auth"
+    weight: 110
+
+  - title: "Module 12 — End-to-End Walkthrough"
+    path: "12-end-to-end"
+    weight: 120
+
+  - title: "Module 13 — Phase 2 Acceptance"
+    path: "13-phase-2-acceptance"
+    weight: 130
+
+  - title: "Cleanup"
+    path: "cleanup"
+    weight: 999
