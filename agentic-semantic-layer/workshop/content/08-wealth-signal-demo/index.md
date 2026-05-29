@@ -262,6 +262,16 @@ or changed the seed, the signal-tagged transactions may not exist. Reset to seed
 Check that cell 12 ran successfully and generated audit trail triples. The query
 runs against the in-memory graph built from those triples.
 
+**Cell 6 fails with `XGBoostError: XGBoost Library (libxgboost.dylib) could not be loaded`**
+
+This means the OpenMP runtime that XGBoost links against is missing. It only happens
+on local machines — the SageMaker Studio images used for this workshop ship with the
+OpenMP runtime, so attendees running in SageMaker will not see this. If you are
+running the notebook locally on macOS, install the runtime with `brew install libomp`
+and restart the kernel. On a local Linux box, install your distribution's OpenMP
+package (for example `libgomp1` on Debian/Ubuntu) or use a conda environment, which
+bundles it.
+
 ## What's Next
 
 **Congratulations — you have completed the ATLAS workshop.**
