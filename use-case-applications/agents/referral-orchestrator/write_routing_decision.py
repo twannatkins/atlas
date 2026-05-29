@@ -9,13 +9,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 from atlas_sparql import prefixed
 
@@ -56,17 +52,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
 
     try:
-        lambda_client = boto3.client("lambda")
-        response = lambda_client.invoke(
-            FunctionName=SPARQL_MCP_ARN,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({
+        agentcore_client = boto3.client("bedrock-agentcore")
+        response = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=SPARQL_MCP_ARN,
+            payload=json.dumps({
                 "operation": "update",
                 "sparql": insert_sparql,
                 "persona_claim": persona_claim,
-            }),
+            }).encode(),
+            contentType="application/json",
         )
-        result = json.loads(response["Payload"].read())
+        result = json.loads(response["response"].read())
         if result.get("status") == "error":
             return {**event, "status": "workflow_error", "error": result.get("message", "Write failed")}
     except Exception as exc:

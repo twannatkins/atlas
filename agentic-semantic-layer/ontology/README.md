@@ -21,13 +21,15 @@ ontology/
 └── README.md                     # This file
 ```
 
-## The 22 classes
+## The 24 classes
 
-The ontology declares 22 classes in the `atlas:` namespace:
+The ontology declares 24 classes across the `atlas:` namespace:
 
 **Core domain (19 classes in `atlas-core.ttl`):** Customer, Account, Holding, Transaction, Household, WealthSignal, Eligibility, Score, RoutingDecision, HumanReview, AuditRecord, Advisor, WorkflowStep, WealthSignalType, HouseholdMembership, DataSource, ObservationWindow, PreviousSurfacing, AdvisoryRelationship.
 
 **FIBO alignment bridges (3 classes in `atlas-fibo-alignment.ttl`):** LegalEntity, Product, LineOfBusiness.
+
+**Governance extensions (2 classes in `extensions/prov-o-bindings.ttl`):** PromotionActivity, EntityResolutionActivity.
 
 Each class is documented in the TTL files with `rdfs:label`, `rdfs:comment`, and where applicable an `owl:equivalentClass` or `rdfs:subClassOf` link to its FIBO counterpart. The mapping between `atlas:` classes and FIBO classes is the substance of `atlas-fibo-alignment.ttl`.
 

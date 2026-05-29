@@ -113,8 +113,8 @@ class TestSelectAdvisor:
     @patch("select_advisor.boto3")
     def test_selects_top_advisor(self, mock_boto3):
         """Returns the top-ranked advisor from SPARQL results."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         sparql_result = json.dumps({
             "status": "success",
@@ -123,7 +123,7 @@ class TestSelectAdvisor:
                 {"advisor": "atlas:advisor/002", "label": "James Park", "capacity": "3", "specialization": "wealth"},
             ],
         }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=sparql_result))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=sparql_result))}
 
         event = {"household_uri": "atlas:hh/9c2a1e", "persona_claim": "atlas-consumer-banker"}
         result = select_advisor_handler(event, None)
@@ -134,11 +134,11 @@ class TestSelectAdvisor:
     @patch("select_advisor.boto3")
     def test_no_advisors_available(self, mock_boto3):
         """When no advisors are available, returns no_eligible_advisor."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         sparql_result = json.dumps({"status": "success", "rows": []}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=sparql_result))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=sparql_result))}
 
         event = {"household_uri": "atlas:hh/9c2a1e", "persona_claim": "atlas-consumer-banker"}
         result = select_advisor_handler(event, None)
@@ -152,17 +152,17 @@ class TestValidateRouting:
     @patch("validate_routing.boto3")
     def test_valid_routing_passes(self, mock_boto3):
         """A valid routing passes SHACL validation."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         # Hold check returns no hold
         sparql_result = json.dumps({"status": "success", "rows": []}).encode()
         # SHACL validation passes
         shacl_result = json.dumps({"conforms": True, "report": {}}).encode()
 
-        mock_lambda.invoke.side_effect = [
-            {"Payload": MagicMock(read=MagicMock(return_value=sparql_result))},
-            {"Payload": MagicMock(read=MagicMock(return_value=shacl_result))},
+        mock_agentcore.invoke_agent_runtime.side_effect = [
+            {"response": MagicMock(read=MagicMock(return_value=sparql_result))},
+            {"response": MagicMock(read=MagicMock(return_value=shacl_result))},
         ]
 
         event = {
@@ -224,11 +224,11 @@ class TestAuditWrite:
     @patch("audit_write.boto3")
     def test_audit_record_written(self, mock_boto3):
         """Audit record is written to SLGD."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         sparql_result = json.dumps({"status": "success"}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=sparql_result))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=sparql_result))}
 
         event = {
             "household_uri": "atlas:hh/9c2a1e",

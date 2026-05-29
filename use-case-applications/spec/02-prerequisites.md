@@ -22,27 +22,35 @@ If you are coming from Workshop 1, most of what's here is familiar. The exceptio
 
 **What you'll see if it's wrong.** SPARQL queries return zero rows. Agents respond *"I couldn't find any matching customers."* The Wholesale UI's referral dashboard shows an empty state. None of this is informative on its own — the pre-flight notebook is the only place that distinguishes "empty graph" from "wrong query" cleanly.
 
-### An AWS account with AgentCore preview access
+### An AWS account with AgentCore enabled
 
-**Why it matters.** Workshop 2 registers agents in AWS Agent Registry and invokes them through AgentCore Runtime. As of this writing, AgentCore is in preview and requires explicit account-level entitlement. Without it, you can build the spec but you can't run the workshop.
+**Why it matters.** Workshop 2 registers agents in AWS Agent Registry and invokes them through AgentCore Runtime. AgentCore reached general availability in 2026 and is available in `us-east-1` and a growing set of other regions. Workshop 2's CDK stack provisions every AgentCore resource it needs — you don't deploy AgentCore itself, but your AWS account must be in a region where it's available.
 
-**How to verify.** Open the AWS console, navigate to Bedrock, and look for the AgentCore section in the left navigation. If it appears, you have access. If it doesn't, contact your AWS account team.
+**How to verify.** Run `aws bedrock-agentcore-control list-agent-runtimes --region us-east-1`. An empty list response (`agentRuntimes: []`) confirms the service is reachable from your account. An error about the service not being available means either your account lacks permissions or you're in a region where AgentCore hasn't shipped yet. Workshop 2's pre-flight notebook runs this check automatically.
 
 **The Workshop 2 teaching moment.** AgentCore is the runtime; the Agent Registry is the directory. They are separate services with separate purposes. Notebook `03_agent_registry.ipynb` is where you learn why this separation matters — registry handles discovery and governance, runtime handles invocation and observability. Most agent frameworks conflate the two; AWS keeps them apart, and the separation is what makes the four-layer permission model possible.
 
 ### Bedrock model access in your region
 
-**Why it matters.** Three Workshop 2 agents call Bedrock foundation models. `nl-to-sparql-agent` translates natural-language questions into SPARQL. `referral-rationale-drafter` writes the narrative shown to the Consumer Banker. `theme-summarizer` (Phase 2) summarizes market themes from source articles. Without model access, these three agents fail with `AccessDeniedException` and the related notebook cells halt.
+**Why it matters.** Three Workshop 2 agents call Bedrock foundation models. `nl-to-sparql-agent` translates natural-language questions into SPARQL via Titan Embeddings v2. `referral-rationale-drafter` writes the narrative shown to the Consumer Banker via Claude Sonnet. `theme-summarizer` (Phase 2) summarizes market themes via Claude Sonnet. Without model access, these three agents fail with `AccessDeniedException` and the related notebook cells halt.
 
-**Which models.** Workshop 2 uses Claude on Bedrock. The specific model IDs are listed in each agent's descriptor JSON. Workshop 1 already uses Claude on Bedrock for the same reason in `07_bedrock_at_edges.ipynb`, so if you completed Workshop 1, you almost certainly have what's needed.
+**Which models.** Workshop 2 uses:
+- `amazon.titan-embed-text-v2:0` (foundation model, direct invocation supported)
+- `us.anthropic.claude-sonnet-4-6` (US cross-region inference profile)
 
-**The Workshop 2 teaching moment.** Notebook `01_why_agents.ipynb` is where you learn why Bedrock is at the *edges* of the architecture — translating natural language to SPARQL — and not in the *middle* reasoning over data. This is the SR 11-7 / OCC 2011-12 story, and it's the most important architectural decision in ATLAS. Read that notebook before assuming you understand it from this paragraph.
+**Why an inference profile rather than a bare model ID for Claude.** As of 2026, the newest Claude Sonnet models cannot be invoked on-demand via their bare foundation model IDs. AWS requires invocation through a cross-region inference profile — a wrapper that distributes requests across regions for capacity. The `us.` prefix indicates the US cross-region pool. Workshop 2 uses `us.anthropic.claude-sonnet-4-6` as the default. For customers running the workshop in a non-US AWS region, use `global.anthropic.claude-sonnet-4-6` instead by overriding the `BEDROCK_TEXT_MODEL_ID` environment variable on the relevant agents. The preflight notebook detects your region and warns you if the override is needed.
+
+**How to verify.** Open the Bedrock console in `us-east-1` and confirm both models appear as ACTIVE. Direct invocation can be tested with `aws bedrock-runtime invoke-model --model-id 'us.anthropic.claude-sonnet-4-6' --body ...` — if this returns a response, the profile is accessible from your account.
+
+**The Workshop 2 teaching moment.** Notebook `01_why_agents.ipynb` is where you learn why Bedrock is at the *edges* of the architecture — translating natural language to SPARQL, drafting narrative for human approval — and not in the *middle* reasoning over data. This is the SR 11-7 / OCC 2011-12 story, and it's the most important architectural decision in ATLAS. The inference profile mechanic is incidental; what matters is *what role* the LLM plays in the system.
 
 ### SageMaker Studio domain accessible
 
-**Why it matters.** Workshop 2 runs from SageMaker Studio just like Workshop 1. Notebooks live in `use-case-applications/notebooks/`; you open them in Studio and execute cells. Studio is also where Kiro and Claude Code run if you choose to use either of them.
+**Why it matters.** Workshop 2 runs from SageMaker Studio just like Workshop 1. Notebooks live in `use-case-applications/notebooks/`; you open them in Studio and execute cells. Studio is also where Claude Code runs if you choose to use it for code generation work in Phase 02 and beyond.
 
-**Image choice.** The standard SageMaker Studio image (`sagemaker-distribution:cpu` or `data-science-3.0`) is sufficient. Workshop 2's `notebooks/shared/requirements.txt` lists the additional Python packages with pinned versions for reproducibility (boto3, AppSync SDK, agent registry SDK, MCP client). The first notebook installs them. Pinned versions ensure every attendee runs against the same tested dependency set regardless of when they run the workshop.
+**Image choice.** The standard SageMaker Studio image (`sagemaker-distribution:cpu` or `data-science-3.0`) is sufficient. Workshop 2's `pyproject.toml` at `use-case-applications/` declares the full dependency surface; the first notebook of Phase 1 runs `uv sync --all-groups` to materialize the venv and registers the `atlas-workshop` Jupyter kernel. See "Local development environment" below for the version requirements and tooling that the venv-creation step assumes.
+
+**Why pin everything.** Pinned versions in `pyproject.toml` (and the generated `uv.lock`) ensure every attendee runs against the same tested dependency set regardless of when they run the workshop. The exact Strands, bedrock-agentcore, rdflib, and pyshacl versions are part of the reproducibility contract.
 
 ### Ontop on ECS — deployed by Workshop 2, not Workshop 1
 
@@ -84,11 +92,65 @@ Assign yourself to all five for the workshop. Production deployments would scope
 
 ### Comfort with Jupyter notebooks and basic TypeScript
 
-**Why it matters.** Workshop 2 is taught through Jupyter notebooks — same as Workshop 1. Comfort with reading and running cells is necessary. The React UI work in `06-react-monorepo/` involves TypeScript and React; you don't need senior frontend skills, but you should be able to read component code and adjust it.
+**Why it matters.** Workshop 2 is taught through Jupyter notebooks — same as Workshop 1. Comfort with reading and running cells is necessary. The React UI work in `06-react-monorepo/` involves TypeScript and React; you don't need senior frontend skills, but you should be able to read component code and adjust it. The CDK stack at `use-case-applications/cdk/` is also TypeScript, though most attendees will not modify it directly during the workshop.
 
-**Without TypeScript comfort.** Kiro and Claude Code can generate the UI code from the spec. You read the generated code, run it, and modify it where the workshop directs. This is the recommended path for novices to frontend work.
+**Without TypeScript comfort.** Claude Code can generate the UI components and CDK constructs from the spec. You read the generated code, run it, and modify it where the workshop directs. This is the recommended path for novices to frontend work.
 
-**With TypeScript comfort.** You can adjust component code directly, customize the design, and extend the UI beyond what the spec ships. This is the recommended path for engineers building toward a POC.
+**With TypeScript comfort.** You can adjust component code directly, customize the design, and extend the UI beyond what the spec ships. You can also iterate on the CDK constructs to add resources or tune configuration. This is the recommended path for engineers building toward a POC.
+
+### A local development environment with Python 3.12 and uv
+
+**Why it matters.** Workshop 2's agents and notebooks require Python 3.12 or newer because Strands Agents and the bedrock-agentcore SDK both declare that as a minimum. The dependency surface is managed by `uv`, a modern Python package manager that AWS samples use throughout. If you intend to deploy the CDK stack from your own machine or run any notebook locally (rather than inside SageMaker Studio), you need this environment configured.
+
+**What you need installed locally:**
+
+| Tool | Version | Purpose |
+|---|---|---|
+| Python | 3.12+ | Agent and notebook runtime |
+| uv | 0.11+ | Dependency installation and venv management |
+| Node.js | 20+ | AWS CDK CLI and Claude Code |
+| Docker | Any recent | Required by CDK for AgentCore Runtime asset packaging |
+| AWS CLI | v2.32+ | Bedrock and IAM operations |
+
+**How to create the venv.** From the repository root:
+
+```
+cd use-case-applications
+uv sync --all-groups
+```
+
+This reads `pyproject.toml`, resolves dependencies from `uv.lock`, creates `.venv/` with Python 3.12, and installs all packages including the dev dependency group (pytest, jupyter, ipykernel, ruff). After completion, register the venv as a Jupyter kernel:
+
+```
+.venv/bin/python -m ipykernel install --user --name atlas-workshop \
+    --display-name "ATLAS Workshop 2 (Python 3.12)"
+```
+
+The notebooks will then offer "ATLAS Workshop 2 (Python 3.12)" as a kernel option.
+
+**Why uv rather than pip.** Reproducibility. The `uv.lock` file pins exact versions of all 169 transitive dependencies; every workshop attendee gets the same Python environment regardless of when they run the workshop. The same lock file works on macOS, Linux, and Windows. `pip install -r requirements.txt` is not equivalent — it resolves versions at install time, which means two attendees can get different versions of the same package.
+
+**The Workshop 2 teaching moment.** Workshop 2 doesn't dwell on Python tooling. But the reproducibility argument is the same architectural argument as the descriptor-as-source-of-truth pattern (`04-aws-agent-registry/`) and the SHACL shapes argument (`agentic-semantic-layer/ontology/`): the artifact is the contract, and the contract is exact. Workshops that lecture about reproducibility without enforcing it end up teaching the wrong lesson.
+
+### AWS CDK CLI v2.1102.0+ with AgentCore Runtime support
+
+**Why it matters.** Workshop 2's CDK stack uses `agentcore.Runtime` constructs from the `@aws-cdk/aws-bedrock-agentcore-alpha` package. The CDK CLI must be at version 2.1102.0 or newer to support these constructs and the AgentCore Runtime hotswap deployment path (which speeds up Phase 02 iteration cycles dramatically — see `07-cdk-stack/README.md` for the hotswap rationale).
+
+**How to verify and install.**
+
+```
+cdk --version
+```
+
+If the output is older than `2.1102.0`, install or upgrade:
+
+```
+npm install -g aws-cdk@latest
+```
+
+The version requirement is a moving target; AWS updates the CDK construct library regularly. Workshop 2 pins specific versions in `use-case-applications/cdk/package.json` so the construct behavior is reproducible.
+
+**The Workshop 2 teaching moment.** The CDK construct library is itself a moving target — `@aws-cdk/aws-bedrock-agentcore-alpha` carries the alpha designation, which means construct APIs may evolve. Workshop 2 pins specific versions and re-validates against newer versions on a documented upgrade cycle. The lesson: when deploying against alpha constructs in production, version pinning is non-negotiable and upgrade cycles need to be planned, not reactive.
 
 ## What Workshop 2's CDK stack creates
 
@@ -97,12 +159,13 @@ Some prerequisites are things you bring; others are things Workshop 2 creates fo
 **Workshop 2 creates (you do not):**
 - Ontop on ECS Fargate (the federation runtime)
 - AppSync GraphQL API and resolvers
-- The five MCP server Lambdas
+- 12 AgentCore Runtime instances (the 5 MCP servers and 7 standalone agents — every MCP-shaped component in the architecture)
+- 5 Step Functions step Lambdas (internal workflow components for `referral-orchestrator`)
+- 1 AgentCore Memory store (used by `conversational-context-manager`)
 - Cognito user pool and IDC federation
 - Lake Formation tag-based access policies
 - CloudFront distributions for the two UIs
-- The eight registered agents and five registered MCP servers in Agent Registry
-- AgentCore Memory configuration (Phase 2)
+- AWS Agent Registry records (12 MCP records auto-registered by the Runtime constructs, plus 1 CUSTOM record for the `referral-orchestrator` Step Functions workflow)
 
 **You provide (Workshop 2 expects):**
 - Workshop 1 environment as described above
@@ -110,6 +173,7 @@ Some prerequisites are things you bring; others are things Workshop 2 creates fo
 - Bedrock model access as described above
 - AWS Entity Resolution workflow as described above
 - An AWS account with sufficient quota for the above
+- A local development environment as described in the next section (only if you intend to run `cdk deploy` yourself or iterate on agent code)
 
 The pre-flight notebook checks the second list. The first list is deployed by `use-case-applications/cdk/` as part of the workshop.
 

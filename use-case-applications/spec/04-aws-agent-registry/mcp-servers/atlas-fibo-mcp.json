@@ -2,13 +2,83 @@
   "mcp_server_name": "atlas-fibo-mcp",
   "version": "1.0.0",
   "description": "FIBO class introspection and ontology browsing.",
-  "runtime": {"type": "lambda", "handler": "atlas_fibo_mcp.handler", "runtime": "python3.12", "timeout_seconds": 15, "memory_mb": 512, "environment_variables": {"SPARQL_MCP_ARN": "${atlas_sparql_mcp_arn}"}},
-  "iam_policy": {"inline_policy": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": "${atlas_sparql_mcp_arn}"}, {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/atlas-fibo-mcp:*"}]}},
-  "operations": {
-    "class_info": {"input": {"class_uri": "string"}, "output": {"label": "string", "comment": "string", "parents": "array", "fibo_alignment": "string"}},
-    "list_classes": {"input": {"namespace_prefix": "string"}, "output": {"classes": "array"}},
-    "subclasses_of": {"input": {"class_uri": "string"}, "output": {"subclasses": "array"}}
+  "registry_record_type": "MCP",
+  "runtime": {
+    "type": "lambda",
+    "handler": "atlas_fibo_mcp.handler",
+    "runtime": "python3.12",
+    "timeout_seconds": 15,
+    "memory_mb": 512,
+    "environment_variables": {
+      "SPARQL_MCP_ARN": "${atlas_sparql_mcp_arn}"
+    }
   },
-  "registry_metadata": {"discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward", "atlas-auditor"]},
-  "dependencies": {"mcp_servers": ["atlas-sparql-mcp"], "workshop_1_artifacts": ["agentic-semantic-layer/ontology/"]}
+  "iam_policy": {
+    "inline_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "bedrock-agentcore:InvokeAgentRuntime"
+          ],
+          "Resource": "${atlas_sparql_mcp_arn}"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/atlas-fibo-mcp:*"
+        }
+      ]
+    }
+  },
+  "operations": {
+    "class_info": {
+      "input": {
+        "class_uri": "string"
+      },
+      "output": {
+        "label": "string",
+        "comment": "string",
+        "parents": "array",
+        "fibo_alignment": "string"
+      }
+    },
+    "list_classes": {
+      "input": {
+        "namespace_prefix": "string"
+      },
+      "output": {
+        "classes": "array"
+      }
+    },
+    "subclasses_of": {
+      "input": {
+        "class_uri": "string"
+      },
+      "output": {
+        "subclasses": "array"
+      }
+    }
+  },
+  "registry_metadata": {
+    "discoverable_by": [
+      "atlas-consumer-banker",
+      "atlas-wealth-advisor",
+      "atlas-bsa-analyst",
+      "atlas-ontology-steward",
+      "atlas-auditor"
+    ]
+  },
+  "dependencies": {
+    "mcp_servers": [
+      "atlas-sparql-mcp"
+    ],
+    "workshop_1_artifacts": [
+      "agentic-semantic-layer/ontology/"
+    ]
+  }
 }

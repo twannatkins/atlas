@@ -17,14 +17,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict
-
-# Add shared modules to path for Workshop 1 helpers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 from atlas_sparql import validate, AtlasSPARQLError
 
@@ -35,7 +30,7 @@ logger.setLevel(logging.INFO)
 
 # Environment
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
-BEDROCK_TEXT_MODEL_ID = os.environ.get("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
+BEDROCK_TEXT_MODEL_ID = os.environ.get("BEDROCK_TEXT_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 PROMPT_TEMPLATE_S3_URI = os.environ.get("PROMPT_TEMPLATE_S3_URI", "")
 
 VALID_PERSONAS = ["atlas-consumer-banker"]
@@ -201,18 +196,18 @@ def _invoke_bedrock(prompt: str) -> str:
 
 def _invoke_sparql_mcp(sparql: str, persona_claim: str) -> list:
     """Invoke atlas-sparql-mcp for a read query."""
-    lambda_client = boto3.client("lambda")
-    response = lambda_client.invoke(
-        FunctionName=SPARQL_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
+    agentcore_client = boto3.client("bedrock-agentcore")
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=SPARQL_MCP_ARN,
+        payload=json.dumps({
             "operation": "query",
             "sparql": sparql,
             "persona_claim": persona_claim,
             "graph_tier": "slgd",
-        }),
+        }).encode(),
+        contentType="application/json",
     )
-    result = json.loads(response["Payload"].read())
+    result = json.loads(response["response"].read())
     if result.get("status") == "error":
         raise RuntimeError(result.get("message", "SPARQL MCP returned error"))
     return result.get("rows", [])

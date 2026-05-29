@@ -15,14 +15,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict, List, Optional
-
-# Add shared modules to path for Workshop 1 helpers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 from atlas_sparql import validate, AtlasSPARQLError, prefixed
 
@@ -210,18 +205,18 @@ def _cosine_similarity(a: List[float], b: List[float]) -> float:
 
 def _invoke_sparql_mcp(sparql: str, persona_claim: str) -> list:
     """Invoke atlas-sparql-mcp for query execution."""
-    lambda_client = boto3.client("lambda")
-    response = lambda_client.invoke(
-        FunctionName=SPARQL_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
+    agentcore_client = boto3.client("bedrock-agentcore")
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=SPARQL_MCP_ARN,
+        payload=json.dumps({
             "operation": "query",
             "sparql": sparql,
             "persona_claim": persona_claim,
             "graph_tier": "slgd",
-        }),
+        }).encode(),
+        contentType="application/json",
     )
-    result = json.loads(response["Payload"].read())
+    result = json.loads(response["response"].read())
     if result.get("status") == "error":
         raise RuntimeError(result.get("message", "SPARQL MCP returned error"))
     return result.get("rows", [])

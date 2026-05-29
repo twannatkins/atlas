@@ -6,52 +6,132 @@
   "description": "State-changing referral routing workflow via Step Functions. Five Lambda steps: select-advisor, validate-routing, write-routing-decision, notify-advisor, audit-write.",
   "owner": "atlas-platform-team",
   "model_risk_classification": "tier-2-workflow",
+  "registry_record_type": "CUSTOM",
   "runtime": {
     "type": "step_functions",
     "state_machine_definition_s3": "s3://atlas-workshop-2/state-machines/referral-orchestrator.json",
-    "step_lambdas": ["select-advisor", "validate-routing", "write-routing-decision", "notify-advisor", "audit-write"]
+    "step_lambdas": [
+      "select-advisor",
+      "validate-routing",
+      "write-routing-decision",
+      "notify-advisor",
+      "audit-write"
+    ]
   },
   "iam_policy": {
     "inline_policy": {
       "Version": "2012-10-17",
       "Statement": [
-        {"Effect": "Allow", "Action": ["states:StartExecution"], "Resource": "${state_machine_arn}"},
-        {"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": ["${atlas_sparql_mcp_arn}", "${atlas_shacl_mcp_arn}"]},
-        {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/referral-orchestrator-*:*"}
+        {
+          "Effect": "Allow",
+          "Action": [
+            "states:StartExecution"
+          ],
+          "Resource": "${state_machine_arn}"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "bedrock-agentcore:InvokeAgentRuntime"
+          ],
+          "Resource": [
+            "${atlas_sparql_mcp_arn}",
+            "${atlas_shacl_mcp_arn}"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/referral-orchestrator-*:*"
+        }
       ]
     }
   },
   "input_schema": {
     "type": "object",
-    "required": ["household_uri", "signal_uris", "approved_rationale", "originating_banker_id", "persona_claim"],
+    "required": [
+      "household_uri",
+      "signal_uris",
+      "approved_rationale",
+      "originating_banker_id",
+      "persona_claim"
+    ],
     "properties": {
-      "household_uri": {"type": "string"},
-      "signal_uris": {"type": "array", "items": {"type": "string"}},
-      "approved_rationale": {"type": "string"},
-      "originating_banker_id": {"type": "string"},
-      "persona_claim": {"type": "string", "const": "atlas-consumer-banker"}
+      "household_uri": {
+        "type": "string"
+      },
+      "signal_uris": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "approved_rationale": {
+        "type": "string"
+      },
+      "originating_banker_id": {
+        "type": "string"
+      },
+      "persona_claim": {
+        "type": "string",
+        "const": "atlas-consumer-banker"
+      }
     }
   },
   "output_schema": {
     "type": "object",
-    "required": ["status", "routing_decision_uri", "selected_advisor_uri", "audit_record_uri"],
+    "required": [
+      "status",
+      "routing_decision_uri",
+      "selected_advisor_uri",
+      "audit_record_uri"
+    ],
     "properties": {
-      "status": {"type": "string", "enum": ["routed", "no_eligible_advisor", "validation_failed", "workflow_error"]},
-      "routing_decision_uri": {"type": "string"},
-      "selected_advisor_uri": {"type": "string"},
-      "audit_record_uri": {"type": "string"},
-      "execution_arn": {"type": "string"}
+      "status": {
+        "type": "string",
+        "enum": [
+          "routed",
+          "no_eligible_advisor",
+          "validation_failed",
+          "workflow_error"
+        ]
+      },
+      "routing_decision_uri": {
+        "type": "string"
+      },
+      "selected_advisor_uri": {
+        "type": "string"
+      },
+      "audit_record_uri": {
+        "type": "string"
+      },
+      "execution_arn": {
+        "type": "string"
+      }
     }
   },
   "registry_metadata": {
-    "discoverable_by": ["atlas-consumer-banker"],
+    "discoverable_by": [
+      "atlas-consumer-banker"
+    ],
     "display_name": "Route to advisor",
     "display_icon": "route",
     "capability_tag": "workflow",
+    "invocation_pattern": "async_workflow",
+    "execution_arn_output_field": "execution_arn",
+    "polling_method": "DescribeExecution",
     "phase": 1
   },
   "dependencies": {
-    "mcp_servers": ["atlas-sparql-mcp", "atlas-shacl-mcp"],
-    "workshop_1_artifacts": ["agentic-semantic-layer/ontology/atlas-shapes.ttl"]
+    "mcp_servers": [
+      "atlas-sparql-mcp",
+      "atlas-shacl-mcp"
+    ],
+    "workshop_1_artifacts": [
+      "agentic-semantic-layer/ontology/atlas-shapes.ttl"
+    ]
   }
 }

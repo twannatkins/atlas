@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
                                 "agentic-semantic-layer", "notebooks", "shared"))
 
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
-os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
+os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 os.environ.setdefault("PROMPT_TEMPLATE_S3_URI", "")
 
 import referral_rationale_drafter as handler_module
@@ -41,13 +41,13 @@ class TestHappyPath:
     def test_draft_generated_with_probabilistic_flags(self, mock_boto3):
         """A successful draft always carries is_probabilistic=True and requires_human_review=True."""
         mock_bedrock = MagicMock()
-        mock_lambda = MagicMock()
+        mock_agentcore = MagicMock()
 
         def client_factory(service_name, **kwargs):
             if service_name == "bedrock-runtime":
                 return mock_bedrock
-            elif service_name == "lambda":
-                return mock_lambda
+            elif service_name == "bedrock-agentcore":
+                return mock_agentcore
             return MagicMock()
 
         mock_boto3.client.side_effect = client_factory
@@ -57,8 +57,8 @@ class TestHappyPath:
             "status": "success",
             "rows": [{"member": "atlas:cust/001", "memberType": "atlas:Customer", "label": "Anjali Patel"}],
         }).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=sparql_result))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=sparql_result))
         }
 
         # Mock Bedrock response
@@ -83,7 +83,7 @@ class TestHappyPath:
         assert result["is_probabilistic"] is True
         assert result["requires_human_review"] is True
         assert "provenance" in result
-        assert result["provenance"]["model_id"] == "anthropic.claude-sonnet-4-20250514-v1:0"
+        assert result["provenance"]["model_id"] == "us.anthropic.claude-sonnet-4-6"
 
     @patch("referral_rationale_drafter.boto3")
     def test_flags_present_even_on_error(self, mock_boto3):
@@ -150,21 +150,21 @@ class TestDownstreamFailures:
     def test_bedrock_failure_returns_generation_failed(self, mock_boto3):
         """When Bedrock fails, handler returns generation_failed."""
         mock_bedrock = MagicMock()
-        mock_lambda = MagicMock()
+        mock_agentcore = MagicMock()
 
         def client_factory(service_name, **kwargs):
             if service_name == "bedrock-runtime":
                 return mock_bedrock
-            elif service_name == "lambda":
-                return mock_lambda
+            elif service_name == "bedrock-agentcore":
+                return mock_agentcore
             return MagicMock()
 
         mock_boto3.client.side_effect = client_factory
 
         # SPARQL succeeds
         sparql_result = json.dumps({"status": "success", "rows": []}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=sparql_result))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=sparql_result))
         }
 
         # Bedrock fails
@@ -185,12 +185,12 @@ class TestDownstreamFailures:
     @patch("referral_rationale_drafter.boto3")
     def test_sparql_mcp_failure_returns_context_query_failed(self, mock_boto3):
         """When SPARQL MCP fails, handler returns context_query_failed."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         error_payload = json.dumps({"status": "error", "message": "Neptune timeout"}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=error_payload))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=error_payload))
         }
 
         event = {

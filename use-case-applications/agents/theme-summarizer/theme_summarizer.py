@@ -14,13 +14,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 import boto3
 
@@ -28,7 +24,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
-BEDROCK_TEXT_MODEL_ID = os.environ.get("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
+BEDROCK_TEXT_MODEL_ID = os.environ.get("BEDROCK_TEXT_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 
 VALID_PERSONAS = ["atlas-wealth-advisor"]
 
@@ -95,18 +91,18 @@ def _get_theme_articles(theme_uri: str, persona_claim: str) -> list:
         OPTIONAL {{ ?article atlas-part-2:source ?source }}
     }}
     """
-    lambda_client = boto3.client("lambda")
-    response = lambda_client.invoke(
-        FunctionName=SPARQL_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
+    agentcore_client = boto3.client("bedrock-agentcore")
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=SPARQL_MCP_ARN,
+        payload=json.dumps({
             "operation": "query",
             "sparql": sparql,
             "persona_claim": persona_claim,
             "graph_tier": "slgd",
-        }),
+        }).encode(),
+        contentType="application/json",
     )
-    result = json.loads(response["Payload"].read())
+    result = json.loads(response["response"].read())
     if result.get("status") == "error":
         raise RuntimeError(result.get("message", "SPARQL query failed"))
     return result.get("rows", [])

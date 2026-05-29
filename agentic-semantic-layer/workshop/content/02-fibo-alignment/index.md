@@ -64,6 +64,10 @@ which means your CQ queries from Module 1 remain valid.
 
 ## Steps
 
+Before running any code, read cell 1 of the notebook — it contains the module
+introduction and a Key Terms table. The vocabulary defined there is referenced
+throughout the rest of the module.
+
 ### Step 1 — Open the notebook and load the Module 1 ontology
 
 Open `notebooks/02_fibo_alignment.ipynb` in your SageMaker instance. Run cell 3

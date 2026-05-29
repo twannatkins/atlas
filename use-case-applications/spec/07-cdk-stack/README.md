@@ -1,8 +1,17 @@
 # 07 — CDK Stack
 
-The infrastructure-as-code specification for Workshop 2. A single AWS CDK v2 TypeScript stack that deploys everything Workshop 2 needs on top of Workshop 1's standing Neptune cluster.
+The infrastructure-as-code specification for Workshop 2. A single AWS CDK v2 TypeScript stack that deploys Workshop 2's application layer on top of Workshop 1's standing Neptune cluster, with Amazon Bedrock AgentCore as the runtime substrate for the 12 MCP-shaped components.
 
 This document explains *what* gets deployed and *why* each construct exists. Implementation lives in `use-case-applications/cdk/`. If you change a JSON descriptor in `spec/04-aws-agent-registry/`, the CDK stack must be re-synthesized — the descriptors are the source of truth for IAM policies and environment variables.
+
+## AgentCore CDK packages
+
+The stack depends on two CDK packages for AgentCore primitives:
+
+- **`aws-cdk-lib`** (stable) — provides L1 constructs for `AWS::BedrockAgentCore::*` resources and the L2 `Gateway` construct
+- **`@aws-cdk/aws-bedrock-agentcore-alpha`** (experimental) — provides the L2 `Runtime`, `AgentRuntimeArtifact`, `WorkloadIdentity`, and related constructs we use to deploy the agents and MCP servers
+
+Both packages are listed in `package.json`. The alpha designation on the second package means construct APIs may evolve; Workshop 2 pins specific versions and re-validates against newer versions in a documented upgrade cycle.
 
 ## What this stack deploys
 
@@ -59,6 +68,8 @@ The stack is organized as nested constructs. Each construct owns a single concer
 
 **How the persona flows.** The client sends only the Cognito JWT in the Authorization header. AppSync validates the token and extracts the `cognito:groups` claim server-side — the persona is never sent as a client-supplied header. This prevents privilege escalation via localStorage manipulation. The resolver passes the server-extracted persona to the MCP servers for Lake Formation scoping.
 
+**How the persona reaches AgentCore Runtime.** The Wholesale UI and Wealth UI invoke AgentCore Runtime constructs via the `bedrock-agentcore:InvokeAgentRuntimeForUser` action, passing the Cognito JWT as the bearer token. The Runtime construct exchanges that token against AgentCore Identity, which validates the issuer (Cognito), extracts the persona claim, and makes it available to the agent's execution context. The agent reads the persona at the start of each invocation, validates it against its `VALID_PERSONAS` constant, and rejects mismatches before any tool call. This is the third validation point (Cognito issues, AgentCore Identity validates, agent verifies) — defense in depth for what is fundamentally a single trust claim.
+
 **Why federate rather than manage users directly in Cognito?** Because the enterprise already has IDC. Duplicating user management in Cognito creates identity drift. Federation means a single source of truth for group membership, with Cognito as the application-facing token issuer.
 
 ### 4. AppSync GraphQL API
@@ -67,32 +78,58 @@ The stack is organized as nested constructs. Each construct owns a single concer
 
 **Why AppSync and not a custom GraphQL server?** AppSync gives us Cognito integration (authorization by group claim), resolver-level caching, and subscription support for real-time signal updates — all without managing a server. The schema is FIBO-shaped, meaning the GraphQL types mirror FIBO classes. This is what makes Thesis 2 (two UIs, one backbone) work: both UIs query the same FIBO-shaped schema with different persona claims, and the resolvers return persona-scoped results.
 
-### 5. Lambda deployments (13 handlers)
+### 5. Component deployments (12 AgentCore Runtimes + 5 step Lambdas + 1 Memory store)
 
-**What.** Thirteen Lambda functions: 5 MCP servers and 8 agents. Each is deployed from its source directory under `use-case-applications/mcp-servers/` or `use-case-applications/agents/`.
+**What.** The application logic for Workshop 2 deploys as three different resource types, each chosen for its fit:
 
-**MCP servers (5):**
-- `atlas-sparql-mcp` — SPARQL query/update over Neptune
-- `atlas-shacl-mcp` — SHACL validation
-- `atlas-fibo-mcp` — FIBO class/property lookup
-- `atlas-er-mcp` — Entity Resolution canonical URI lookup
-- `atlas-registry-mcp` — Agent Registry query interface
+| Resource type | Count | What it hosts |
+|---|---|---|
+| `agentcore.Runtime` | 12 | The 5 MCP servers and 7 standalone agents — all 12 MCP-shaped components from the Agent Registry |
+| `aws_lambda.Function` | 5 | The Step Functions step Lambdas inside `referral-orchestrator` |
+| `agentcore.CfnMemory` | 1 | The AgentCore Memory store backing `conversational-context-manager` |
 
-**Agents (8):**
-- `wealth-signal-detector` — Fires wealth signals via SPARQL CONSTRUCT
-- `household-traverser` — Graph traversal for household membership
-- `nl-to-sparql-agent` — Natural language to SPARQL translation (Bedrock)
-- `referral-rationale-drafter` — Narrative generation for referral rationale (Bedrock)
-- `referral-orchestrator` — Step Functions workflow trigger (see construct 7)
-- `behavioral-signal-agent` — Session/network signals (Phase 2)
-- `conversational-context-manager` — AgentCore Memory session state (Phase 2)
-- `theme-summarizer` — Market theme summarization (Phase 2, Bedrock)
+**The 12 AgentCore Runtimes.** Each MCP component (5 servers + 7 agents) deploys as an `agentcore.Runtime` construct from `@aws-cdk/aws-bedrock-agentcore-alpha`. The artifact source is `AgentRuntimeArtifact.fromCodeAsset()`, which packages the component's source directory and uploads it to a CDK-managed S3 bucket at synth time. The entrypoint is `['opentelemetry-instrument', 'main.py']`, which wires AWS Distro for OpenTelemetry into every invocation automatically — execution traces appear in CloudWatch Transaction Search without per-handler instrumentation.
 
-**How IAM policies are assigned.** Each Lambda's inline IAM policy is read directly from its JSON descriptor in `spec/04-aws-agent-registry/`. The CDK stack parses the `iam_policy.inline_policy` field and attaches it to the Lambda's execution role. No policy is hand-written in CDK code — the descriptors are the single source of truth.
+The 12 Runtime instances are:
 
-**How environment variables are assigned.** Each Lambda's environment variables are read from the `runtime.environment_variables` field in its JSON descriptor. Placeholder tokens like `${slgd_endpoint}` and `${neptune_cluster_arn}` are resolved to CDK token references at synth time. This means a descriptor change propagates to the deployed Lambda on the next `cdk deploy` without touching CDK code.
+| Component | Source directory | Discoverable by |
+|---|---|---|
+| `atlas-sparql-mcp` | `mcp-servers/atlas-sparql-mcp/` | All five personas |
+| `atlas-shacl-mcp` | `mcp-servers/atlas-shacl-mcp/` | All five personas |
+| `atlas-er-mcp` | `mcp-servers/atlas-er-mcp/` | All five personas |
+| `atlas-fibo-mcp` | `mcp-servers/atlas-fibo-mcp/` | All five personas |
+| `atlas-registry-mcp` | `mcp-servers/atlas-registry-mcp/` | All five personas |
+| `nl-to-sparql-agent` | `agents/nl-to-sparql-agent/` | Banker, advisor, BSA, steward |
+| `wealth-signal-detector` | `agents/wealth-signal-detector/` | Banker, advisor, steward |
+| `household-traverser` | `agents/household-traverser/` | Banker, advisor |
+| `referral-rationale-drafter` | `agents/referral-rationale-drafter/` | Banker |
+| `behavioral-signal-agent` | `agents/behavioral-signal-agent/` | Advisor, steward |
+| `theme-summarizer` | `agents/theme-summarizer/` | Advisor |
+| `conversational-context-manager` | `agents/conversational-context-manager/` | Advisor |
 
-**Why this pattern?** Governance. The JSON descriptors are reviewed by the platform team and committed alongside the agent's MRM documentation. If IAM policies lived only in CDK code, the security review would require reading TypeScript infrastructure code — a different skill set from reviewing a declarative policy document. The descriptor-as-source-of-truth pattern keeps the security review in JSON, where auditors can read it.
+Each Runtime ships with `loggingConfigs` sending APPLICATION_LOGS and USAGE_LOGS to CloudWatch Logs. APPLICATION_LOGS capture the agent's invocation-level events (request, response, errors); USAGE_LOGS capture session-level resource consumption (Memory reads, Bedrock token counts). Both feed CloudWatch Transaction Search for the audit story.
+
+Step Functions step Lambdas are *not* Runtimes — see below.
+
+**The 5 step Lambdas.** The `referral-orchestrator` workflow (construct 7) executes five steps via Step Functions: `select-advisor`, `validate-routing`, `write-routing-decision`, `notify-advisor`, `audit-write`. These deploy as standard `aws_lambda.Function` constructs with their own per-step IAM roles. They are **not** registered in Agent Registry and **not** exposed as MCP tools.
+
+*Why these stay as Lambdas, not Runtimes.* Each step Lambda is a deterministic workflow component with one job: select an advisor by capacity, validate a routing decision against SHACL, write a triple to Neptune, send a notification, append an audit record. None of them needs MCP-shaped discovery, none takes a persona claim, none should be invokable from a UI. They exist only to be orchestrated by Step Functions. Lambda is the right primitive for this; the per-Lambda IAM role is the right scope; the absence from Agent Registry is correct.
+
+*A teachable alternative.* If a team wanted maximum architectural uniformity — "everything is a Runtime" — they could deploy each step as its own `agentcore.Runtime` with a `Custom` registry record describing its internal-only nature. The cost: 5 extra Runtime instances, 5 extra ECR or S3 artifacts, 5 extra entries in Agent Registry that no UI ever queries, slower `cdk deploy` cycles. The benefit: every executable in the system is reachable via the same SDK, observable through the same Transaction Search view, governed through the same registry workflow. For Workshop 2's scale and teaching goals, the cost outweighs the benefit. For a production deployment with hundreds of agents and a mature platform team, the trade-off might flip. Knowing both patterns is part of becoming an AgentCore practitioner.
+
+**The AgentCore Memory store.** A single `agentcore.CfnMemory` resource provisions one Memory store per deployed stack. The store is consumed only by `conversational-context-manager`; that Runtime's IAM execution role is granted `bedrock-agentcore:CreateEvent`, `bedrock-agentcore:GetEvent`, and `bedrock-agentcore:ListEvents` on the Memory ARN — no other Runtime has Memory access.
+
+Within the Memory store, sessions are partitioned by the Cognito `sub` claim. When a Wealth Advisor opens the Themes route and asks a multi-turn question, the conversation lives in a session keyed to that advisor's `sub`. Another advisor logging in concurrently gets a different session in the same Memory store — no cross-user visibility. The Memory store itself is bounded to the deployed stack: every workshop attendee deploys their own stack in their own AWS account, so workshop attendees never share Memory either.
+
+The Memory store has `removalPolicy: RemovalPolicy.DESTROY` so `cdk destroy` cleans up session data along with the rest of the stack. This is deliberate — workshop attendees shouldn't accumulate session data after they tear down their environment.
+
+**How IAM policies are assigned.** The descriptor-as-source-of-truth pattern from the original spec carries forward. Each Runtime's IAM execution role policy is read directly from its JSON descriptor in `spec/04-aws-agent-registry/`. The CDK stack parses the `iam_policy.inline_policy` field and attaches it to the Runtime's role. No policy is hand-written in CDK code — the descriptors remain the single source of truth.
+
+For step Lambdas, the IAM policy is sourced from the orchestrator's descriptor's `step_lambda_iam_policies` field (a new field that Phase 02 will add during the agent rewrite). Each step Lambda gets exactly the permissions its single job requires.
+
+**How environment variables are assigned.** Same descriptor-as-source-of-truth pattern. Each component's environment variables are read from the `runtime.environment_variables` field in its JSON descriptor. Placeholder tokens like `${slgd_endpoint}` and `${neptune_cluster_arn}` are resolved to CDK token references at synth time.
+
+**Why descriptor-driven assignment.** Governance, same as before. The JSON descriptors are reviewed by the platform team and committed alongside the component's MRM documentation. AgentCore Runtime constructs don't change this — they consume the descriptors the same way Lambda functions did. The deployment surface changes; the governance pattern stays.
 
 ### 6. CloudFront distributions
 
@@ -116,6 +153,8 @@ select-advisor → validate-routing → write-routing-decision → notify-adviso
 
 **Why five steps and not one monolithic Lambda?** Each step has a different failure mode and a different retry policy. `select-advisor` might fail because no advisor has capacity (retry with expanded criteria). `validate-routing` might fail because SHACL validation rejects the routing decision (no retry — surface to human). `audit-write` must succeed even if earlier steps partially failed (compensating transaction). Separating steps lets each one own its failure semantics.
 
+**How `referral-orchestrator` registers in Agent Registry.** Unlike the 12 MCP-shaped components (which register via their `agentcore.Runtime` construct's automatic registration), the orchestrator is a CUSTOM record because its async-workflow invocation model doesn't fit the MCP synchronous request-response shape. The stack uses a CDK Custom Resource backed by a small registration Lambda to submit a CUSTOM record at deploy time. The record's `descriptors` block describes the workflow lifecycle: invocation pattern (`async_workflow`), execution ARN response shape, polling contract (`DescribeExecution` on the state machine ARN, terminal states `SUCCEEDED|FAILED|TIMED_OUT|ABORTED`), and final output schema. This is the one place the stack interacts with Agent Registry directly via the AWS SDK rather than through the AgentCore CDK constructs.
+
 ### 8. Lake Formation tag policies
 
 **What.** LF-Tag policies that scope data access by persona. Tags are applied to Iceberg table columns and rows; policies grant access based on the Cognito group claim passed through the query path.
@@ -135,14 +174,23 @@ select-advisor → validate-routing → write-routing-decision → notify-adviso
 |---|---|---|
 | Neptune cluster | Workshop 1 CFN | Shared substrate; outlives applications |
 | IAM Identity Center | Organization admin | Pre-existing enterprise identity |
-| Bedrock model access | Account-level setting | Not deployable via CDK |
-| Agent Registry | AWS managed service | No deployment needed; API-only |
+| Bedrock model access | Account-level setting | Not deployable via CDK; activated via the Bedrock console one-time |
+| Bedrock inference profiles | AWS managed | The `us.anthropic.claude-sonnet-4-6` profile is referenced by ID; the profile itself exists in the account by default |
+| AWS Agent Registry (the service itself) | AWS managed | The service exists per region; records are written into it by this stack at deploy time |
 | Iceberg tables | Workshop 1 data pipeline | Data layer owned by data engineering |
+| AgentCore Gateway | Not deployed | Workshop 2's MCP servers are MCP-native, so Gateway's protocol translation is unnecessary. Mentioned here for completeness — a production deployment wrapping non-MCP Lambdas would add this |
 
 ## Synthesis and deployment
 
+**Prerequisites.** AWS CDK CLI v2.1102.0 or later (for AgentCore Runtime support including hotswap). The package.json includes:
+- `aws-cdk-lib` (stable L1 constructs and the L2 `Gateway`)
+- `@aws-cdk/aws-bedrock-agentcore-alpha` (the L2 `Runtime`, `WorkloadIdentity`, and related constructs)
+
+**Synthesis and deployment commands:**
+
 ```bash
 cd use-case-applications/cdk
+npm install
 npx cdk synth --context neptuneClusterEndpoint=<endpoint> \
               --context neptuneClusterArn=<arn> \
               --context vpcId=<vpc-id> \
@@ -150,7 +198,17 @@ npx cdk synth --context neptuneClusterEndpoint=<endpoint> \
 npx cdk deploy
 ```
 
-The stack is a single CloudFormation stack (not multiple stacks) because all constructs share the VPC, the Cognito pool, and cross-references between Lambda ARNs. Splitting into multiple stacks would require export/import for every cross-reference — added complexity with no isolation benefit at workshop scale.
+**Deployment ordering.** The deploy completes in two phases automatically:
+
+1. **CloudFormation phase.** All AWS resources provision: the 12 Runtime instances (with their automatic Runtime → registry record syncing), the 5 step Lambdas, the Memory store, Cognito, AppSync, etc.
+
+2. **Custom Resource phase.** The `referral-orchestrator` CUSTOM record gets registered in Agent Registry by the CDK Custom Resource. This runs after the Step Functions state machine ARN is known (the ARN goes into the record's `descriptors`).
+
+After `cdk deploy` completes, the Wholesale UI and Wealth UI can immediately query Agent Registry and discover all 13 components (12 auto-registered MCP records + 1 CUSTOM record). No manual registration step is required.
+
+**Why a single CloudFormation stack and not multiple.** The original rationale holds: all constructs share the VPC, the Cognito pool, and cross-references between Runtime ARNs. Splitting into multiple stacks would require export/import for every cross-reference — added complexity with no isolation benefit at workshop scale.
+
+**Hotswap for development.** AgentCore Runtime supports CDK's hotswap deployment for ECR and S3 artifact updates. During Phase 2 of the workshop, when attendees iterate on agent code, `cdk deploy --hotswap` updates the Runtime's artifact without going through CloudFormation — typical iteration time drops from 8-12 minutes to 30-60 seconds. **Do not use `--hotswap` for production deployments**; it introduces CloudFormation drift and is intended only for development cycles.
 
 ## Teaching note
 

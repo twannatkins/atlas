@@ -10,13 +10,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 import boto3
 
@@ -40,18 +36,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     # Check for compliance holds on the household
     try:
-        lambda_client = boto3.client("lambda")
-        hold_check = lambda_client.invoke(
-            FunctionName=SPARQL_MCP_ARN,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({
+        agentcore_client = boto3.client("bedrock-agentcore")
+        hold_check = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=SPARQL_MCP_ARN,
+            payload=json.dumps({
                 "operation": "query",
                 "sparql": f"ASK {{ <{household_uri}> atlas:hasComplianceHold true }}",
                 "persona_claim": persona_claim,
                 "graph_tier": "slgd",
-            }),
+            }).encode(),
+            contentType="application/json",
         )
-        hold_result = json.loads(hold_check["Payload"].read())
+        hold_result = json.loads(hold_check["response"].read())
         # If household has a compliance hold, routing is blocked
         if hold_result.get("rows") and hold_result["rows"][0].get("result") == "true":
             return {**event, "status": "validation_failed", "validation_error": "Household has active compliance hold"}
@@ -69,16 +65,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             atlas:aboutHousehold <{household_uri}> .
         """
 
-        shacl_response = lambda_client.invoke(
-            FunctionName=SHACL_MCP_ARN,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({
+        shacl_response = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=SHACL_MCP_ARN,
+            payload=json.dumps({
                 "operation": "validate",
                 "triples": routing_triples,
                 "shape_uris": ["atlas:RoutingPolicyShape"],
-            }),
+            }).encode(),
+            contentType="application/json",
         )
-        shacl_result = json.loads(shacl_response["Payload"].read())
+        shacl_result = json.loads(shacl_response["response"].read())
 
         if not shacl_result.get("conforms", True):
             return {**event, "status": "validation_failed",

@@ -177,12 +177,12 @@ class TestConstructAndValidate:
         mock_response.raise_for_status = MagicMock()
         mock_requests.get.return_value = mock_response
 
-        # Mock SHACL MCP Lambda invocation
-        mock_lambda_client = MagicMock()
-        mock_boto3.client.return_value = mock_lambda_client
+        # Mock SHACL MCP AgentCore Runtime invocation
+        mock_agentcore_client = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore_client
         shacl_payload = json.dumps({"conforms": True, "report": {}}).encode()
-        mock_lambda_client.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=shacl_payload))
+        mock_agentcore_client.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=shacl_payload))
         }
 
         event = {

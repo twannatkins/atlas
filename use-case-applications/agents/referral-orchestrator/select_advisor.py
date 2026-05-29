@@ -10,13 +10,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 import boto3
 
@@ -48,18 +44,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     persona_claim = event.get("persona_claim", "atlas-consumer-banker")
 
     try:
-        lambda_client = boto3.client("lambda")
-        response = lambda_client.invoke(
-            FunctionName=SPARQL_MCP_ARN,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({
+        agentcore_client = boto3.client("bedrock-agentcore")
+        response = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=SPARQL_MCP_ARN,
+            payload=json.dumps({
                 "operation": "query",
                 "sparql": ADVISOR_QUERY,
                 "persona_claim": persona_claim,
                 "graph_tier": "slgd",
-            }),
+            }).encode(),
+            contentType="application/json",
         )
-        result = json.loads(response["Payload"].read())
+        result = json.loads(response["response"].read())
         advisors = result.get("rows", [])
 
         if not advisors:

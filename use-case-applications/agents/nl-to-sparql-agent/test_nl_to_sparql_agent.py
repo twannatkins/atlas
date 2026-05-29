@@ -55,13 +55,13 @@ class TestHappyPath:
         """A question matching a template returns the template's SPARQL."""
         # Mock Bedrock embedding calls to return high-similarity vectors
         mock_bedrock = MagicMock()
-        mock_lambda = MagicMock()
+        mock_agentcore = MagicMock()
 
         def client_factory(service_name, **kwargs):
             if service_name == "bedrock-runtime":
                 return mock_bedrock
-            elif service_name == "lambda":
-                return mock_lambda
+            elif service_name == "bedrock-agentcore":
+                return mock_agentcore
             elif service_name == "s3":
                 return MagicMock()
             return MagicMock()
@@ -76,8 +76,8 @@ class TestHappyPath:
 
         # Mock SPARQL MCP response
         sparql_result = json.dumps({"status": "success", "rows": [{"customer": "atlas:cust/001"}]}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=sparql_result))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=sparql_result))
         }
 
         event = {
@@ -97,13 +97,13 @@ class TestHappyPath:
     def test_determinism_same_question_same_sparql(self, mock_boto3):
         """Running the same question multiple times produces identical SPARQL (determinism check)."""
         mock_bedrock = MagicMock()
-        mock_lambda = MagicMock()
+        mock_agentcore = MagicMock()
 
         def client_factory(service_name, **kwargs):
             if service_name == "bedrock-runtime":
                 return mock_bedrock
-            elif service_name == "lambda":
-                return mock_lambda
+            elif service_name == "bedrock-agentcore":
+                return mock_agentcore
             return MagicMock()
 
         mock_boto3.client.side_effect = client_factory
@@ -114,8 +114,8 @@ class TestHappyPath:
         }
 
         sparql_result = json.dumps({"status": "success", "rows": []}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=sparql_result))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=sparql_result))
         }
 
         event = {
@@ -195,13 +195,13 @@ class TestDownstreamFailures:
     def test_sparql_mcp_failure_returns_execution_error(self, mock_boto3):
         """When atlas-sparql-mcp returns error, handler surfaces it."""
         mock_bedrock = MagicMock()
-        mock_lambda = MagicMock()
+        mock_agentcore = MagicMock()
 
         def client_factory(service_name, **kwargs):
             if service_name == "bedrock-runtime":
                 return mock_bedrock
-            elif service_name == "lambda":
-                return mock_lambda
+            elif service_name == "bedrock-agentcore":
+                return mock_agentcore
             return MagicMock()
 
         mock_boto3.client.side_effect = client_factory
@@ -214,8 +214,8 @@ class TestDownstreamFailures:
 
         # SPARQL MCP fails
         error_payload = json.dumps({"status": "error", "message": "Neptune connection refused"}).encode()
-        mock_lambda.invoke.return_value = {
-            "Payload": MagicMock(read=MagicMock(return_value=error_payload))
+        mock_agentcore.invoke_agent_runtime.return_value = {
+            "response": MagicMock(read=MagicMock(return_value=error_payload))
         }
 
         event = {

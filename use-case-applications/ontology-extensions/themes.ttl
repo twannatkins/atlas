@@ -5,6 +5,19 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
+# Theme — added during Workshop 2 spec refresh.
+# The Theme itself, as a SKOS Concept with persistent identity. ThemeAssertions
+# reference instances of this class via the existing themeLabel property pattern.
+# Subclass of skos:Concept so themes can form broader/narrower hierarchies as
+# the theme corpus grows.
+
+atlas-part-2:Theme
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Theme"@en ;
+    rdfs:comment
+        "A market or portfolio theme that the wealth firm has decided to track. Subclass of skos:Concept so themes can be organized into broader/narrower hierarchies. Themes are author-curated, not LLM-generated. The actual theme corpus is firm-specific and is populated separately from this ontology."@en .
+
 # -------------------------------------------------------------------
 # atlas-part-2:ThemeAssertion
 #
@@ -27,12 +40,6 @@ atlas-part-2:hasSourceArticle a owl:ObjectProperty ;
     rdfs:comment "Links a theme to a source article that informs it." ;
     rdfs:domain atlas-part-2:ThemeAssertion ;
     rdfs:range owl:Thing .
-
-atlas-part-2:appliesToHolding a owl:ObjectProperty ;
-    rdfs:label "applies to holding" ;
-    rdfs:comment "Links a theme to a holding it is relevant to." ;
-    rdfs:domain atlas-part-2:ThemeAssertion ;
-    rdfs:range atlas:Holding .
 
 atlas-part-2:appliesToCustomer a owl:ObjectProperty ;
     rdfs:label "applies to customer" ;

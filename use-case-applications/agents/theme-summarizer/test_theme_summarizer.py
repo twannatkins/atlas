@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
                                 "agentic-semantic-layer", "notebooks", "shared"))
 
 os.environ.setdefault("SPARQL_MCP_ARN", "arn:aws:lambda:us-east-1:123456789012:function:atlas-sparql-mcp")
-os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0")
+os.environ.setdefault("BEDROCK_TEXT_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 
 from theme_summarizer import handler
 
@@ -31,13 +31,13 @@ class TestHappyPath:
     def test_summary_generated_with_flags(self, mock_boto3):
         """A successful summary always carries probabilistic flags."""
         mock_bedrock = MagicMock()
-        mock_lambda = MagicMock()
+        mock_agentcore = MagicMock()
 
         def client_factory(service_name, **kwargs):
             if service_name == "bedrock-runtime":
                 return mock_bedrock
-            elif service_name == "lambda":
-                return mock_lambda
+            elif service_name == "bedrock-agentcore":
+                return mock_agentcore
             return MagicMock()
 
         mock_boto3.client.side_effect = client_factory
@@ -49,7 +49,7 @@ class TestHappyPath:
                 {"article_uri": "article:001", "title": "Tech sector rally", "source": "Reuters"},
             ],
         }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=sparql_result))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=sparql_result))}
 
         # Mock Bedrock response
         bedrock_response = json.dumps({
@@ -88,19 +88,19 @@ class TestDownstreamFailures:
     def test_bedrock_failure(self, mock_boto3):
         """When Bedrock fails, handler returns generation_failed with flags."""
         mock_bedrock = MagicMock()
-        mock_lambda = MagicMock()
+        mock_agentcore = MagicMock()
 
         def client_factory(service_name, **kwargs):
             if service_name == "bedrock-runtime":
                 return mock_bedrock
-            elif service_name == "lambda":
-                return mock_lambda
+            elif service_name == "bedrock-agentcore":
+                return mock_agentcore
             return MagicMock()
 
         mock_boto3.client.side_effect = client_factory
 
         sparql_result = json.dumps({"status": "success", "rows": [{"title": "Article"}]}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=sparql_result))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=sparql_result))}
         mock_bedrock.invoke_model.side_effect = Exception("Bedrock throttled")
 
         event = {"theme_uri": "atlas-part-2:theme/001", "persona_claim": "atlas-wealth-advisor"}
@@ -113,11 +113,11 @@ class TestDownstreamFailures:
     @patch("theme_summarizer.boto3")
     def test_sparql_failure(self, mock_boto3):
         """When SPARQL MCP fails, handler returns query_failed."""
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
+        mock_agentcore = MagicMock()
+        mock_boto3.client.return_value = mock_agentcore
 
         error_payload = json.dumps({"status": "error", "message": "timeout"}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=error_payload))}
+        mock_agentcore.invoke_agent_runtime.return_value = {"response": MagicMock(read=MagicMock(return_value=error_payload))}
 
         event = {"theme_uri": "atlas-part-2:theme/001", "persona_claim": "atlas-wealth-advisor"}
         result = handler(event, None)

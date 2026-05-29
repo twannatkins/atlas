@@ -51,6 +51,10 @@ notebook.
 
 ## Steps
 
+Before running any code, read cell 1 of the notebook — it contains the module
+introduction and a Key Terms table. The vocabulary defined there is referenced
+throughout the rest of the module.
+
 ### Step 1 — Open the notebook and set your environment
 
 Open `notebooks/01_journey_to_ontology.ipynb` in your SageMaker instance.

@@ -17,14 +17,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict, List
-
-# Add shared modules to path for Workshop 1 helpers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 from atlas_validators import validate_graph as shacl_validate, ValidationResult
 
@@ -174,11 +169,8 @@ def _load_shapes() -> Graph:
         _shapes_graph = Graph()
         _shapes_graph.parse(data=ttl_content, format="turtle")
     else:
-        # Fallback: load from local Workshop 1 path
-        local_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..",
-            "agentic-semantic-layer", "ontology", "atlas-shapes.ttl"
-        )
+        # Fallback: load from vendored ontology directory
+        local_path = os.path.join(os.path.dirname(__file__), "ontology", "atlas-shapes.ttl")
         _shapes_graph = Graph()
         if os.path.exists(local_path):
             _shapes_graph.parse(local_path, format="turtle")

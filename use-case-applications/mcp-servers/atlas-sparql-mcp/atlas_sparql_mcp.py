@@ -19,15 +19,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict
 from urllib.parse import quote as url_quote
-
-# Add shared modules to path for Workshop 1 helpers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 from atlas_sparql import validate, AtlasSPARQLError, prefixed
 
@@ -229,17 +224,17 @@ def _handle_construct_and_validate(event: Dict[str, Any], invocation_id: str, st
 
     # Validate via atlas-shacl-mcp
     try:
-        lambda_client = boto3.client("lambda")
-        shacl_response = lambda_client.invoke(
-            FunctionName=SHACL_MCP_ARN,
-            InvocationType="RequestResponse",
-            Payload=json.dumps({
+        agentcore_client = boto3.client("bedrock-agentcore")
+        shacl_response = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=SHACL_MCP_ARN,
+            payload=json.dumps({
                 "operation": "validate",
                 "triples": triples_minted,
                 "shape_uris": [shape_uri],
-            }),
+            }).encode(),
+            contentType="application/json",
         )
-        shacl_result = json.loads(shacl_response["Payload"].read())
+        shacl_result = json.loads(shacl_response["response"].read())
     except Exception as exc:
         return _error_response(invocation_id, start_time, "shacl_invocation_error", f"SHACL MCP call failed: {exc}")
 

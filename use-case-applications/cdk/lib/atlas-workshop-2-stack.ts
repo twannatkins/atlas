@@ -17,6 +17,9 @@ import { LambdaConstruct } from "./constructs/lambdas";
 import { CloudFrontConstruct } from "./constructs/cloudfront";
 import { StepFunctionsConstruct } from "./constructs/step-functions";
 import { LakeFormationConstruct } from "./constructs/lake-formation";
+import { AgentCoreMemoryConstruct } from "./constructs/agentcore-memory";
+import { AgentCoreRuntimesConstruct } from "./constructs/agentcore-runtimes";
+import { OrchestratorRegistrationConstruct } from "./constructs/orchestrator-registration";
 
 export class AtlasWorkshop2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,7 +27,6 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
 
     // ─── Context parameters (from Workshop 1 CFN outputs) ───────────
     const neptuneEndpoint = this.node.tryGetContext("neptuneClusterEndpoint");
-    const neptuneArn = this.node.tryGetContext("neptuneClusterArn");
     const vpcId = this.node.tryGetContext("vpcId");
     const privateSubnetIds = this.node.tryGetContext("privateSubnetIds");
 
@@ -51,46 +53,58 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     // ─── 3. Cognito + IDC federation ────────────────────────────────
     const cognito = new CognitoConstruct(this, "Cognito");
 
-    // ─── 4. Lambda deployments (13 handlers) ────────────────────────
+    // ─── 4. Lambda deployments (5 step Lambdas for referral orchestrator) ──
     const lambdas = new LambdaConstruct(this, "Lambdas", {
       vpc: networking.vpc,
       securityGroup: networking.lambdaSecurityGroup,
-      neptuneEndpoint,
-      neptuneArn,
-      ontopEndpoint: ontop.endpoint,
-      shapesBucket: "atlas-workshop-1",
     });
 
     // ─── 5. Step Functions state machine ────────────────────────────
-    const stepFunctions = new StepFunctionsConstruct(
-      this,
-      "StepFunctions",
-      {
-        selectAdvisorFn: lambdas.getFunction("select-advisor"),
-        validateRoutingFn: lambdas.getFunction("validate-routing"),
-        writeRoutingDecisionFn: lambdas.getFunction("write-routing-decision"),
-        notifyAdvisorFn: lambdas.getFunction("notify-advisor"),
-        auditWriteFn: lambdas.getFunction("audit-write"),
-      },
-    );
+    const stepFunctions = new StepFunctionsConstruct(this, "StepFunctions", {
+      selectAdvisorFn: lambdas.getFunction("select-advisor"),
+      validateRoutingFn: lambdas.getFunction("validate-routing"),
+      writeRoutingDecisionFn: lambdas.getFunction("write-routing-decision"),
+      notifyAdvisorFn: lambdas.getFunction("notify-advisor"),
+      auditWriteFn: lambdas.getFunction("audit-write"),
+    });
 
-    // ─── 6. AppSync GraphQL API ─────────────────────────────────────
-    const appsync = new AppSyncConstruct(this, "AppSync", {
-      userPool: cognito.userPool,
-      lambdas,
+    // ─── 6. Register referral-orchestrator CUSTOM record ────────────
+    // Must follow StepFunctions so stateMachineArn is a resolved token.
+    new OrchestratorRegistrationConstruct(this, "OrchestratorRegistration", {
+      stateMachineArn: stepFunctions.stateMachineArn,
     });
 
     // ─── 7. CloudFront distributions ────────────────────────────────
     const cloudfront = new CloudFrontConstruct(this, "CloudFront");
 
     // ─── 8. Lake Formation tag policies ─────────────────────────────
-    const lakeFormation = new LakeFormationConstruct(
-      this,
-      "LakeFormation",
-      {
-        personas: cognito.personas,
-      },
-    );
+    new LakeFormationConstruct(this, "LakeFormation", {
+      personas: cognito.personas,
+    });
+
+    // ─── 9. AgentCore Memory store ──────────────────────────────────
+    const memory = new AgentCoreMemoryConstruct(this, "Memory");
+
+    // ─── 10. AgentCore Runtimes (12 MCP-shaped components) ──────────
+    // Runtimes before AppSync so Runtime ARNs are available for proxy Lambdas.
+    const runtimes = new AgentCoreRuntimesConstruct(this, "Runtimes", {
+      userPool: cognito.userPool,
+      userPoolClient: cognito.userPoolClient,
+      memory,
+      neptuneSlgdEndpoint: neptuneEndpoint ?? "",
+      neptuneLgdEndpoint: neptuneEndpoint ?? "",
+      ontopEndpoint: ontop.endpoint,
+    });
+
+    // ─── 11. AppSync GraphQL API ────────────────────────────────────
+    // AppSync is created last so the proxy Lambdas (defined inline below) can
+    // reference Runtime ARNs as CDK tokens.
+    const appsync = new AppSyncConstruct(this, "AppSync", {
+      userPool: cognito.userPool,
+      sparqlMcpArn: runtimes.atlasSparqlMcp.agentRuntimeArn,
+      registryMcpArn: runtimes.atlasRegistryMcp.agentRuntimeArn,
+      erMcpArn: runtimes.atlasErMcp.agentRuntimeArn,
+    });
 
     // ─── Outputs ────────────────────────────────────────────────────
     new cdk.CfnOutput(this, "AppSyncEndpoint", {
@@ -112,6 +126,18 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     new cdk.CfnOutput(this, "StateMachineArn", {
       value: stepFunctions.stateMachineArn,
       description: "Referral orchestrator Step Functions ARN",
+    });
+    new cdk.CfnOutput(this, "MemoryId", {
+      value: memory.memoryId,
+      description: "AgentCore Memory store ID",
+    });
+    new cdk.CfnOutput(this, "AtlasSparqlMcpArn", {
+      value: runtimes.atlasSparqlMcp.agentRuntimeArn,
+      description: "atlas-sparql-mcp AgentCore Runtime ARN",
+    });
+    new cdk.CfnOutput(this, "ConversationalContextManagerArn", {
+      value: runtimes.conversationalContextManager.agentRuntimeArn,
+      description: "conversational-context-manager AgentCore Runtime ARN",
     });
   }
 }

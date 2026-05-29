@@ -39,17 +39,31 @@ aws cloudformation wait stack-delete-complete \
   --region us-east-1
 ```
 
-## Step 2 — Stop or Delete the SageMaker Notebook Instance
+## Step 2 — Stop or Delete the SageMaker Unified Studio Project
 
-If you created a notebook instance for this workshop:
+This workshop ran inside a SageMaker Unified Studio project named `atlas-workshop`
+(created in the Prerequisites step). The running JupyterLab environment inside that
+project accrues compute charges while it is running, so stop or delete it when you
+are done.
 
-1. Open the [SageMaker console](https://console.aws.amazon.com/sagemaker/)
-2. Choose **Notebook instances**
-3. Select `atlas-workshop`
-4. Choose **Stop** (to preserve your work) or **Delete** (to remove entirely)
+**To stop compute charges but keep your work:**
 
-A stopped notebook instance incurs no compute charges but retains its storage volume
-(~$0.10/GB/month for the EBS volume).
+1. Open the [SageMaker console](https://console.aws.amazon.com/sagemaker/) → **Studio**
+2. Open the `atlas-workshop` project
+3. Stop any running JupyterLab or notebook apps (look for running spaces/apps in
+   the project and shut them down)
+
+Stopping the running apps stops the hourly compute charge while leaving the project
+and your notebooks in place, so you can return later by restarting the app.
+
+**To remove everything:**
+
+1. From the SageMaker Studio project list, select `atlas-workshop`
+2. Delete the project (this removes the JupyterLab environment and associated
+   compute resources)
+
+You can leave the SageMaker Unified Studio **domain** in place — a domain with no
+running apps incurs no compute charges.
 
 ## Step 3 — Verify No Resources Remain
 
@@ -69,18 +83,6 @@ aws iam get-role --role-name atlas-neptune-s3-access 2>/dev/null
 
 All three commands should return empty results or "not found" errors.
 
-## Step 4 — (Optional) Remove Bedrock Model Access
-
-If you enabled Bedrock model access only for this workshop and do not plan to use
-it again:
-
-1. Open the [Bedrock console](https://console.aws.amazon.com/bedrock/)
-2. Choose **Model access** → **Manage model access**
-3. Deselect Anthropic Claude models
-4. Choose **Save changes**
-
-This is optional — Bedrock model access does not incur charges when not in use.
-
 ## Cost Summary
 
 If you completed the workshop in a single session (5–6 hours) and cleaned up
@@ -94,7 +96,7 @@ Over the course of this workshop, you built:
 
 | Layer | What | Where |
 |-------|------|-------|
-| Ontology | 19-class FIBO-aligned ontology with SHACL shapes | `ontology/` |
+| Ontology | 24-class FIBO-aligned ontology (19 core + 3 FIBO + 2 governance) with 6 SHACL shapes | `ontology/` |
 | Infrastructure | Two-tier Neptune (LGD + SLGD) | CloudFormation (now deleted) |
 | Data Integration | Three connection patterns (Iceberg, Athena, Lambda) | `mappings/` |
 | Application | NL↔SPARQL, bounded agent, human-in-the-loop | Notebooks 7–8 |
@@ -106,5 +108,13 @@ stack from Module 3.
 
 ## Thank You
 
-You have completed the ATLAS workshop. The architecture is defensible, the boundary
-is enforced in code, and the audit trail is queryable end-to-end.
+You have completed the ATLAS workshop. You built a working reference implementation
+of the three-layer architecture on a synthetic dataset, with the boundary mechanisms
+operational (Module 6 SHACL shapes and Module 7's `atlas_sparql.validate()` pre-check)
+and the audit trail queryable end-to-end in SPARQL.
+
+Moving from this reference implementation to production requires real data via the
+R2RML mappings, a real scoring model in Module 8's place, and the operational
+processes around the human-in-the-loop step. The mechanisms you built here are the
+load-bearing pieces — the rest is configuration, integration, and operational
+discipline.

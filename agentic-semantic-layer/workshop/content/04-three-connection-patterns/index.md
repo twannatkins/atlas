@@ -57,6 +57,10 @@ results — which is really checking that the data needed for CQs is present.
 
 ## Steps
 
+Before running any code, read cell 1 of the notebook — it contains the module
+introduction and a Key Terms table. The vocabulary defined there is referenced
+throughout the rest of the module.
+
 ### Step 1 — Open the notebook and retrieve Neptune endpoints
 
 Open `notebooks/04_three_connection_patterns.ipynb`. Run cell 2 (setup) to load
@@ -200,9 +204,10 @@ original file from the repository.
 
 **Parquet conversion fails with "No module named pyarrow"**
 
-Install pyarrow: `pip install pyarrow`. It is required for Parquet file
-generation but not listed in the base requirements (it is large and only
-needed for Module 4).
+pyarrow is pinned in `notebooks/shared/requirements.txt` (version 14.0.2). If
+you see this error, your environment didn't install requirements correctly.
+Re-run the prerequisites step `pip install -r notebooks/shared/requirements.txt`
+from a kernel restart to refresh the environment.
 
 ## Extending This to Your Data
 

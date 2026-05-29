@@ -13,13 +13,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict, List
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 from atlas_sparql import validate, AtlasSPARQLError, safe_uri
 
@@ -142,18 +138,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def _invoke_construct_and_validate(sparql: str, shape_uri: str, persona_claim: str) -> dict:
     """Invoke atlas-sparql-mcp construct_and_validate."""
-    lambda_client = boto3.client("lambda")
-    response = lambda_client.invoke(
-        FunctionName=SPARQL_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
+    agentcore_client = boto3.client("bedrock-agentcore")
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=SPARQL_MCP_ARN,
+        payload=json.dumps({
             "operation": "construct_and_validate",
             "construct_sparql": sparql,
             "shape_uri": shape_uri,
             "persona_claim": persona_claim,
-        }),
+        }).encode(),
+        contentType="application/json",
     )
-    result = json.loads(response["Payload"].read())
+    result = json.loads(response["response"].read())
     if result.get("status") == "error":
         raise RuntimeError(result.get("message", "construct_and_validate failed"))
     return result

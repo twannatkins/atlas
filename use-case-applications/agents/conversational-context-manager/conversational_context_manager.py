@@ -14,13 +14,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 import uuid
 from typing import Any, Dict
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
 
 import boto3
 
@@ -127,7 +123,7 @@ def _save_session_context(session_id: str, question: str, result: dict) -> None:
 
 def _invoke_nl_to_sparql(question: str, persona_claim: str, session_id: str, prior_context: dict) -> dict:
     """Invoke nl-to-sparql-agent with optional session context."""
-    lambda_client = boto3.client("lambda")
+    agentcore_client = boto3.client("bedrock-agentcore")
 
     payload = {
         "question": question,
@@ -140,12 +136,12 @@ def _invoke_nl_to_sparql(question: str, persona_claim: str, session_id: str, pri
         last_turn = prior_context["turns"][-1]
         payload["prior_sparql"] = last_turn.get("sparql", "")
 
-    response = lambda_client.invoke(
-        FunctionName=NL_TO_SPARQL_AGENT_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps(payload),
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=NL_TO_SPARQL_AGENT_ARN,
+        payload=json.dumps(payload).encode(),
+        contentType="application/json",
     )
-    result = json.loads(response["Payload"].read())
+    result = json.loads(response["response"].read())
     return result
 
 

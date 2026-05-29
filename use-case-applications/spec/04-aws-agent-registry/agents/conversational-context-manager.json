@@ -6,10 +6,105 @@
   "description": "Maintains multi-turn conversation context via AgentCore Memory. Wraps nl-to-sparql-agent with session-aware context.",
   "owner": "atlas-platform-team",
   "model_risk_classification": "tier-2-interface",
-  "runtime": {"type": "lambda", "handler": "conversational_context_manager.handler", "runtime": "python3.12", "timeout_seconds": 30, "memory_mb": 1024, "environment_variables": {"NL_TO_SPARQL_AGENT_ARN": "${nl_to_sparql_agent_arn}", "AGENTCORE_MEMORY_NAMESPACE": "atlas-wealth-conv"}},
-  "iam_policy": {"inline_policy": {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["lambda:InvokeFunction"], "Resource": "${nl_to_sparql_agent_arn}"}, {"Effect": "Allow", "Action": ["bedrock-agentcore:GetMemory", "bedrock-agentcore:PutMemory", "bedrock-agentcore:DeleteMemory"], "Resource": "*"}, {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/conversational-context-manager:*"}]}},
-  "input_schema": {"type": "object", "required": ["question", "session_id", "persona_claim"], "properties": {"question": {"type": "string"}, "session_id": {"type": "string"}, "persona_claim": {"type": "string"}}},
-  "output_schema": {"type": "object", "required": ["status", "sparql", "result"], "properties": {"status": {"type": "string"}, "sparql": {"type": "string"}, "result": {"type": "array"}, "context_used": {"type": "object"}}},
-  "registry_metadata": {"discoverable_by": ["atlas-wealth-advisor"], "display_name": "Ask the graph (conversational)", "display_icon": "messages", "capability_tag": "memory-backed", "phase": 2},
-  "dependencies": {"agents": ["nl-to-sparql-agent"], "services": ["AgentCore Memory"]}
+  "registry_record_type": "MCP",
+  "runtime": {
+    "type": "lambda",
+    "handler": "conversational_context_manager.handler",
+    "runtime": "python3.12",
+    "timeout_seconds": 30,
+    "memory_mb": 1024,
+    "environment_variables": {
+      "NL_TO_SPARQL_AGENT_ARN": "${nl_to_sparql_agent_arn}",
+      "AGENTCORE_MEMORY_NAMESPACE": "atlas-wealth-conv"
+    }
+  },
+  "iam_policy": {
+    "inline_policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "bedrock-agentcore:InvokeAgentRuntime"
+          ],
+          "Resource": "${nl_to_sparql_agent_arn}"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "bedrock-agentcore:GetMemory",
+            "bedrock-agentcore:PutMemory",
+            "bedrock-agentcore:DeleteMemory"
+          ],
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/conversational-context-manager:*"
+        }
+      ]
+    }
+  },
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "question",
+      "session_id",
+      "persona_claim"
+    ],
+    "properties": {
+      "question": {
+        "type": "string"
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "persona_claim": {
+        "type": "string"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": [
+      "status",
+      "sparql",
+      "result"
+    ],
+    "properties": {
+      "status": {
+        "type": "string"
+      },
+      "sparql": {
+        "type": "string"
+      },
+      "result": {
+        "type": "array"
+      },
+      "context_used": {
+        "type": "object"
+      }
+    }
+  },
+  "registry_metadata": {
+    "discoverable_by": [
+      "atlas-wealth-advisor"
+    ],
+    "display_name": "Ask the graph (conversational)",
+    "display_icon": "messages",
+    "capability_tag": "memory-backed",
+    "phase": 2
+  },
+  "dependencies": {
+    "agents": [
+      "nl-to-sparql-agent"
+    ],
+    "services": [
+      "AgentCore Memory"
+    ]
+  }
 }
