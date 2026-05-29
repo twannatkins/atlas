@@ -192,6 +192,14 @@ what would be written. Run from SageMaker (inside the VPC) for full execution.
 Check that the confidence value uses the correct XSD datatype (`XMLSchema#decimal`).
 The gate checks for this specific string in the generated triples.
 
+**Cell 6 fails with "SSL: CERTIFICATE_VERIFY_FAILED"**
+
+Neptune's TLS certificate is signed by the Amazon RDS CA, which is included in the
+`certifi` bundle that ships with the SageMaker Studio Python environment. Do not
+disable certificate verification. If you see this error, confirm that the
+`SLGD_ENDPOINT` variable matches the cluster endpoint exactly (no trailing slash,
+no port suffix) so the hostname matches the certificate's Common Name.
+
 ## What's Next
 
 Module 5 promoted data to the SLGD with provenance. Module 6 asks: how do we
