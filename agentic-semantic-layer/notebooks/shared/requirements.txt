@@ -1,13 +1,13 @@
 # ATLAS Workshop Python Dependencies
 # Requires Python >= 3.10 (3.9 reached EOL October 2025)
+#
+# Pinned only where the SageMaker Distribution base image does not include the
+# package or ships an incompatible version. boto3, botocore, pandas, numpy, and
+# pyarrow are not pinned — SageMaker Unified Studio ships newer versions that are
+# compatible with this workshop.
 
 rdflib==7.0.0
 pyshacl==0.25.0
-boto3==1.34.162
-requests==2.31.0
-numpy==1.26.4        # pin to last numpy 1.x: pyarrow 14.0.2 is built against numpy 1.x and fails to import under numpy 2.x
-pandas==2.2.2
-pyarrow==14.0.2
 faker==24.3.0
-xgboost==2.1.4       # Module 8 wealth-conversion model; native pred_contribs for SHAP (no separate shap dependency)
+xgboost==2.1.4       # Module 8 wealth-conversion model; native pred_contribs for SHAP
 scikit-learn==1.5.2  # train/test utilities for the Module 8 model
