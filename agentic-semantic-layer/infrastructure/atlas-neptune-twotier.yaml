@@ -178,8 +178,12 @@ Resources:
               - neptune-db:GetQueryStatus
               - neptune-db:CancelQuery
             Resource:
-              - !Sub 'arn:aws:neptune-db:${AWS::Region}:${AWS::AccountId}:${LGDCluster}/*'
-              - !Sub 'arn:aws:neptune-db:${AWS::Region}:${AWS::AccountId}:${SLGDCluster}/*'
+              - !Sub
+                - 'arn:aws:neptune-db:${AWS::Region}:${AWS::AccountId}:${LGDResourceId}/*'
+                - LGDResourceId: !GetAtt LGDCluster.ClusterResourceId
+              - !Sub
+                - 'arn:aws:neptune-db:${AWS::Region}:${AWS::AccountId}:${SLGDResourceId}/*'
+                - SLGDResourceId: !GetAtt SLGDCluster.ClusterResourceId
 
 Outputs:
   LGDEndpoint:
