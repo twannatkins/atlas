@@ -164,7 +164,7 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: atlas-neptune-iam-auth
-      Description: >
+      Description: >-
         Grants SigV4-authenticated access to both Neptune clusters.
         Attach to SageMaker execution roles, Lambda execution roles,
         and ECS task roles that need to query or update the graph.
