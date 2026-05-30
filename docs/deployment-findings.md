@@ -1,6 +1,15 @@
 # ATLAS Deployment Findings
 
-Issues found during the first live deployment of Workshop 1 (Modules 1–3)
+## Module completion log
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| WS1 Module 3 — Two-Tier Neptune | COMPLETE | All 4 validation gates pass. 22 atlas: classes, 415 triples in SLGD. LGD empty. |
+| WS1 Module 4 — Three Connection Patterns | COMPLETE | No errors. All 3 patterns generated triples; LGD populated. SigV4 signing fix applied pre-run. |
+
+---
+
+Issues found during the first live deployment of Workshop 1 (Modules 3–4)
 and a subsequent novice-portability audit. Every finding is classified by
 status so the distinction between "already fixed in code" and "only patched
 in the live environment" is never ambiguous.
