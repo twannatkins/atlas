@@ -28,6 +28,14 @@ _rng = random.Random(ATLAS_SEED)
 
 # ---------------------------------------------------------------------------
 # Configurable thresholds (match the SKOS codelist in skos-codelists.ttl)
+#
+# IMPORTANT: these values MUST match the FILTER thresholds in the detection
+# SPARQL queries (05_entity_resolution.ipynb cell-09d and cell-09e). They are
+# kept in sync so the workshop fixture produces correct answers to detect.
+#
+# In production, your risk/MRM team owns these numbers — change them in the
+# detection SPARQL, not here. Changing only one side silently breaks the
+# verification gate.
 # ---------------------------------------------------------------------------
 LARGE_DEPOSIT_THRESHOLD = 250_000       # USD
 EQUITY_EVENT_THRESHOLD = 100_000        # USD

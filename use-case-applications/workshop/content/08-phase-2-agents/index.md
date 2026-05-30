@@ -32,6 +32,17 @@ a local run of the `behavioral-signal-agent`'s EngagementDecay detection against
 LGD-style session data. This module registers and inspects the three new Phase 2
 agents; it does not yet wire them into a UI.
 
+The detection thresholds embedded in each agent's SPARQL FILTER — the dollar amounts
+that define what counts as a "large inbound wire" or a "segment shift" — are parameters
+your institution's risk and model-risk-management team sets and owns. Workshop 2 uses
+illustrative values; in production, those values live in version-controlled SPARQL
+alongside the rest of the detection logic, are reviewed under SR 11-7, and can be
+changed without touching any application code. The detection structure (the CONSTRUCT
+query, the SHACL validation step, the PROV-O attribution) is the reusable architecture
+ATLAS provides. The numbers are yours. Workshop 1's Module 5 covers this in depth for
+the WS1 signal taxonomy; the same principle applies to every signal type in both
+workshops.
+
 The notebook is `notebooks/phase-2-advisor/01_phase_2_agents.ipynb`.
 
 ## Steps

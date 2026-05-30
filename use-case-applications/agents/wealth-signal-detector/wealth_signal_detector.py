@@ -54,7 +54,7 @@ PHASE_1_SIGNALS = {
                 ?txn atlas:inAccount ?acct ;
                     atlas:amountUSD ?amount ;
                     atlas:transactionDate ?date .
-                FILTER(?amount > 500000)
+                FILTER(?amount > 500000)   # Threshold owned by your risk/MRM team — version-controlled here
             }}
         """,
         "shape_uri": "atlas:WealthSignalTypeShape",
