@@ -7,6 +7,7 @@
 | WS1 Module 3 — Two-Tier Neptune | COMPLETE | All 4 validation gates pass. 22 atlas: classes, 415 triples in SLGD. LGD empty. |
 | WS1 Module 4 — Three Connection Patterns | COMPLETE | No errors. All 3 patterns generated triples; LGD populated. SigV4 signing fix applied pre-run. |
 | WS1 Module 5 — Entity Resolution | COMPLETE | cell-06 SigV4 fix required (bare requests.post() silently wrote 0 triples; gate passed anyway via in-memory list). After fix: 200 promoted Customers, 1203 triples, all with PROV-O. SLGD: 1618 total triples. |
+| WS1 Module 5 — Entity Resolution (live SLGD verify) | VALIDATED | Live SPARQL check: 1618 total triples, 200 promoted Customers, 200 with promotedBy, 22 ontology classes. All counts match. |
 | WS1 Module 6 — SHACL Boundary | PRE-RUN VERIFIED | PURE-LOCAL: no Neptune calls of any kind. SHACL validates in-memory rdflib graphs (g_bad/g_good) against a .ttl file written to disk. Gate is trustworthy. Safe to run top-to-bottom. |
 
 ---
