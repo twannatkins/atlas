@@ -76,13 +76,16 @@ From inside your project:
 
 ```bash
 git clone https://github.com/twannatkins/atlas.git
-cd atlas
-pip install -r notebooks/shared/requirements.txt
 ```
 
-3. Wait for the install to complete (30–60 seconds). All dependencies are pinned
-   to exact versions for reproducibility — every attendee runs against the same
-   tested package set.
+3. The repository is now at `~/atlas/`. Dependencies are installed automatically
+   when you run the first cell of each notebook — no manual `pip install` needed.
+
+> **Why automatic install?** SageMaker Unified Studio's `project.python` kernel
+> runs in its own Python environment, separate from the JupyterLab terminal.
+> Running `pip install` in the terminal installs packages into the terminal Python,
+> not the kernel. Each notebook's first code cell uses `sys.executable` to install
+> into the correct kernel environment and skips packages already at the right version.
 4. In the left file browser, click the folder icon to refresh, then navigate into
    the `atlas/` folder. You'll see: `notebooks/`, `ontology/`, `data/`,
    `infrastructure/`, etc.
@@ -230,30 +233,26 @@ Domains → your domain → look for "VPC" in the Network section.
 
 ## Step 5 — Verify Your Setup
 
-In your JupyterLab terminal, run these checks:
+In your JupyterLab terminal, check Python version and AWS connectivity:
 
 ```bash
-cd ~/atlas
-
 # Check Python version (must be 3.10+)
 python3 --version
 
-# Check key packages installed
-python3 -c "import rdflib; print(f'rdflib: {rdflib.__version__}')"
-python3 -c "import pyshacl; print(f'pyshacl: {pyshacl.__version__}')"
-python3 -c "import boto3; print(f'boto3: {boto3.__version__}')"
-python3 -c "import pandas; print(f'pandas: {pandas.__version__}')"
+# Check AWS credentials are active
+aws sts get-caller-identity --query Account --output text
 ```
 
 Expected output:
 
 ```
 Python 3.10.x (or higher)
-rdflib: 7.0.0
-pyshacl: 0.25.0
-boto3: 1.34.x (or higher)
-pandas: 2.x.x
+981814817046
 ```
+
+Package dependencies (`rdflib`, `pyshacl`, `pandas`, etc.) are verified
+automatically when you run the first cell of each notebook. You do not need
+to check them manually here.
 
 ---
 
