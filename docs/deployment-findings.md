@@ -7,6 +7,7 @@
 | WS1 Module 3 — Two-Tier Neptune | COMPLETE | All 4 validation gates pass. 22 atlas: classes, 415 triples in SLGD. LGD empty. |
 | WS1 Module 4 — Three Connection Patterns | COMPLETE | No errors. All 3 patterns generated triples; LGD populated. SigV4 signing fix applied pre-run. |
 | WS1 Module 5 — Entity Resolution | COMPLETE | cell-06 SigV4 fix required (bare requests.post() silently wrote 0 triples; gate passed anyway via in-memory list). After fix: 200 promoted Customers, 1203 triples, all with PROV-O. SLGD: 1618 total triples. |
+| WS1 Module 6 — SHACL Boundary | PRE-RUN VERIFIED | PURE-LOCAL: no Neptune calls of any kind. SHACL validates in-memory rdflib graphs (g_bad/g_good) against a .ttl file written to disk. Gate is trustworthy. Safe to run top-to-bottom. |
 
 ---
 
@@ -39,6 +40,25 @@ Two execution roles are active in this environment:
 | `CARRIES-TO-WS2` | Same pattern near-certainly recurs in the WS2 CDK stack; fix must cover both workshops |
 
 Tags combine: e.g. `SELF-BITING + CARRIES-TO-WS2`.
+
+---
+
+## Cross-cutting pattern: bare `requests.post()` to Neptune under IAM auth
+
+**This is a class of bug, not three coincidences.** Every notebook that writes or reads Neptune was authored with bare `requests.post()`. Under `IamAuthEnabled: true`, every such call silently 403s. The validation gates still print PASS because they check in-memory Python data structures, not the live graph.
+
+| Notebook | Cell | Status | SHA |
+|----------|------|--------|-----|
+| `03_two_tier_neptune.ipynb` | `cell-07-load-neptune` | `FIXED` | `f908971` |
+| `04_three_connection_patterns.ipynb` | `cell-10-write-lgd` | `FIXED` | `da828cb` |
+| `05_entity_resolution.ipynb` | `cell-06` | `FIXED` | `f4b6ace` |
+| `06_shacl_boundary.ipynb` | N/A | `PURE-LOCAL` — never touches Neptune; no fix needed |
+| `07_bedrock_at_edges.ipynb` | Not yet audited | Pre-check before running |
+| `08_wealth_signal_demo.ipynb` | Not yet audited — **pre-check before running** | |
+
+**Tags:** `NOVICE-WOULD-HIT` + `CARRIES-TO-WS2` (WS2 agents do the same Neptune writes via MCP servers — expect the pattern there too; the SigV4 signing in `atlas_neptune.NeptuneClient` is correct but any notebook that bypasses it by calling `requests.post()` directly will 403 silently).
+
+**The fix pattern** (same in all three fixed cells): replace bare `requests.post()` with `AWSRequest` + `SigV4Auth` + `requests.Request(..., headers=dict(aw.headers)).prepare()` + `Session.send()`. This preserves signed headers without letting `requests` rewrite them. See `cell-07-load-neptune` in nb03 for the canonical implementation.
 
 ---
 
