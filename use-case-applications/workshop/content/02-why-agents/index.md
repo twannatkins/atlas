@@ -94,11 +94,8 @@ Run cell 6 (`cell-06-ask-graph`) to see the same question routed through the
 Expected output:
 
 ```
-ask_graph("Which customers have active wealth signals?")
-  → template selected: WS-LIST-BY-SIGNAL-TYPE (similarity: 0.94)
-  → SPARQL executed (deterministic)
-  → 5 rows returned
-  → audit anchor: template_id=WS-LIST-BY-SIGNAL-TYPE
+Ground-truth embeddings cached.
+ask_graph() is ready.
 ```
 
 ![ask_graph output](/static/images/02-step-05-ask-graph-output.png)
@@ -108,17 +105,24 @@ ask_graph("Which customers have active wealth signals?")
 Run cell 7 (`cell-07-three-questions`) to send three different natural-language
 questions through `ask_graph()`. Each returns rows and a `template_id`.
 
-Expected output:
+Expected output (one block per question):
 
 ```
-Q1: "Which customers have active wealth signals?"
-  → template: WS-LIST-BY-SIGNAL-TYPE  rows: N
+======================================================================
+Question: Which customers have no wealth advisor assigned?
 
-Q2: "How many advisory relationships does Anjali Patel have?"
-  → template: ADVISORY-REL-COUNT       rows: 1
+Matched template [N]  (similarity: 0.NNNN)
+Results (N rows total, showing first 3):
+  ...
+```
 
-Q3: "What transactions has household 9c2a1e made in the last 90 days?"
-  → template: TXN-BY-HOUSEHOLD-RECENT  rows: N
+```
+======================================================================
+Question: Which households have mixed wealth coverage?
+
+Matched template [N]  (similarity: 0.NNNN)
+Results (N rows total, showing first 3):
+  ...
 ```
 
 ### Step 7 — Verify determinism (cell 9)
@@ -130,13 +134,13 @@ guarantee that SR 11-7 compliance audits require.
 Expected output:
 
 ```
-Determinism check — 5 runs of the same question
-  Run 1: template=WS-LIST-BY-SIGNAL-TYPE  sparql_hash=a3f8...
-  Run 2: template=WS-LIST-BY-SIGNAL-TYPE  sparql_hash=a3f8...
-  Run 3: template=WS-LIST-BY-SIGNAL-TYPE  sparql_hash=a3f8...
-  Run 4: template=WS-LIST-BY-SIGNAL-TYPE  sparql_hash=a3f8...
-  Run 5: template=WS-LIST-BY-SIGNAL-TYPE  sparql_hash=a3f8...
-[PASS] All 5 runs produced identical SPARQL.
+Running each pilot question 5 times and comparing SPARQL output.
+
+  [PASS] Which customers have no wealth advisor assigned?
+  [PASS] Which households have mixed wealth coverage?
+  [PASS] Who was this customer's advisor 18 months ago?
+
+[PASS] All 3 questions produced byte-identical SPARQL across 5 runs.
 ```
 
 ### Step 8 — Read "What just changed" (cell 10)
@@ -149,7 +153,7 @@ LLM happened to generate that day.
 ## Expected Outputs
 
 - `ask_graph()` returns rows and a `template_id` for every question
-- Five runs of the same question produce byte-identical SPARQL hashes
+- Five runs of the same question produce byte-identical SPARQL strings
 - No Bedrock text-generation model is called at any point
 - Determinism check prints `[PASS] All 5 runs produced identical SPARQL`
 

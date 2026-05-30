@@ -1,9 +1,9 @@
 ---
-title: "Module 4 — Agent Registry: Governed Discovery"
+title: "Module 4 — Agent Registry: Discovery and Governance"
 weight: 40
 ---
 
-# Module 4 — Agent Registry: Governed Discovery
+# Module 4 — Agent Registry: Discovery and Governance
 
 ## Learning Objectives
 

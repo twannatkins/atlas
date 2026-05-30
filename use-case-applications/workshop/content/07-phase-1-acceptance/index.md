@@ -28,16 +28,8 @@ weight: 70
 
 Nothing new. This notebook runs the formal acceptance suite from
 `spec/10-acceptance-criteria.md` against everything you built in Phase 1. The
-suite is organized into seven categories and 24 assertions. Categories 1–4 and 6–7
-run locally; Category 5 (end-to-end Rachel Kim scenario) requires a live Neptune
-cluster and is deferred if the cluster is not reachable.
-
-The notebook is `notebooks/phase-1-referral/06_phase_1_acceptance.ipynb`.
-
-## What the acceptance suite proves
-
-Read cell 1 (`cell-01-concept`) before running any code. It frames the seven
-categories:
+suite is organized into 36 assertions across seven categories. Read cell 1
+(`cell-01-concept`) before running any code — it frames what each category proves:
 
 1. **Registry completeness** — all agents and MCP servers are registered and discoverable
 2. **Agent posture compliance** — each agent honors its declared posture (deterministic-audited, SHACL-validated, or probabilistic)
@@ -46,6 +38,11 @@ categories:
 5. **End-to-end scenario** — the Rachel Kim referral workflow completes end-to-end (requires live Neptune)
 6. **GraphQL schema conformance** — every entity type maps to an ontology class
 7. **Workshop 1 substrate integrity** — no Workshop 1 files were modified by Workshop 2
+
+Categories 1–4 and 6–7 run locally. Category 5 requires a live Neptune cluster
+and is deferred if the cluster is not reachable.
+
+The notebook is `notebooks/phase-1-referral/06_phase_1_acceptance.ipynb`.
 
 ## Steps
 
@@ -199,10 +196,10 @@ Expected output (with live Neptune):
 ============================================================
 PHASE 1 ACCEPTANCE SUMMARY
 ============================================================
-  Passed:   24
+  Passed:   36
   Failed:    0
   Deferred:  0 (require live infrastructure)
-  Total:    24
+  Total:    36
 
 ✓ ALL NON-DEFERRED ASSERTIONS PASS.
   Phase 1 is complete. You may proceed to Phase 2.
@@ -211,10 +208,10 @@ PHASE 1 ACCEPTANCE SUMMARY
 Expected output (without live Neptune):
 
 ```
-  Passed:   17
+  Passed:   27
   Failed:    0
-  Deferred:  7 (require live infrastructure)
-  Total:    24
+  Deferred:  9 (require live infrastructure)
+  Total:    36
 
 ✓ ALL NON-DEFERRED ASSERTIONS PASS.
   Phase 1 is complete. Deferred assertions will run at deployment.
