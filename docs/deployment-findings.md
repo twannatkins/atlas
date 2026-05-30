@@ -44,6 +44,24 @@ Tags combine: e.g. `SELF-BITING + CARRIES-TO-WS2`.
 
 ---
 
+## Cross-cutting pattern: notebooks assume ambient state a clean run does not provide
+
+**This is a class of defect, not isolated incidents.** Three observed instances share a root cause: notebook cells were authored assuming names/packages/helpers are already in scope, with no import cell that a top-to-bottom run reliably executes first.
+
+| Instance | Notebook(s) | Symptom | Status |
+|----------|-------------|---------|--------|
+| (a) Unsigned Neptune calls | nb03, nb04, nb05 | `requests.post()` silently 403s under IAM auth; gates print PASS via in-memory data | `FIXED` `f908971` / `da828cb` / `f4b6ace` |
+| (b) Kernel-isolated pip setup | All WS1 notebooks | `pip install` in terminal installs to wrong Python; `rdflib` not found in kernel | `FIXED` `4ce1d36` (cell-00-setup pattern) |
+| (c) Missing import cell | nb06 only | `Graph`, `ATLAS`, `INST`, `pyshacl`, etc. never imported anywhere; NameError on cell-04 for every user | `FIXED` this commit (cell-02-imports added) |
+
+**Tags:** `NOVICE-WOULD-HIT` + `CARRIES-TO-WS2` — WS2 agents and notebooks may carry the same patterns; audit each before first run.
+
+**nb06 static validation (post-fix):** PASS — all watched names defined before first use across all 15 cells (corrected checker handles tuple unpacks and string literals).
+
+**nb08 pre-run audit (all-uses logic, not first-use):** PASS — no names used before definition. Structurally sound.
+
+---
+
 ## Cross-cutting pattern: bare `requests.post()` to Neptune under IAM auth
 
 **This is a class of bug, not three coincidences.** Every notebook that writes or reads Neptune was authored with bare `requests.post()`. Under `IamAuthEnabled: true`, every such call silently 403s. The validation gates still print PASS because they check in-memory Python data structures, not the live graph.
