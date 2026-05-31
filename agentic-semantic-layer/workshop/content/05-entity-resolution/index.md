@@ -150,34 +150,59 @@ MODULE 5 VALIDATION: PASS
 You may proceed to Module 6.
 ```
 
-### Step 8 — Run the WealthSignal Derivation
+### Step 8 — Run the live WealthSignal Derivation (cell 9f)
 
-Run cells 9c through 9e to derive WealthSignal instances from the promoted data
-using SPARQL CONSTRUCT queries. This demonstrates the "computed, not loaded" principle.
+Run cell 9f (`cell-09f-derive-signals-live`) to derive WealthSignal instances from the
+promoted data in the live SLGD and write them back. This cell reads actual account
+balances and coverage status from the graph — not from the simulation above.
 
-Run cell 9d. Expected output:
+**What it produces:**
+
+Two signal types are derived:
+
+- **LargeDepositPattern** — fires when a customer's promoted transaction data shows a
+  single deposit of $250,000 or more within the 90-day observation window, and the
+  customer has no active wealth advisor coverage. The threshold is set by your risk
+  team; the rule is version-controlled SPARQL.
+
+- **HouseholdAggregationSignal** — fires when a household's combined checking and
+  savings balances reach $1,000,000, no single member holds that much alone, and
+  coverage is mixed (some members have an active wealth advisor, some do not).
+
+**Which customers receive the household signal:** The `atlas:producesSignal` link is
+attached to the **uncovered** household members only — not to all members. The reason
+is that the signal exists to drive a referral, and the referral target is the member
+who does not yet have an active wealth advisor. Surfacing the signal on a covered
+member would show an alert whose only available action ("refer to wealth") does not
+apply. The signal is actionable wherever it appears; it only appears where action is
+needed.
+
+**Practical consequence:** if you look up a covered member of a qualifying household,
+you will not see the household signal on their record. This is the correct behavior.
+The signal is visible on the uncovered member(s) in the same household.
+
+Expected output:
 
 ```
-Signal 1: LargeDepositPattern CONSTRUCT
-------------------------------------------------------------
-Rule: DEPOSIT >= $250,000 AND no active wealth coverage
-LargeDepositPattern signals derived: N
+Signal 1: LargeDepositPattern
+  [PASS] LargeDepositPattern: N triples SHACL-validated and written to SLGD
+
+Signal 2: HouseholdAggregationSignal
+  Qualifying households (all 3 conditions): N
+  [PASS] HouseholdAggregationSignal: N triples SHACL-validated and written to SLGD
+
+Total signal triples written to SLGD: N
 ```
 
-Run cell 9e. Expected output:
-
-```
-Signal 2: HouseholdAggregationSignal CONSTRUCT
-------------------------------------------------------------
-Rule: household combined balance >= $1,000,000
-HouseholdAggregationSignal signals derived: N
-```
+Exact counts vary by the current date (the 90-day window shifts). The numbers are
+printed by the cell — they are derived, not asserted.
 
 ## Expected Outputs
 
 - SLGD populated with 200 resolved Customer entities, each with PROV-O metadata
-- Promotion log with entity counts and confidence distribution
-- WealthSignal instances derived from promoted data
+- Account and Transaction entities promoted with `-resolved` URIs and provenance
+- Advisory relationships promoted, enabling coverage-aware signal detection
+- WealthSignal instances derived from live promoted data (LargeDeposit + HouseholdAgg)
 - Module 5 validation gate prints `MODULE 5 VALIDATION: PASS`
 
 ## Troubleshooting
