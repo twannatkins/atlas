@@ -805,3 +805,46 @@ it and the exact rule that defined the threshold.
 The HouseholdAggregationSignal GROUP BY HAVING in Neptune SPARQL may require syntax adjustment — verify
 during implementation (GROUP BY HAVING is supported in Neptune SPARQL 1.1 but with specific syntax for
 aggregate patterns).*
+
+---
+
+## Surgical clean — 2026-05-31 (rogue promotion accumulation)
+
+### What happened
+
+The SLGD substrate accumulated to 400 Customer / 829 Account / 1500 Transaction across 6 promotion runs because `cell-06` generates activity URIs with a timestamp (`promotion-{YYYYMMDD-HHMMSS}`) and customer IDs from an in-session RNG. When `cell-04` was re-run, the shared `_rng` advanced, producing a different 200-customer set. Since the `-resolved` URI suffix is deterministic on the customer ID, a different ID set = different URIs = no RDF dedup = accumulation.
+
+One run (`promotion-20260531-221219`) used a completely rogue RNG state — 200 customer IDs not in `customer-master.json`. Advisory data was exclusively from this rogue session (cell-06c was never run in a canonical session).
+
+### Contamination mechanism
+
+`cell-06/06b/06c` are NOT idempotent if the RNG state changes between runs. Re-running after `cell-04` was re-run produces new node URIs that accumulate rather than overwrite. This is distinct from signals (which used STRUUID and always accumulated) — for promotion cells, the accumulation only occurs when the RNG drifts.
+
+### How the cluster was cleaned (2026-05-31)
+
+Four targeted DELETEs executed in sequence:
+1. Clear derived signals (prov:wasGeneratedBy scope)
+2. Delete all nodes stamped `promotedBy <promotion-20260531-221219>` (rogue — 200 customers, 401 accounts, 500 txns, advisory/advisor)
+3. Delete orphan transaction nodes stamped with `promotion-20260531-190937` / `191413` only (500 txns with no hasTransaction inbound, different ID set from canonical)
+4. Remove stale orphan `promotedBy` property triples from canonical customer nodes
+
+Advisory data had no canonical copy (cell-06c was never run in a canonical session) and was re-written directly from `advisory-relationships.json` with `promotedBy <promotion-20260531-200936>`.
+
+### Post-clean canonical state
+
+| Entity | Count |
+|---|---|
+| Customer | 200 |
+| Account | 428 |
+| Transaction | 500 |
+| AdvisoryRelationship | 105 |
+| Advisor | 9 |
+| memberOf | 200 |
+| LargeDepositPattern signals | 2 |
+| HouseholdAggregationSignal | 16 |
+
+### Prevention
+
+**Cell-06/06b/06c must each be run exactly once against a clean cluster.** Re-running after `cell-04` was re-run will silently append a new entity set. Check counts after running; if they exceed the expected values, follow the surgical-clean procedure above.
+
+The durable fix (not yet implemented) is to source `cell-06` customer IDs from `customer-master.json` rather than from the in-session RNG — the same pattern `cell-06d` and `cell-06c` already use. This would make all promotion cells idempotent regardless of how many times they run.
