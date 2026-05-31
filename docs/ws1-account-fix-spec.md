@@ -1,9 +1,82 @@
-# WS1 Account-Gap Fix — Implementation Spec
+# WS1 Account-Gap Fix — Implementation Spec v2
 
 **Status:** Approved for implementation. Do not implement until this spec is reviewed.  
 **Scope:** WS1 only (`agentic-semantic-layer/`). Two notebooks modified. Live cluster writes required.  
 **Decision basis:** Option A — write Accounts to LGD first (nb04), then promote to SLGD with real
-`promotedFrom` provenance (nb05). No placeholder URIs.
+`promotedFrom` provenance (nb05). Mirrored URI pattern (distinct LGD vs SLGD URIs).
+
+---
+
+## ⚠️ Pre-existing gap discovered during resolver trace
+
+**The live SLGD has zero WealthSignal triples.** Math confirms: 1618 total triples = 415 ontology +
+1203 promotion = 200 × 6 customer triples + 3 activity triples. WealthSignals from nb05 cells 09d/09e
+ran against a local `rdflib` simulation (`g_slgd`), not the live SLGD. The `wealthSignals` query in
+both UIs will return empty today.
+
+**This is outside the Account-gap fix scope** but must be addressed before the Entity 360 proof is
+meaningful. A separate nb05 cell must write the derived WealthSignal triples to the live SLGD using
+`sparql_update_slgd()`. Sized separately; not blocking this spec's implementation.
+
+---
+
+## Step 0 — Resolver URI trace (confirmed before spec v2)
+
+### What customer URI does the WS2 resolver query?
+
+**Chain:** UI → AppSync → proxy Lambda → `atlas-sparql-mcp` → SPARQL against SLGD.
+
+The proxy Lambda passes the AppSync event verbatim to `atlas-sparql-mcp`. The resolver-patterns spec
+shows the CustomerResolver builds SPARQL that binds the passed-in `uri` directly:
+```sparql
+SELECT ?customerId ?label WHERE {
+    <{uri}> a atlas:Customer ;
+        atlas:customerId ?customerId .
+}
+```
+
+The `uri` originates from `searchCustomers`, which runs:
+```sparql
+SELECT ?customer ?customerId WHERE {
+    ?customer a atlas:Customer ; atlas:customerId ?customerId .
+}
+```
+This returns whatever `?customer` is bound to in the SLGD — i.e., the actual subject URI of nodes
+typed `atlas:Customer`.
+
+**In the live SLGD, the subjects are `customer-{id}-resolved`** (from nb05 cell-06:
+`entity_uri = f'<{INST_NS}customer-{cid}-resolved>'`). So `searchCustomers` returns
+`https://github.com/your-org/atlas/instance#customer-{id}-resolved` URIs, and `customer(uri)` is
+called with those same URIs.
+
+**Verdict: the resolver queries `customer-{id}-resolved`.** The promoted Customer nodes match what the
+resolver queries. No pre-existing bug — the customer chain is consistent.
+
+**Consequence for the Account fix:** `atlas:hasAccount` in the SLGD must link from
+`customer-{id}-resolved` (the node the resolver lands on) to `account-{id}-resolved` (the promoted
+Account node). The spec's v1 code already used `customer-{id}-resolved` for this link — confirmed
+correct.
+
+### Mirrored URI scheme (locked by owner decision)
+
+Following the customer pattern exactly:
+
+| Entity | LGD URI (written by nb04) | SLGD URI (written by nb05) | `promotedFrom` target |
+|--------|--------------------------|---------------------------|----------------------|
+| Account | `account-{account_id}` | `account-{account_id}-resolved` | LGD `account-{account_id}` ✓ |
+| Transaction | `txn-{txn_id}` (already exists from nb04 nb04 cell-10) | `txn-{txn_id}-resolved` | LGD `txn-{txn_id}` ✓ |
+
+**`hasAccount` link in SLGD:**
+```
+<inst:customer-{id}-resolved>  atlas:hasAccount  <inst:account-{id}-resolved>
+```
+
+**`hasTransaction` link in SLGD:**
+```
+<inst:account-{id}-resolved>  atlas:hasTransaction  <inst:txn-{id}-resolved>
+```
+
+Triple counts are unchanged by the suffix change — the arithmetic in Step 1 holds.
 
 ---
 
@@ -140,36 +213,30 @@ and links to what was already written, staying in the same notebook's responsibi
 **Cell content (logic):**
 ```python
 # Write Account nodes and links to the LGD.
-# Accounts are the financial accounts held by each customer.
-# This cell runs after cell-10-write-lgd so the customer nodes already exist.
-#
-# For each customer we write:
-#   - An atlas:Account node with account_id, account_type, balance_usd, opened_date
-#   - An atlas:hasAccount triple linking the Customer to the Account
-#
-# For each of the first 500 transactions (matching nb04's existing cap):
-#   - An atlas:hasTransaction triple linking the Account to the Transaction
-#     (the Transaction nodes were written by cell-10-write-lgd / Pattern B)
+# Account URIs use the NON-resolved form (account-{id}) because the LGD holds
+# unvalidated source data. The SLGD promotion cell (cell-06b) will mint the
+# account-{id}-resolved URIs with honest promotedFrom → these LGD nodes.
+# This mirrors the customer pattern: LGD has customer-{id}, SLGD has customer-{id}-resolved.
 
 print('\nAccount nodes and links — writing to LGD...')
 
 acct_triples = []
 for a in accounts:                     # accounts was generated in cell-10-write-lgd scope
-    auri  = f'<{INST_NS}account-{a["account_id"]}>'
-    curi  = f'<{INST_NS}customer-{a["customer_id"]}>'
+    auri  = f'<{INST_NS}account-{a["account_id"]}>'      # LGD URI: no -resolved suffix
+    curi  = f'<{INST_NS}customer-{a["customer_id"]}>'    # LGD customer URI: no -resolved suffix
     acct_triples.append(f'{auri} <{RDF_TYPE}> <{ATLAS_NS}Account> .')
     acct_triples.append(f'{auri} <{ATLAS_NS}accountId> "{a["account_id"]}"^^<{XSD_NS}string> .')
     acct_triples.append(f'{auri} <{ATLAS_NS}accountType> "{a["account_type"]}"^^<{XSD_NS}string> .')
     acct_triples.append(f'{auri} <{ATLAS_NS}balanceUSD> "{a["balance_usd"]}"^^<{XSD_NS}decimal> .')
     acct_triples.append(f'{auri} <{ATLAS_NS}openedDate> "{a["opened_date"]}"^^<{XSD_NS}date> .')
-    acct_triples.append(f'{curi} <{ATLAS_NS}hasAccount> {auri} .')
+    acct_triples.append(f'{curi} <{ATLAS_NS}hasAccount> {auri} .')   # LGD customer→account
 
 # Build account_id→URI lookup for the transaction linking step
 acct_uri_map = {a["account_id"]: f'<{INST_NS}account-{a["account_id"]}>' for a in accounts}
 
-# Add atlas:hasTransaction links for the 500 transactions already written
+# Add atlas:hasTransaction links for the 500 transactions already written (txn-{id} URIs)
 for t in transactions[:500]:
-    turi = f'<{INST_NS}txn-{t["transaction_id"]}>'
+    turi = f'<{INST_NS}txn-{t["transaction_id"]}>'    # already written as txn-{id}
     auri  = acct_uri_map.get(t["account_id"])
     if auri:
         acct_triples.append(f'{auri} <{ATLAS_NS}hasTransaction> {turi} .')
@@ -206,11 +273,9 @@ promotion log). **Must run after cell-06** to inherit `act_uri`, `promotion_run_
 **Cell content (logic):**
 ```python
 # Promote Account and Transaction entities from LGD to SLGD.
-# This cell runs after cell-06 so it shares the same promotion activity (act_uri),
-# giving accounts and transactions the same provenance as the 200 promoted customers.
-#
-# promotedFrom points at the LGD nodes that cell-10b-write-accounts-lgd created in nb04.
-# This is honest provenance: the LGD nodes are the authoritative source.
+# Uses DISTINCT SLGD URIs (account-{id}-resolved, txn-{id}-resolved) mirroring the
+# customer pattern (LGD: customer-{id} → SLGD: customer-{id}-resolved).
+# promotedFrom points at the LGD nodes cell-10b created — honest distinct lineage.
 
 print('Account + Transaction promotion to SLGD...')
 
@@ -223,36 +288,40 @@ accounts_promo  = atlas_synthetic.generate_accounts(customers_promo)
 transactions_promo = atlas_synthetic.generate_transactions(accounts_promo, lookback_days=90)
 
 for a in accounts_promo:
-    auri     = f'<{INST_NS}account-{a["account_id"]}>'
-    lgd_src  = f'<{INST_NS}account-{a["account_id"]}>'  # same URI — LGD is the source
-    curi     = f'<{INST_NS}customer-{a["customer_id"]}-resolved>'  # promoted customer URI
+    auri_slgd = f'<{INST_NS}account-{a["account_id"]}-resolved>'  # SLGD: -resolved suffix
+    lgd_src   = f'<{INST_NS}account-{a["account_id"]}>'           # LGD source: no suffix
+    curi      = f'<{INST_NS}customer-{a["customer_id"]}-resolved>' # resolver's customer URI
 
-    acct_promo_triples.append(f'{auri} <{RDF_TYPE}> <{ATLAS_NS}Account> .')
-    acct_promo_triples.append(f'{auri} <{ATLAS_NS}accountId> "{a["account_id"]}"^^<{XSD_NS}string> .')
-    acct_promo_triples.append(f'{auri} <{ATLAS_NS}accountType> "{a["account_type"]}"^^<{XSD_NS}string> .')
-    acct_promo_triples.append(f'{auri} <{ATLAS_NS}balanceUSD> "{a["balance_usd"]}"^^<{XSD_NS}decimal> .')
-    acct_promo_triples.append(f'{auri} <{ATLAS_NS}openedDate> "{a["opened_date"]}"^^<{XSD_NS}date> .')
-    acct_promo_triples.append(f'{auri} <{ATLAS_NS}promotedFrom> {lgd_src} .')
-    acct_promo_triples.append(f'{auri} <{ATLAS_NS}promotedBy> {act_uri} .')
-    # Customer→Account link in SLGD
-    acct_promo_triples.append(f'{curi} <{ATLAS_NS}hasAccount> {auri} .')
+    acct_promo_triples.append(f'{auri_slgd} <{RDF_TYPE}> <{ATLAS_NS}Account> .')
+    acct_promo_triples.append(f'{auri_slgd} <{ATLAS_NS}accountId> "{a["account_id"]}"^^<{XSD_NS}string> .')
+    acct_promo_triples.append(f'{auri_slgd} <{ATLAS_NS}accountType> "{a["account_type"]}"^^<{XSD_NS}string> .')
+    acct_promo_triples.append(f'{auri_slgd} <{ATLAS_NS}balanceUSD> "{a["balance_usd"]}"^^<{XSD_NS}decimal> .')
+    acct_promo_triples.append(f'{auri_slgd} <{ATLAS_NS}openedDate> "{a["opened_date"]}"^^<{XSD_NS}date> .')
+    acct_promo_triples.append(f'{auri_slgd} <{ATLAS_NS}promotedFrom> {lgd_src} .')   # honest lineage
+    acct_promo_triples.append(f'{auri_slgd} <{ATLAS_NS}promotedBy> {act_uri} .')
+    # Customer→Account link: resolver lands on customer-{id}-resolved
+    acct_promo_triples.append(f'{curi} <{ATLAS_NS}hasAccount> {auri_slgd} .')
 
 # Promote first 500 transactions with account linkage
-acct_uri_map_promo = {a["account_id"]: f'<{INST_NS}account-{a["account_id"]}>' for a in accounts_promo}
+acct_uri_map_slgd = {
+    a["account_id"]: f'<{INST_NS}account-{a["account_id"]}-resolved>'
+    for a in accounts_promo
+}
 
 for t in transactions_promo[:500]:
-    turi    = f'<{INST_NS}txn-{t["transaction_id"]}>'
-    lgd_src = f'<{INST_NS}txn-{t["transaction_id"]}>'
-    auri    = acct_uri_map_promo.get(t["account_id"])
+    turi_slgd = f'<{INST_NS}txn-{t["transaction_id"]}-resolved>'  # SLGD: -resolved suffix
+    lgd_src   = f'<{INST_NS}txn-{t["transaction_id"]}>'           # LGD source: txn-{id}
+    auri_slgd = acct_uri_map_slgd.get(t["account_id"])
 
-    acct_promo_triples.append(f'{turi} <{RDF_TYPE}> <{ATLAS_NS}Transaction> .')
-    acct_promo_triples.append(f'{turi} <{ATLAS_NS}amountUSD> "{t["amount_usd"]}"^^<{XSD_NS}decimal> .')
-    acct_promo_triples.append(f'{turi} <{ATLAS_NS}transactionDate> "{t["transaction_date"]}"^^<{XSD_NS}date> .')
-    acct_promo_triples.append(f'{turi} <{ATLAS_NS}transactionType> "{t["transaction_type"]}"^^<{XSD_NS}string> .')
-    acct_promo_triples.append(f'{turi} <{ATLAS_NS}promotedFrom> {lgd_src} .')
-    acct_promo_triples.append(f'{turi} <{ATLAS_NS}promotedBy> {act_uri} .')
-    if auri:
-        acct_promo_triples.append(f'{auri} <{ATLAS_NS}hasTransaction> {turi} .')
+    acct_promo_triples.append(f'{turi_slgd} <{RDF_TYPE}> <{ATLAS_NS}Transaction> .')
+    acct_promo_triples.append(f'{turi_slgd} <{ATLAS_NS}amountUSD> "{t["amount_usd"]}"^^<{XSD_NS}decimal> .')
+    acct_promo_triples.append(f'{turi_slgd} <{ATLAS_NS}transactionDate> "{t["transaction_date"]}"^^<{XSD_NS}date> .')
+    acct_promo_triples.append(f'{turi_slgd} <{ATLAS_NS}transactionType> "{t["transaction_type"]}"^^<{XSD_NS}string> .')
+    acct_promo_triples.append(f'{turi_slgd} <{ATLAS_NS}promotedFrom> {lgd_src} .')  # LGD txn-{id}
+    acct_promo_triples.append(f'{turi_slgd} <{ATLAS_NS}promotedBy> {act_uri} .')
+    if auri_slgd:
+        # Account→Transaction link: account-{id}-resolved → txn-{id}-resolved
+        acct_promo_triples.append(f'{auri_slgd} <{ATLAS_NS}hasTransaction> {turi_slgd} .')
 
 print(f'  Account triples: {len([t for t in acct_promo_triples if "Account" in t or "account" in t])}')
 print(f'  Transaction triples: {len([t for t in acct_promo_triples if "Transaction" in t or "transact" in t])}')
@@ -330,21 +399,29 @@ Also update the remediation message to mention the 500-transaction cap:
 ### Live SLGD verification queries (run after promotion)
 
 ```sparql
-# Account count (expected: 428)
+# Account count in SLGD (expected: 428, all with -resolved suffix)
 SELECT (COUNT(DISTINCT ?a) AS ?n) WHERE { ?a a atlas:Account ; atlas:promotedBy ?act }
 
 # hasAccount link count (expected: 428)
 SELECT (COUNT(*) AS ?n) WHERE { ?c atlas:hasAccount ?a }
 
-# Transaction count in SLGD (expected: 500)
+# Transaction count in SLGD (expected: 500, all with -resolved suffix)
 SELECT (COUNT(DISTINCT ?t) AS ?n) WHERE { ?t a atlas:Transaction ; atlas:promotedBy ?act }
 
-# Sample traversal: customer → accounts → transactions
+# Verify URI pattern: promoted accounts must have -resolved suffix
+SELECT ?a WHERE { ?a a atlas:Account ; atlas:promotedBy ?act . FILTER(CONTAINS(STR(?a), "-resolved")) } LIMIT 3
+# Expected: all results contain "-resolved"
+
+# Sample traversal: customer-{id}-resolved → account-{id}-resolved → txn-{id}-resolved
 SELECT ?c ?a ?accountType ?t ?amount WHERE {
-    ?c a atlas:Customer ; atlas:hasAccount ?a .
-    ?a atlas:accountType ?accountType ; atlas:hasTransaction ?t .
+    ?c a atlas:Customer ;
+       atlas:customerId ?cid ;
+       atlas:hasAccount ?a .
+    ?a atlas:accountType ?accountType ;
+       atlas:hasTransaction ?t .
     ?t atlas:amountUSD ?amount .
 } LIMIT 5
+# Expected: ?c has form customer-{id}-resolved, ?a has account-{id}-resolved, ?t has txn-{id}-resolved
 
 # New SLGD total (expected: ~8542)
 SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }
