@@ -195,3 +195,27 @@ Based on WS1 findings, watch for these in the WS2 CDK deploy:
 | Cleanup page phantom stacks | `workshop/content/cleanup/index.md` references 8 CDK stack names (`atlas-wholesale-ui-stack`, etc.) but the CDK app defines exactly one stack (`AtlasWorkshop2`). `cdk destroy --all` is the correct command; the named stacks are stale. | Cleanup page audit |
 | Bedrock InvokeModel on both roles | WS2 notebooks call Bedrock (Titan Embeddings, Claude Sonnet). Both execution roles will need `bedrock:InvokeModel`. The two-role split (R8) means both must be patched. | R8 |
 | CDK `CAPABILITY_NAMED_IAM` equivalent | CDK stacks with named IAM resources sometimes need `--require-approval never` or explicit capability acknowledgement; check CDK deploy flags | R1 analogue |
+
+---
+
+## WS1 Live SLGD Pipeline — completion record
+
+**Branch:** `feature/agentcore-native` (HEAD `5b8faf9`)  
+**Date completed:** 2026-05-31  
+**Verified:** SLGD PIPELINE VERIFICATION: PASS
+
+Final SLGD state after pipeline run:
+- 428 `atlas:Account` nodes with `promotedBy` + `hasAccount` links ✓
+- 105 `atlas:AdvisoryRelationship` + 9 `atlas:Advisor` nodes with `promotedBy` ✓
+- End-to-end traversal `customer-{id}-resolved → account-{id}-resolved → txn-{id}-resolved` confirmed ✓
+- 2 `atlas:WealthSignal` instances derived (LargeDepositPattern), SHACL-validated, `evidencedBy` → live Transaction ✓
+
+**Bugs fixed during live run (all committed):**
+- `pyarrow==14.0.2` pin in setup cell fallback removed from all 7 WS1 notebooks (`1caa8c9`)
+- nb04 verify cell: account count `>= 380` floor (non-deterministic RNG), advisor `9` not `10` (`ddcbf03`)
+- nb05 `cell-06b`: was regenerating customers/accounts from scratch (different RNG state → wrong customer_ids → broken hasAccount chain) — fixed to reuse cell-04 scope variables (`14433b0`)
+- nb05 `cell-09f`: SPARQL brace conflict in CONSTRUCT query (`a5c5452`)
+- nb05 `sparql_construct_slgd`: Neptune requires POST not GET for CONSTRUCT (`5b8faf9`)
+- nb05 verify cell: account counts changed to `>= 400` (same non-determinism), advisor `9` not `10`
+
+**Status:** WS2 pre-flight ready to run.
