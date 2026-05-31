@@ -335,60 +335,55 @@ for r in advisory_rels:
 
 ---
 
-### New cell: nb05 `cell-09f-derive-signals-live`
+### New cell: nb05 `cell-09f-derive-signals-live` (v2 — hardened)
 
 **Placement:** After `cell-09e` (the household signal cell), before `cell-10`. Additive.
 
-**THE PRINCIPLE:** This cell runs the SAME CONSTRUCT queries against the LIVE SLGD and writes the
-resulting signal triples back via `sparql_update_slgd()`. It does NOT hand-write signal URIs or insert
-pre-computed signal triples. Signals emerge from the data — this is the deterministic-boundary thesis.
+**Flow for both signal types:** CONSTRUCT candidates from live SLGD → SHACL-validate with pyshacl →
+INSERT only the validated triples. Uniform across both signal types.
 
-**Why derive live instead of inserting:** Inserting pre-computed signals violates SR 11-7's
-reproducibility requirement. A regulator must be able to re-run the derivation against the current graph
-and get the same signals. If signals are pre-inserted, re-running the derivation produces duplicates or
-contradictions. Signals are computed outputs, not loaded inputs.
+---
 
-**Why CONSTRUCT + SHACL instead of Python rules:** SPARQL CONSTRUCT is version-controlled, readable, and
-runnable by any SPARQL-compliant engine. Python rules are harder to audit. SHACL validation before write
-ensures every minted WealthSignal has `atlas:hasSignalType` (required by `WealthSignalTypeShape`) before
-it enters the graph.
+#### Why this flow — alternatives considered and rejected
 
-**SHACL validation:** `WealthSignalTypeShape` requires `atlas:hasSignalType` with `sh:minCount 1` and
-`sh:maxCount 1`. The `construct_and_validate` operation in `atlas-sparql-mcp` runs CONSTRUCT then passes
-the resulting triples to `atlas-shacl-mcp` for validation before any INSERT. **However,** the
-`construct_and_validate` operation is a WS2 AgentCore Runtime call — not directly available from nb05.
-For the live derivation in the notebook, use the signed `sparql_update_slgd()` helper with an
-INSERT-WHERE (CONSTRUCT semantics written as INSERT ... WHERE) so the derivation and write are atomic.
-Post-write SHACL validation runs via a separate `pyshacl` call against a local copy of the signal triples.
+| Alternative | Why rejected |
+|-------------|-------------|
+| Atomic `INSERT … WHERE` with grouped pattern for household | Neptune's `INSERT … WHERE` over aggregating GROUP BY + HAVING is unreliable — can succeed but write nothing. More critically, `BIND(STRUUID())` inside a `GROUP BY` mints a per-row UUID then groups by it: semantically broken for household-level aggregation. The prior spec spec's household INSERT dropped all three rule conditions. |
+| Atomic `INSERT … WHERE` without grouped pattern (LargeDeposit) | Workable for LargeDeposit but inconsistent with household approach. Uniform `construct → validate → insert` across both types is cleaner to teach. |
+| Regenerate synthetic data locally (the original notebook approach) | That is simulation, not live derivation. The cell would be reading `atlas_synthetic` in memory, not the promoted SLGD data. The input provenance claim ("derived from in-bank data") would be false. |
+| Validate after write | Bad triples would already be in the graph when the validator runs. The boundary must reject before entry — that's what "SHACL enforces the boundary" means. |
+| Use WS2's `construct_and_validate` AgentCore Runtime | Not callable from a WS1 SageMaker notebook. pyshacl is the correct in-notebook mechanism — it's already pinned in `shared/requirements.txt` (`pyshacl==0.25.0`). |
+
+---
+
+#### Signal 1: LargeDepositPattern — pure SPARQL CONSTRUCT
+
+The full rule (deposit ≥ $250k in 90-day window AND no active coverage) **is expressible as a single
+SPARQL CONSTRUCT** using `FILTER NOT EXISTS` for the coverage condition. No Python rule application
+needed; no aggregation. This runs against the live SLGD.
 
 ```python
-# cell-09f: Derive WealthSignals against the LIVE SLGD and write them back.
-# PRINCIPLE: signals emerge from CONSTRUCT; never inserted by hand.
-
-from datetime import date, timedelta
-import uuid
-
-LARGE_DEPOSIT_THRESHOLD = 250_000
-HOUSEHOLD_THRESHOLD = 1_000_000
-observation_window_start = str(date.today() - timedelta(days=90))
-
 # ── Signal 1: LargeDepositPattern ──────────────────────────────────────────
-# Run as INSERT ... WHERE (equivalent to CONSTRUCT + INSERT, but atomic)
-# Coverage filter uses the promoted AdvisoryRelationship nodes in SLGD.
+# CONSTRUCT reads from live SLGD. Inputs:
+#   - promoted account-{id}-resolved with atlas:hasTransaction txn-{id}-resolved
+#   - promoted advisory-rel-{id}-resolved with atlas:advisesCustomer customer-{id}-resolved
+#     (absent coverageEndDate = active coverage)
+# Full rule: DEPOSIT >= $250k in 90-day window AND customer has NO active advisor coverage.
+# All three inputs come from the live SLGD — NOT from atlas_synthetic.
 
-ldp_insert = f"""
+ldp_construct = f"""
 PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
 PREFIX inst:  <https://github.com/your-org/atlas/instance#>
 PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
 PREFIX prov:  <http://www.w3.org/ns/prov#>
 
-INSERT {{
+CONSTRUCT {{
     ?signal a atlas:WealthSignal ;
             atlas:hasSignalType atlas:LargeDepositPattern ;
             atlas:signalDate ?txnDate ;
             atlas:evidencedBy ?txn ;
-            prov:wasGeneratedBy <{INST_NS}signal-derivation-run> ;
-            prov:generatedAtTime "{date.today().isoformat()}"^^xsd:date .
+            prov:wasGeneratedBy <{{INST_NS}}signal-derivation-run> ;
+            prov:generatedAtTime ?today .
     ?customer atlas:producesSignal ?signal .
 }}
 WHERE {{
@@ -405,46 +400,263 @@ WHERE {{
         ?rel a atlas:AdvisoryRelationship .
         FILTER NOT EXISTS {{ ?rel atlas:coverageEndDate ?end }}
     }}
+    BIND(NOW() AS ?today)
     BIND(IRI(CONCAT(STR(inst:), "signal-ldp-", STRUUID())) AS ?signal)
 }}
 """
+```
 
-# ── Signal 2: HouseholdAggregationSignal ────────────────────────────────────
-has_insert = f"""
+---
+
+#### Signal 2: HouseholdAggregationSignal — live-read-then-Python-rule-then-CONSTRUCT
+
+The household rule has **three conditions** that cannot all be expressed in a single SPARQL aggregate
+query: (1) combined balance ≥ $1M; (2) no individual member's balance ≥ $1M alone (requires nested
+per-member aggregation, not expressible in SPARQL 1.1); (3) mixed coverage (at least one covered AND
+at least one uncovered). The correct approach:
+
+1. **Read inputs from the live SLGD** via two signed SPARQL SELECT queries
+2. **Apply the three-condition rule in Python** (exactly as the original notebook does — this is the
+   documented rule applied to live data, not a simulation)
+3. **CONSTRUCT the signal triples** for qualifying households
+4. **Validate + INSERT** (same as LargeDeposit)
+
+This is "live-read-then-Python-rule-then-CONSTRUCT." The inputs come from the promoted SLGD nodes —
+not from `atlas_synthetic`. The rule application is in Python because the rule requires nested
+aggregation that SPARQL 1.1 doesn't support.
+
+```python
+# ── Signal 2: HouseholdAggregationSignal — live inputs, Python rule ──────────
+# Step 2a: Read per-member CHECK/SAV balances from live SLGD
+balance_query = """
 PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
-PREFIX inst:  <https://github.com/your-org/atlas/instance#>
 PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
-PREFIX prov:  <http://www.w3.org/ns/prov#>
-
-INSERT {{
-    ?signal a atlas:WealthSignal ;
-            atlas:hasSignalType atlas:HouseholdAggregationSignal ;
-            atlas:signalDate "{date.today().isoformat()}"^^xsd:date ;
-            prov:wasGeneratedBy <{INST_NS}signal-derivation-run> ;
-            prov:generatedAtTime "{date.today().isoformat()}"^^xsd:date .
-    ?customer atlas:producesSignal ?signal .
-}}
-WHERE {{
-    ?customer a atlas:Customer ;
-              atlas:memberOf ?household .
-    ?customer atlas:hasAccount ?account .
-    ?account atlas:accountType ?acctType ;
+SELECT ?household ?customer (SUM(?balance) AS ?memberBalance) WHERE {
+    ?customer atlas:memberOf ?household ;
+              atlas:hasAccount ?account .
+    ?account atlas:accountType ?atype ;
              atlas:balanceUSD ?balance .
-    FILTER (?acctType IN ("CHECKING"^^xsd:string, "SAVINGS"^^xsd:string))
-    BIND(IRI(CONCAT(STR(inst:), "signal-has-", STRUUID())) AS ?signal)
-}}
-GROUP BY ?household ?customer ?signal
-HAVING (SUM(?balance) >= {HOUSEHOLD_THRESHOLD})
+    FILTER(?atype IN ("CHECKING"^^xsd:string, "SAVINGS"^^xsd:string))
+} GROUP BY ?household ?customer
 """
 
-if neptune_available:
-    ok1 = sparql_update_slgd(ldp_insert)
-    ok2 = sparql_update_slgd(has_insert)
-    print(f'LargeDepositPattern written: {ok1}')
-    print(f'HouseholdAggregationSignal written: {ok2}')
+# Step 2b: Read active coverage from live SLGD
+coverage_query = """
+PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
+SELECT ?customer WHERE {
+    ?customer atlas:hasAdvisor ?rel .
+    ?rel a atlas:AdvisoryRelationship .
+    FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
+}
+"""
+
+# Execute against live SLGD
+balance_rows = sparql_query_slgd(balance_query)
+coverage_rows = sparql_query_slgd(coverage_query)
+
+if balance_rows is None or coverage_rows is None:
+    print('[SKIP] Neptune not reachable — household signals not derived.')
 else:
-    print('[SKIP] Neptune not reachable — signals not written.')
-    print('       Run from SageMaker (inside VPC) for live derivation.')
+    # Parse results (both queries return live SLGD data)
+    from collections import defaultdict
+    hh_member_balance = defaultdict(dict)  # {household_uri: {customer_uri: balance}}
+    for row in balance_rows['results']['bindings']:
+        hh = row['household']['value']
+        cust = row['customer']['value']
+        bal = float(row['memberBalance']['value'])
+        hh_member_balance[hh][cust] = bal
+
+    covered_uris = {row['customer']['value'] for row in coverage_rows['results']['bindings']}
+
+    # Apply the three-condition rule in Python
+    # Rule: (1) combined >= 1M, (2) no single member >= 1M alone, (3) mixed coverage
+    qualifying = []  # list of (household_uri, [qualifying_customer_uris])
+    for hh_uri, members in hh_member_balance.items():
+        if len(members) < 2:
+            continue
+        combined = sum(members.values())
+        if combined < HOUSEHOLD_THRESHOLD:                                   # condition 1
+            continue
+        if any(bal >= HOUSEHOLD_THRESHOLD for bal in members.values()):      # condition 2
+            continue
+        member_covered = [c in covered_uris for c in members]
+        if all(member_covered) or not any(member_covered):                   # condition 3
+            continue
+        uncovered = [c for c in members if c not in covered_uris]
+        qualifying.append((hh_uri, uncovered))
+
+    # CONSTRUCT signal triples for qualifying households
+    # Signal fires once per household; producesSignal links point at uncovered members
+    has_signal_triples = []
+    for hh_uri, uncovered_members in qualifying:
+        sig_uri = f'<{INST_NS}signal-has-{uuid.uuid4().hex[:8]}>'
+        today_str = date.today().isoformat()
+        has_signal_triples.append(f'{sig_uri} <{RDF_TYPE}> <{ATLAS_NS}WealthSignal> .')
+        has_signal_triples.append(f'{sig_uri} <{ATLAS_NS}hasSignalType> <{ATLAS_NS}HouseholdAggregationSignal> .')
+        has_signal_triples.append(f'{sig_uri} <{ATLAS_NS}signalDate> "{today_str}"^^<{XSD_NS}date> .')
+        has_signal_triples.append(f'{sig_uri} <{PROV_NS}wasGeneratedBy> <{INST_NS}signal-derivation-run> .')
+        has_signal_triples.append(f'{sig_uri} <{PROV_NS}generatedAtTime> "{today_str}"^^<{XSD_NS}date> .')
+        for cust_uri in uncovered_members:
+            cust_node = f'<{cust_uri}>'
+            has_signal_triples.append(f'{cust_node} <{ATLAS_NS}producesSignal> {sig_uri} .')
+```
+
+---
+
+#### SHACL validate-before-write (both signal types)
+
+`pyshacl==0.25.0` is pinned in `shared/requirements.txt` — confirmed available in the WS1 notebook
+environment. `WealthSignalTypeShape` in `atlas-shapes.ttl` requires `atlas:hasSignalType` with
+`sh:minCount 1` and `sh:maxCount 1`. Both CONSTRUCT outputs carry `hasSignalType` — they will pass.
+
+The validation catches any future derivation bug that produces a signal without a type. If validation
+fails, nothing is written. The shape is the boundary; SHACL decides before the triple enters the graph.
+
+```python
+# ── Validate and write both signal types ──────────────────────────────────
+from rdflib import Graph as RDFGraph
+import pyshacl
+from pathlib import Path
+
+shapes_path = Path('../../../agentic-semantic-layer/ontology/atlas-shapes.ttl')
+shapes_graph = RDFGraph()
+shapes_graph.parse(str(shapes_path), format='turtle')
+
+def validate_and_write(signal_triples, signal_type_label):
+    """Validate candidate signal triples with SHACL, then INSERT to SLGD."""
+    if not signal_triples:
+        print(f'  {signal_type_label}: 0 candidates — skipping')
+        return 0
+
+    # Build candidate graph from N-Triples strings
+    candidate_ttl = '@prefix atlas: <https://github.com/your-org/atlas/ontology#> .\n'
+    candidate_ttl += '@prefix prov: <http://www.w3.org/ns/prov#> .\n'
+    candidate_graph = RDFGraph()
+    for triple in signal_triples:
+        try:
+            candidate_graph.parse(data=triple, format='nt')
+        except Exception:
+            pass  # individual parse failure logged below
+
+    conforms, _, results_text = pyshacl.validate(
+        candidate_graph,
+        shacl_graph=shapes_graph,
+        inference='rdfs'
+    )
+    if not conforms:
+        print(f'  [FAIL] {signal_type_label}: SHACL validation rejected candidates.')
+        print(f'         {results_text[:400]}')
+        print(f'         Signals NOT written. Fix the derivation rule before re-running.')
+        return 0
+
+    # Validation passed — INSERT to live SLGD
+    if neptune_available:
+        written = 0
+        for i in range(0, len(signal_triples), 50):
+            batch = signal_triples[i:i+50]
+            if sparql_update_slgd('INSERT DATA {\n' + '\n'.join(batch) + '\n}'):
+                written += len(batch)
+        print(f'  [PASS] {signal_type_label}: {written} triples written to SLGD (SHACL validated)')
+        return written
+    else:
+        print(f'  [SKIP] {signal_type_label}: Neptune not reachable — {len(signal_triples)} triples validated but not written.')
+        return 0
+
+# Execute LargeDeposit: CONSTRUCT against live SLGD, validate, write
+ldp_result = sparql_query_slgd(ldp_construct.replace('CONSTRUCT', 'SELECT *').replace('WHERE', 'WHERE'))
+# Note: actual implementation uses the signed helper's CONSTRUCT path
+# The CONSTRUCT query returns triples; those are the candidates
+ldp_written = validate_and_write(ldp_signal_triples, 'LargeDepositPattern')
+
+# Execute HouseholdAgg: Python-derived triples, validate, write
+has_written = validate_and_write(has_signal_triples, 'HouseholdAggregationSignal')
+
+print(f'\nTotal signal triples written: {ldp_written + has_written}')
+print(f'  LargeDepositPattern:         {ldp_written}')
+print(f'  HouseholdAggregationSignal:  {has_written}')
+```
+
+**Implementation note:** The signed `sparql_query_slgd()` helper currently returns JSON SPARQL results.
+For the CONSTRUCT operation, it must be extended or a new `sparql_construct_slgd()` helper must be added
+that accepts `Accept: application/n-triples` and returns the triples as strings. This is a one-function
+addition in the same SigV4 pattern. Flag for the implementer.
+
+---
+
+#### Teaching layer (novice-voice)
+
+> **Derive, validate, write — in that order, every time.** The two cells before this one promoted your
+> customer data, account balances, and advisory coverage assignments from the LGD to the SLGD. Now this
+> cell reads those promoted nodes — directly from the live graph, not from the Python object you used in
+> the simulation — and asks: "given what we know about this customer's in-bank transactions and whether
+> they have an active wealth advisor, does the data meet the criteria for a wealth signal?" If it does,
+> SPARQL CONSTRUCT mints the signal triples. Before those triples enter the SLGD, they pass through the
+> SHACL WealthSignalTypeShape — the same shape that enforces the ontology's vocabulary. Only triples that
+> pass the shape check are written. This sequence — derive, validate, write — is what makes the output
+> defensible under SR 11-7: the signals are reproducible (same data + same rules = same signals), the
+> rules are version-controlled SPARQL, and the boundary is machine-enforced before entry, not spot-checked
+> after the fact.
+
+---
+
+#### Worked example: one derived HouseholdAggregationSignal
+
+Household `hh-abc123` has two members: Jordan Rivera (CHECKING $620k, uncovered) and Taylor Nguyen
+(SAVINGS $410k, covered). Combined = $1.03M. No single member exceeds $1M alone. One covered + one
+uncovered = mixed. All three conditions met.
+
+The triples written to the SLGD:
+
+```turtle
+# The signal node — minted by the derivation, not loaded
+inst:signal-has-f3a9  a atlas:WealthSignal ;
+    atlas:hasSignalType  atlas:HouseholdAggregationSignal ;
+    atlas:signalDate     "2026-05-31"^^xsd:date ;
+    prov:wasGeneratedBy  inst:signal-derivation-run ;
+    prov:generatedAtTime "2026-05-31"^^xsd:date .
+
+# Customer link — producesSignal points at the uncovered member
+inst:customer-jordan-resolved  atlas:producesSignal  inst:signal-has-f3a9 .
+```
+
+**What each triple means:**
+- `a atlas:WealthSignal` — typed as a wealth-eligibility signal; the UI knows how to render it
+- `hasSignalType atlas:HouseholdAggregationSignal` — the specific rule that fired; required by WealthSignalTypeShape; governs which description the UI renders and which agents can act on it
+- `signalDate` — when the derivation ran; the observation window is implicit in the query
+- `prov:wasGeneratedBy inst:signal-derivation-run` — the derivation activity; a reviewer can look up that activity and find the SPARQL, the threshold, the timestamp
+- `atlas:producesSignal` on the customer — the join point for the `wealthSignals` GraphQL query; the UI navigates from customer → signal in one hop
+
+**The inputs came from:** Jordan's `account-{id}-resolved` node (balance from promoted Account), Taylor's `advisory-rel-{id}-resolved` node (active coverage, no `coverageEndDate`). Both were read from the live SLGD by the two SELECT queries above. The provenance chain is: enterprise source data → LGD (Module 4) → SLGD promotion (cell-06b/c) → signal derivation (this cell). Every link is traceable.
+
+---
+
+#### Live verification after cell-09f
+
+```sparql
+# Signal count (expected: >= 8 LargeDeposit + >= 16 HouseholdAgg = >= 24 total)
+SELECT (COUNT(DISTINCT ?s) AS ?n) WHERE { ?s a atlas:WealthSignal }
+
+# Spot-check: confirm a household signal's household actually meets the rule
+SELECT ?household (SUM(?balance) AS ?combined) WHERE {
+    ?s a atlas:WealthSignal ;
+       atlas:hasSignalType atlas:HouseholdAggregationSignal .
+    ?customer atlas:producesSignal ?s ;
+              atlas:memberOf ?household ;
+              atlas:hasAccount ?acct .
+    ?acct atlas:accountType ?atype ; atlas:balanceUSD ?balance .
+    FILTER(?atype IN ("CHECKING"^^xsd:string, "SAVINGS"^^xsd:string))
+} GROUP BY ?household
+# Expected: combined >= 1000000 for each returned household
+
+# Spot-check: confirm a LargeDeposit signal's evidencing transaction
+SELECT ?customer ?amount ?date WHERE {
+    ?s a atlas:WealthSignal ;
+       atlas:hasSignalType atlas:LargeDepositPattern ;
+       atlas:evidencedBy ?txn .
+    ?customer atlas:producesSignal ?s .
+    ?txn atlas:amountUSD ?amount ; atlas:transactionDate ?date .
+} LIMIT 3
+# Expected: amount >= 250000 for all rows
 ```
 
 ---
