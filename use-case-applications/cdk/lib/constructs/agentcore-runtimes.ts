@@ -178,8 +178,8 @@ export class AgentCoreRuntimesConstruct extends Construct {
       }),
       authorizerConfiguration: authConfig,
       environmentVariables: {
-        GROUND_TRUTH_S3_URI: "s3://atlas-workshop-1/prompts/ground-truth.yaml",
-        PREFIXES_S3_URI: "s3://atlas-workshop-1/prompts/prefixes.txt",
+        GROUND_TRUTH_S3_URI: "s3://atlas-ontology-staging-981814817046/prompts/ground-truth.yaml",
+        PREFIXES_S3_URI: "s3://atlas-ontology-staging-981814817046/prompts/prefixes.txt",
         SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
         BEDROCK_EMBEDDING_MODEL_ID: "amazon.titan-embed-text-v2:0",
       },
