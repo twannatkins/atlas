@@ -10,6 +10,8 @@
 | WS1 Module 5 — Entity Resolution (live SLGD verify) | VALIDATED | Live SPARQL check: 1618 total triples, 200 promoted Customers, 200 with promotedBy, 22 ontology classes. All counts match. |
 | WS1 Module 6 — SHACL Boundary | COMPLETE | Pure-local. All gates pass. Print summary + gate comment cosmetic fix applied (98945af). |
 | WS1 Module 7 — Bedrock at the Edges | COMPLETE | Gate PASS at 6/7 (threshold 5). bedrock:InvokeModel added to both roles (LIVE-STATE — see Bedrock access entry). CQ6 deterministically fails (5/5). See CQ6 analysis below. |
+| WS1 Module 8 — Wealth Signal Demo | COMPLETE | All 11 gates PASS. Audit trail complete: WealthSignal, Score (SHAP), RoutingDecision, HumanReview, AdvisoryRelationship, PROV-O provenance. CIO demo query returns results. See cell-14 engagement note below. |
+| **WS1 ALL MODULES** | **COMPLETE** | **Modules 1–8 all gates green. SLGD: 1618 triples (ontology + 200 promoted customers). LGD populated (3 patterns). SHACL, NL→SPARQL, XGBoost scoring, and full audit narrative verified.** |
 
 ---
 
@@ -42,6 +44,20 @@ Two execution roles are active in this environment:
 | `CARRIES-TO-WS2` | Same pattern near-certainly recurs in the WS2 CDK stack; fix must cover both workshops |
 
 Tags combine: e.g. `SELF-BITING + CARRIES-TO-WS2`.
+
+---
+
+## Module 8 — cell-14 CIO demo: illustrative graph, not live SLGD query
+
+**Finding:** cell-14 ("The CIO Demo Query") builds a local `rdflib` graph (`g_demo`) from the `audit_triples` list constructed in cell-12, then runs the audit-trail SPARQL against that local graph. It does **not** query the live SLGD and does **not** use NL→SPARQL translation. The data is a single synthetic workflow (one customer, one signal, one routing decision) constructed entirely in memory.
+
+**This is by design for the teaching narrative** — and it's consistent with the CQ6 decision: the audit-trail query is a pinned, version-controlled SPARQL artifact, not an LLM output. cell-14 demonstrates exactly that artifact against illustrative data.
+
+**Engagement framing (have this ready):** When presenting Module 8 to a CIO or MRM reviewer, frame cell-14 as "here's the shape and completeness of the audit trail the system produces" — not "here's a live query against our populated graph." The distinction matters for credibility. The stronger version of this demo — running the same pinned query against the 200 real promoted customers in the live SLGD — is a post-WS1 enhancement (tracked in todo list).
+
+**Connection to CQ6:** The same query that deterministically failed NL→SPARQL translation in Module 7 succeeds here precisely because it's a pinned artifact, not generated. The two modules are consistent: LLM translation is appropriate for conversational queries; compliance provenance chains are not.
+
+**Tags:** `ENGAGEMENT-READINESS` + `POST-WS1-ENHANCEMENT` (upgrade cell-14 to query live SLGD; tracked)
 
 ---
 
