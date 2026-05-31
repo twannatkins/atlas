@@ -369,3 +369,258 @@ Phase 2 (notebooks `01_phase_2_agents.ipynb` through `06_phase_2_acceptance.ipyn
 *Read in full this pass: all 7 Phase 1 notebooks, all 7 corresponding workshop pages, all 11 CDK constructs, the main stack (`atlas-workshop-2-stack.ts`), and `spec/07-cdk-stack/README.md`. The Phase 2 notebooks were listed but not read. All claims in Sections 2–6 trace to specific files read completely.*
 
 *Critical new finding not in prior ws2-comprehension.md: **Ontop mapping files (R9/R10/G5)** — the `atlas.obda` and `atlas.properties` files do not exist in the official `ontop/ontop:5` Docker image. This will cause Ontop to crash-loop on deploy. This is the most significant deploy risk discovered in this pass.*
+
+---
+
+# PASS 2 — Phase 2 (Wealth Advisor Spine)
+
+Complete read of all 6 Phase 2 notebooks and their 6 workshop pages. Appended after Pass 1.
+
+---
+
+## P2-Section A — Per-notebook map (Phase 2)
+
+### 01_phase_2_agents.ipynb (Module 8)
+
+- **TEACHES:** Why Phase 2 agents are structurally different: `behavioral-signal-agent` queries the LGD for temporal behavioral data (EngagementDecay, NetworkInfluence); `conversational-context-manager` is stateful via AgentCore Memory; postures include `probabilistic-guarded`.
+- **USER RUNS:** 6 code cells — setup (load descriptors), posture comparison (Phase 1 vs 2), EngagementDecay simulation against hardcoded LGD session data, MCP dependency inspection, verify 3 Phase 2 agents registered, verify LGD graph_tiers declared.
+- **DEPENDS-ON-LIVE:** NONE — local descriptor JSON files from `spec/04-aws-agent-registry/agents/` only.
+- **USER SEES (success):** `[PASS] behavioral-signal-agent declares LGD access. Behavioral signals (EngagementDecay, NetworkInfluence) can be detected.`
+- **FAILS-IF:** Descriptor JSON malformed; Phase 2 agents missing `"phase": 2`; `behavioral-signal-agent` missing `"lgd"` in `graph_tiers`.
+- **GATE:** IN-MEMORY — unconditional assertions. No deferred checks.
+- **SIMULATED-vs-LIVE:** Fully simulated. WS2 resource needed: None.
+
+### 02_agentcore_memory.ipynb (Module 9)
+
+- **TEACHES:** Session-scoped memory enables multi-turn conversations. Session scope is a compliance decision: permanent storage creates GDPR/CCPA obligations.
+- **USER RUNS:** 6 code cells — setup, define local `SessionMemory` class mirroring AgentCore Memory interface (put/get/end_session), two-turn conversation simulation (resolves "those" from memory), context-driven template selection (scoped vs broad), verify session scope, verify session isolation.
+- **DEPENDS-ON-LIVE:** NONE — `SessionMemory` is a local Python class. Notebook comment: "This notebook simulates AgentCore Memory locally. Production uses the AWS AgentCore Memory service."
+- **USER SEES (success):** `[PASS] Memory is session-scoped: data cleared after end_session(). / [PASS] Sessions are fully isolated. No context leakage between sessions.`
+- **FAILS-IF:** `end_session()` doesn't clear session data; sessions leak data across each other.
+- **GATE:** IN-MEMORY — unconditional assertions. No deferred checks.
+- **SIMULATED-vs-LIVE:** Fully simulated. WS2 resource needed: None.
+
+### 03_wealth_ui.ipynb (Module 10)
+
+- **TEACHES:** Thesis 2 — same GraphQL schema and registry serve two structurally different UIs via persona-specific fragments (`CustomerReferralFragment` vs `CustomerCoverageFragment`) and capability palettes.
+- **USER RUNS:** 6 code cells — setup, simulate `capabilities(personaClaim)` resolver for both personas, simulate `theme-summarizer` output, print both fragments side-by-side, verify Wealth Advisor vs Consumer Banker palettes differ, verify `theme-summarizer` is Wealth Advisor-only.
+- **DEPENDS-ON-LIVE:** NONE — local descriptor files only.
+- **USER SEES (success):** `[PASS] Themes are accessible to the Wealth Advisor persona. The Wealth UI can render market themes for client portfolios.`
+- **FAILS-IF:** Descriptor `discoverable_by` lists not differentiated; `theme-summarizer` descriptor missing.
+- **GATE:** IN-MEMORY — unconditional assertions. No deferred checks.
+- **SIMULATED-vs-LIVE:** Fully simulated. WS2 resource needed: None.
+
+### 04_jwt_auth.ipynb (Module 11)
+
+- **TEACHES:** Why Phase 2 switches from IAM (service identity) to JWT (user identity). With two UIs, IAM cannot distinguish personas at the service level; JWT moves the `custom:persona` claim into a Cognito-signed token.
+- **USER RUNS:** 6 code cells — setup, construct sample JWT payloads with `custom:persona`, simulate registry filtering by JWT claim, print IAM vs JWT comparison table, verify both tokens carry correct persona claim, verify different tokens produce different capability sets and no-persona token returns empty.
+- **DEPENDS-ON-LIVE:** NONE — JWT payloads are local Python dicts; no Cognito call made. Comment: "In production, AppSync extracts the claim from the Authorization header."
+- **USER SEES (success):** `[PASS] Registry correctly filters by JWT persona claim. Per-request authorization works without IAM role assumption per user.`
+- **FAILS-IF:** `custom:persona` missing from token; filter returns same set for different personas; no-persona token returns non-empty capabilities.
+- **GATE:** IN-MEMORY — unconditional assertions. No deferred checks.
+- **SIMULATED-vs-LIVE:** Fully simulated. WS2 resource needed: None.
+
+### 05_end_to_end.ipynb (Module 12)
+
+- **TEACHES:** The full cross-UI advisor scenario — signal detection in Wholesale UI through routing to Wealth UI, with a PROV-O audit trail spanning both personas. Proves Thesis 2 at the workflow level.
+- **USER RUNS:** 7 code cells — setup, build Step 1 (signal detection event dict), build Steps 2–3 (rationale drafted + referral routed), build Steps 4–6 (advisor receives notification + opens profile + asks follow-up), assemble full 6-event audit trail, verify trail spans both personas with unbroken parent chain, verify routing bridges both UIs bidirectionally.
+- **DEPENDS-ON-LIVE:** NONE — explicitly: "This notebook simulates the cross-UI flow locally." All events are Python dicts; all audit_ids are `uuid4()`.
+- **USER SEES (success):** `[PASS] Routing decision correctly links both UIs. The cross-UI workflow is fully traceable.`
+- **FAILS-IF:** Audit trail missing a persona; parent_audit_id chain broken; routing event not linked bidirectionally.
+- **GATE:** IN-MEMORY — unconditional assertions. No deferred checks.
+- **SIMULATED-vs-LIVE:** Fully simulated. WS2 resource needed: None.
+
+### 06_phase_2_acceptance.ipynb (Module 13)
+
+- **TEACHES:** The formal Phase 2 acceptance suite — 20 assertions across 5 categories. Notebook explicitly states: "all 20 assertions across five categories, all running locally — no live infrastructure required. Unlike the Phase 1 acceptance suite (Module 7), there are no deferred assertions."
+- **USER RUNS:** 7 code cells — setup + results tracker, Category 1 Registration (5 assertions), Category 2 Wealth UI (4 assertions), Category 3 AgentCore Memory (4 assertions), Category 4 JWT (3 assertions), Category 5 Cross-UI Audit Trail (4 assertions), summary.
+- **DEPENDS-ON-LIVE:** NONE — all 20 assertions run against local descriptors, local `SessionMemory` class, locally constructed JWTs, locally simulated audit trails.
+- **USER SEES (success):** `✓ ALL ASSERTIONS PASS. / Thesis 2 is validated: two structurally different UIs consume the same backbone with correct persona-scoped behavior.`
+- **FAILS-IF:** Any descriptor incorrect; SessionMemory doesn't isolate sessions; JWT filter wrong; audit trail simulation broken.
+- **GATE:** IN-MEMORY — all 20 assertions unconditional. No deferred checks.
+- **SIMULATED-vs-LIVE:** Fully simulated. WS2 resource needed: None.
+
+---
+
+## P2-Section B — The defer pattern (critical capstone audit)
+
+### Finding: ALL Phase 2 notebooks are pure local simulation — pattern (c)
+
+Every Phase 2 notebook follows pattern **(c): pure local simulation with no live assertion**. None follow (a) unconditional defer/skip, none follow (b) conditional live check.
+
+The three patterns for reference:
+- (a) Unconditional defer — marks assertion as skipped; counter shows DEFERRED; user must re-run manually post-deploy
+- (b) Conditional live check — runs if resource available, skips gracefully if not
+- (c) Pure local simulation — always runs; always passes if code is correct; never touches deployed infrastructure
+
+**All six Phase 2 notebooks are (c).** The deciding evidence from each:
+
+**nb01–nb04:** All verification cells load JSON descriptors or operate on local Python objects. No AgentCore Runtime ARN is read or called. No AWS API is invoked.
+
+**nb05 (end-to-end) — the critical one:**
+```python
+# cell-03-setup
+print("Setup complete.")
+print("This notebook simulates the cross-UI flow locally.")
+```
+```python
+# cell-04 through cell-07
+signal_event = { ... "audit_id": str(uuid.uuid4()), ... }
+# No AgentCore invoke_agent_runtime() call anywhere in the file
+# No boto3.client("bedrock-agentcore") call anywhere
+# All events are Python dicts constructed inline
+```
+```python
+# cell-09-verify-trail (unconditional)
+assert expected_personas.issubset(personas_in_trail)
+print("[PASS] Audit trail spans both personas with unbroken parent chain.")
+# No condition guards this — runs regardless of deployment state
+```
+
+**nb06 (phase_2_acceptance) — the formal acceptance gate:**
+```python
+# cell-01-concept (markdown)
+# "all 20 assertions across five categories, all running locally —
+#  no live infrastructure required. Unlike the Phase 1 acceptance suite
+#  (Module 7), there are no deferred assertions."
+```
+```python
+# cell-05-cat3-memory
+mem = SessionMemory()  # local Python class, not AWS AgentCore Memory service
+check("3.1", "Memory stores values during active session", mem.get(s1, "data") == [1, 2, 3])
+# No connection to deployed Memory store; no MemoryId CFN output read
+```
+```python
+# cell-06-cat4-jwt
+jwt_banker = create_jwt_payload("atlas-consumer-banker")  # local dict construction
+# No Cognito UserPool called; no JWT signature verification
+check("4.1", "JWT tokens contain custom:persona claim", "custom:persona" in jwt_banker)
+```
+```python
+# cell-07-cat5-audit
+# Audit trail is a hardcoded list built inline in this cell:
+audit_trail = [
+    {"step": 1, "persona": "atlas-consumer-banker", "ui": "Wholesale UI",
+     "action": "signal_detected", "audit_id": audit_ids[0], "parent_audit_id": None},
+    ...
+]
+check("5.1", "Audit trail spans both personas", ...)
+# No Neptune query; no AgentCore invoke; just checking the local list
+```
+
+### Implication for the capstone
+
+**The capstone (WS2) proves Thesis 1 and Thesis 2 through local simulation only.** After a successful `cdk deploy`:
+
+- Phase 2 nb06 will still print `✓ ALL ASSERTIONS PASS` — because all 20 assertions check local data structures.
+- Phase 1 nb06 Category 5 (`defer()` calls, 7 assertions) will still print DEFERRED — because the `defer()` calls are unconditional; the notebook code would need to be edited to flip them to live checks.
+- **No notebook in either phase will automatically exercise the deployed AgentCore Runtimes, Step Functions, Memory store, AppSync endpoint, or Cognito pool.**
+
+The two CFN outputs that ARE the capstone proof points — `AtlasSparqlMcpArn` and `ConversationalContextManagerArn` — are never read by any Phase 1 or Phase 2 notebook. They exist as stack outputs but nothing consumes them in the notebook path.
+
+**This is gap G12 elevated to CAPSTONE-CRITICAL:** The fix requires writing a new "live integration" cell (or modifying Phase 1 nb06 Cat 5 cells) that reads the deployed CFN outputs and invokes the AgentCore Runtimes, rather than simulating locally. Without this fix, running the full 13-notebook workshop proves the architecture is correctly described but does not prove it runs.
+
+---
+
+## P2-Section C — Prose vs code alignment (Phase 2 pages)
+
+### Module 8 (08-phase-2-agents): FULLY ALIGNED
+All cell IDs, expected outputs, and resource names match.
+
+### Module 9 (09-agentcore-memory): FULLY ALIGNED
+All cell IDs match. Multi-turn conversation output (Rachel Kim AUM $3.2M, Sarah Patel AUM $4.5M after filter) matches notebook print strings.
+
+### Module 10 (10-wealth-ui): FULLY ALIGNED
+Fragment field lists, capability palette counts, and theme-summarizer verification outputs all match.
+
+### Module 11 (11-jwt-auth): FULLY ALIGNED
+JWT payload fields, IAM vs JWT comparison table, and filtering verification outputs all match.
+
+### Module 12 (12-end-to-end): ALIGNED with one cosmetic mismatch
+
+| Location | Prose says | Code does |
+|----------|-----------|-----------|
+| `12-end-to-end/index.md` Step 5 expected output | `Routed to: advisor-alex-morgan` | `cell-05-step2-draft` prints `Routed to: advisor-michael-ross` |
+
+Not load-bearing — the advisor name is a simulation artifact. The workshop concept (routing event carries advisor identifier) is identical.
+
+### Module 13 (13-phase-2-acceptance): FULLY ALIGNED
+All 20 assertion IDs and category names match. Summary output format matches exactly.
+
+---
+
+## P2-Section D — Phase 2 live-resource dependencies
+
+| P2 resource | P2 notebook that needs it | Actually called live? | WS2 CFN output |
+|-------------|--------------------------|----------------------|----------------|
+| AgentCore Memory store (`atlas_workshop_memory`) | nb02 uses SessionMemory interface | **NO** — local `SessionMemory` class only | `MemoryId` (exported but never read by any notebook) |
+| `conversational-context-manager` Runtime | nb02 teaches it, nb06 verifies descriptor | **NO** — descriptor check only | `ConversationalContextManagerArn` (exported, never called) |
+| `behavioral-signal-agent` Runtime + LGD | nb01 simulates EngagementDecay | **NO** — hardcoded session data | Not exported |
+| `theme-summarizer` Runtime + Bedrock Claude | nb03 simulates output | **NO** — hardcoded theme dict | Not exported |
+| Cognito User Pool + JWT | nb04 constructs local JWT dicts | **NO** — no Cognito call | `CognitoUserPoolId` (exported, never read) |
+| AppSync GraphQL API | nb04 mentions in concept | **NO** — no AppSync call | `AppSyncEndpoint` (exported, never read) |
+| Wealth UI (CloudFront) | nb03 describes, nb13 page links to | **NO** | **NOT EXPORTED** — `WealthUiUrl` exists in `cloudfront.ts` but the main stack only exports `WholesaleUiUrl` |
+| Step Functions (`atlas-referral-orchestrator`) | Phase 1 nb06 Cat 5 deferred | **NO (deferred)** | `StateMachineArn` (exported, not consumed by notebooks) |
+| `atlas-sparql-mcp` Runtime | Phase 1 nb06 Cat 5 deferred | **NO (deferred)** | `AtlasSparqlMcpArn` (exported, not consumed) |
+
+**Resources Phase 2 needs that the stack does NOT export:**
+- `WealthUiUrl` — CloudFront distribution URL for Wealth UI. `wealthUiUrl` field exists in `CloudFrontConstruct` but the main stack only has `new cdk.CfnOutput(this, "WholesaleUiUrl", ...)`. The Wealth UI CloudFront URL is inaccessible without stack output or direct CloudFormation query. This is a **new gap** (G-P2-1).
+- Individual AgentCore Runtime ARNs for Phase 2 agents (`behavioral-signal-agent`, `household-traverser`, `referral-rationale-drafter`, `theme-summarizer`, `wealth-signal-detector`) — none exported. Only `AtlasSparqlMcpArn` and `ConversationalContextManagerArn` are exported.
+
+---
+
+## P2-Section E — Updated unified gap queue
+
+The Phase 1 gaps (G1–G20) from Pass 1 Section 7 are merged below with Phase 2 gaps. New Phase 2 gaps prefixed P2.
+
+### PRE-DEPLOY
+
+| # | Gap | Action | Capstone impact |
+|---|-----|--------|-----------------|
+| **G1** | CDK bootstrap not done | `cdk bootstrap aws://981814817046/us-east-1` | Blocks all |
+| **G2** | 2 S3 files not yet uploaded (ground-truth.yaml, prefixes.txt) | `aws s3 cp` ×2 (approved, awaiting go) | Blocks nl-to-sparql-agent at runtime |
+| **G3** | ER workflow `atlas-entity-resolution` unverified | `aws entityresolution list-matching-workflows` | Blocks atlas-er-mcp at runtime |
+| **G4** | 5 IDC persona groups missing | `aws identitystore create-group` ×5 (post-deploy OK) | Blocks Cognito federation |
+
+### AT-DEPLOY ⚠️
+
+| # | Gap | Action | Capstone impact |
+|---|-----|--------|-----------------|
+| **G5** ⚠️ | **CRITICAL: Ontop crash-loop** — `atlas.obda` and `atlas.properties` not in `ontop/ontop:5` | Build custom Ontop image or mount mapping files | Blocks full deploy; GraphQL federation unusable |
+| **G6** | Both Neptune endpoints wired to SLGD — LGD access broken | Pass LGD endpoint separately as context | Blocks Phase 2 behavioral-signal-agent |
+| **G7** | `REGISTRY_ENDPOINT` never passed to `atlas-registry-mcp` | Verify boto3 fallback; fix if needed | Blocks registry MCP at runtime |
+| **G8** | Cognito callback URL hardcoded as `atlas.example.com` | Wire `WholesaleUiUrl` as `productionCallbackUrl` | Blocks Cognito OAuth for UI login |
+| **G9** | Lake Formation tags created but no table associations | Add tag associations or manual step | Blocks LF row/column scoping |
+| **G10** | ECS circuit breaker missing on Ontop | Add `circuitBreaker: { rollback: true }` | 3-hour hang on bad deploy |
+| **G11** | Neptune Sparql JDBC driver may be absent from Ontop image | Verify/include in custom image (related to G5) | Blocks Ontop SQL federation |
+
+### POST-DEPLOY / PER-NOTEBOOK — CAPSTONE-CRITICAL ⚠️
+
+| # | Gap | Action | Capstone impact |
+|---|-----|--------|-----------------|
+| **G12** ⚠️ | **CAPSTONE-CRITICAL: nb06 Phase 1 Cat 5 `defer()` unconditional** — 7 assertions about live AgentCore/Neptune never run | Replace `defer()` with conditional `check()` that reads CFN outputs and invokes deployed Runtimes | **Without this fix, the workshop never proves the architecture runs. This is the headline blocker for proving Thesis 1.** |
+| **P2-G1** ⚠️ | **CAPSTONE-CRITICAL: Phase 2 nb06 acceptance is 100% local simulation** — all 20 assertions prove spec correctness, not deployment correctness | Write a "live integration" cell (or new notebook) that reads deployed CFN outputs (`AtlasSparqlMcpArn`, `ConversationalContextManagerArn`, `MemoryId`) and invokes them | **Without this fix, Thesis 2 is validated against descriptors, not against deployed infrastructure.** |
+| **P2-G2** | `WealthUiUrl` not exported as CFN output — Wealth UI CloudFront URL inaccessible | Add `new cdk.CfnOutput(this, "WealthUiUrl", { value: cloudfront.wealthUiUrl })` to main stack | Blocks Wealth UI access post-deploy |
+| **G13** | React UI apps not built or deployed — CloudFront serves empty buckets | Build + `aws s3 sync` for both UIs | Blocks UI rendering |
+| **G14** | Page 03-mcp-servers shows `code: 401` but code uses `error_type: "persona_error"` | Fix page wording (one-line change) | Cosmetic — novice confusion only |
+| **P2-G3** | Page 12-end-to-end shows `advisor-alex-morgan`; notebook uses `advisor-michael-ross` | Fix page expected output (one word) | Cosmetic — advisor name is a simulation artifact |
+| **G15** | nb06 Cat 3 deferred (3.3, 3.4) — Lake Formation scoping | Depends on G9 | Blocks LF verification |
+
+### PORTABILITY (post full-deploy)
+
+G16–G20 from Pass 1: region hardcoding, US-only inference profile, LIVE-STATE IAM, VPC CIDR, cleanup page phantom stacks.
+
+---
+
+### Summary: what blocks "the capstone actually proves something"
+
+The two CAPSTONE-CRITICAL gaps (G12 and P2-G1) are the ones that matter most given the workshop owner's decision. Everything else is either a deploy blocker (G5) or cosmetic/portability.
+
+| Gap | What it blocks | Fix size |
+|-----|---------------|----------|
+| **G12** | Phase 1 nb06 Cat 5 never exercises deployed Runtimes/Neptune | Medium — add live check cells with CFN output reads + AgentCore invocations |
+| **P2-G1** | Phase 2 nb06 never exercises deployed Memory/AppSync/JWT | Medium — add live integration cell or new acceptance notebook |
+| **G5** | Ontop crashes on deploy | Large — custom Docker image required |
+| **P2-G2** | Wealth UI CloudFront URL not findable | Small — one CFN output line |
+| **G8** | Cognito OAuth broken | Small — one CDK line |
+
