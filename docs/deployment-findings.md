@@ -146,7 +146,7 @@ These were applied manually to the running environment and will not survive a fr
 | L2 | `cloudformation:DescribeStacks` on stack ARN | Added via inline policy `atlas-workshop-notebook-access` on both roles | `LIVE-STATE` | Add to prerequisites page IAM setup instructions |
 | L3 | `s3:PutObject / GetObject / ListBucket` on staging bucket | Added via inline policy `atlas-workshop-notebook-access` on both roles | `LIVE-STATE` | Same as L2 |
 | L4 | `rds:DescribeDBClusters` on both cluster ARNs | Added via inline policy `atlas-workshop-notebook-access` on both roles | `LIVE-STATE` | Add to `atlas-neptune-iam-auth` managed policy in CFN template so it ships with the policy automatically (see R7) |
-| L5 | `atlas-neptune-iam-auth` v3 uses `neptune-db:*` on `*` | Set during debugging; not the intended scoped policy | `LIVE-STATE` `SELF-BITING` | Restore to scoped `neptune-db:Read/WriteDataViaQuery` on the two cluster resource ARNs. The v2 policy was correct; the diagnostic v3 was left as default. |
+| L5 | `atlas-neptune-iam-auth` v3 uses `neptune-db:*` on `*` | Set during debugging; not the intended scoped policy | `FIXED` | Restored to scoped v2: 4 actions (`ReadDataViaQuery`, `WriteDataViaQuery`, `GetQueryStatus`, `CancelQuery`) on 2 cluster ARNs. v3 deleted. Non-regression verified: 1618 triples / 200 promoted customers / 22 classes. Live policy now matches CFN template. |
 
 ---
 
