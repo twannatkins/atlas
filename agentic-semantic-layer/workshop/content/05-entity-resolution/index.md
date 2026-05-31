@@ -150,11 +150,47 @@ MODULE 5 VALIDATION: PASS
 You may proceed to Module 6.
 ```
 
+### Step 6b — Promote account and transaction entities (cell 06b)
+
+Run cell 06b (`cell-06b-promote-accounts`) to promote Account and Transaction nodes to the
+SLGD with `-resolved` URIs and PROV-O provenance. This also writes `atlas:hasAccount` and
+`atlas:hasTransaction` links from promoted customer and account nodes.
+
+### Step 6c — Promote advisory relationships (cell 06c)
+
+Run cell 06c (`cell-06c-promote-advisory-rels`) to promote AdvisoryRelationship and Advisor
+nodes to the SLGD. This writes `atlas:hasAdvisor` links and coverage date attributes needed
+by the signal derivation coverage filter.
+
+### Step 6d — Promote household membership (cell 06d)
+
+Run cell 06d (`cell-06d-promote-households`) to write `atlas:memberOf` links from every
+promoted customer to their household node, and to type each household node as
+`atlas:Household`.
+
+**Why this step is required:** the HouseholdAggregationSignal derivation query in cell 9f
+opens with `?customer atlas:memberOf ?household`. If this cell has not run, that pattern
+matches zero rows and the household signal branch produces zero signals — silently, without
+an error. Cell 06d must run before cell 09f for household signals to fire.
+
+Expected output:
+
+```
+Household membership promotion triples: 263
+  atlas:memberOf links (one per customer):  200
+  atlas:Household type nodes (unique):       63
+  Written: 263 triples
+```
+
 ### Step 8 — Run the live WealthSignal Derivation (cell 9f)
 
 Run cell 9f (`cell-09f-derive-signals-live`) to derive WealthSignal instances from the
 promoted data in the live SLGD and write them back. This cell reads actual account
 balances and coverage status from the graph — not from the simulation above.
+
+**Run order dependency:** cells 06, 06b, 06c, and 06d must all have run before this cell.
+If cell 06d was skipped, the household signal branch will produce zero signals. Re-run
+order: 06d → 09f → 09g.
 
 **What it produces:**
 

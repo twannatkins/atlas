@@ -80,7 +80,8 @@ AdvisoryRelationship promotion cell.
 | Computation | Lives where today | Persisted to live cluster? | WS2 queries it? | Classification |
 |-------------|------------------|---------------------------|-----------------|----------------|
 | Customer nodes (200) | SLGD | ✓ YES — nb05 cell-06 | Yes (searchCustomers, customer) | **OK** |
-| Household membership (`memberOf`) | SLGD (via Customer triples in nb04→promotion) | ✓ YES | Yes (household) | **OK** |
+| Household membership (`memberOf`) | SLGD | **FIXED — nb05 cell-06d** (was missing; added 2026-05-31) | Yes (household, HouseholdAgg signal) | **FIXED** |
+| `rdf:type atlas:Household` | SLGD | **FIXED — nb05 cell-06d** | Yes (household-traverser queries outward from household node) | **FIXED** |
 | Account nodes + `hasAccount` links | Nowhere (only in-memory) | NO | Yes (customer.accounts) | **GAP → fix in nb04 cell-10b + nb05 cell-06b** |
 | Transaction nodes (500) | LGD (`sparql_update_lgd` in nb04) | In LGD, NOT in SLGD; no `hasTransaction` links | Yes (account.transactions) | **GAP → promote in nb05 cell-06b** |
 | AdvisoryRelationship + Advisor nodes | Nowhere | NO | Yes (advisoryRelationships, coverage filter) | **GAP → fix in nb04 cell-10c + nb05 cell-06c** |
