@@ -116,7 +116,7 @@ class NeptuneClient:
         vars_ = result["head"]["vars"]
         return [
             {v: b[v]["value"] if v in b else None for v in vars_}
-            for b in data["results"]["bindings"]
+            for b in result["results"]["bindings"]
         ]
 
     def update(self, sparql: str) -> None:
