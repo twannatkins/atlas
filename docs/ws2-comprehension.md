@@ -624,3 +624,180 @@ The two CAPSTONE-CRITICAL gaps (G12 and P2-G1) are the ones that matter most giv
 | **P2-G2** | Wealth UI CloudFront URL not findable | Small — one CFN output line |
 | **G8** | Cognito OAuth broken | Small — one CDK line |
 
+
+---
+
+# PASS 3 — UI proof-path trace (Pattern 1 vs Pattern 2)
+
+Read: both UI source trees, full GraphQL schema, resolver-patterns.md, AppSync construct,
+and full atlas_sparql_mcp.py. Written to answer: which UI data needs Ontop (Pattern 1) vs
+Neptune (Pattern 2), and can the capstone proof run on Pattern 2 alone today?
+
+---
+
+## Section A — The two UIs: what fields they actually request
+
+Both UIs are **real, wired React apps** — not mocks. They use Apollo Client, GraphQL
+operations are defined in typed `.ts` files, and hooks issue real queries. The React apps
+are not yet built/deployed to S3 (G13), but the query definitions are complete and correct.
+
+### Wholesale UI — screens and operations
+
+| Screen | Operation | Fields requested |
+|--------|-----------|-----------------|
+| Dashboard | `DASHBOARD_QUERY` | `Customer { uri, customerId, label, household { uri, label, memberCount } }` + `WealthSignal { uri, signalType, strength, signalDate, provenance }` via `searchCustomers` |
+| Entity 360 | `CUSTOMER_360_QUERY` | `Customer` + all sub-types: `Account { accountId, accountType, balanceUSD, transactions(limit:10) }`, `WealthSignal`, `AdvisoryRelationship { advisor, coverageStartDate/EndDate, relationshipType, isActive }`, `household.members` |
+| Referral detail | `REFERRAL_DETAIL_QUERY` | `Household.members`, `WealthSignal`, `Referral { approvedRationale, referralDate, routingDecision { selectedRoute, humanReview } }` |
+| Capability palette | `CAPABILITIES_QUERY` | `Capability { name, displayName, posture, capabilityTag, phase }` |
+| Signal list | `WealthSignals` (hook) | `WealthSignal { signalType, strength, signalDate, provenance }` |
+| Mutation: route | `ROUTE_REFERRAL_MUTATION` | returns `Referral { uri, routingDecision, provenance }` |
+| Mutation: detect | `DETECT_SIGNALS_MUTATION` | returns `WealthSignal[]` |
+
+### Wealth UI — screens and operations
+
+| Screen | Operation | Fields requested |
+|--------|-----------|-----------------|
+| Advisor dashboard | `ADVISOR_DASHBOARD_QUERY` | `Customer { uri, customerId, label, advisoryRelationships { advisor.label, isActive, coverageStartDate } }` via `searchCustomers` |
+| Client 360 | `CLIENT_360_QUERY` | `Customer` + `advisoryRelationships { advisor, dates, type, isActive }`, `wealthSignals`, `household.members` |
+| Themes | `THEMES_QUERY` | `ThemeAssertion { uri, themeLabel, themeDate, sourceArticles }` via `themes` |
+| Capability palette | `CAPABILITIES_QUERY` | Same as Wholesale UI |
+
+---
+
+## Section B — Resolver map: field → MCP call → backend
+
+The schema docstrings state the intended resolver for each Query field. AppSync construct
+creates proxy Lambdas for `sparqlMcpArn`, `registryMcpArn`, and `erMcpArn` only — all
+other resolvers funnel through `atlas-sparql-mcp`. The full `atlas_sparql_mcp.py` confirms:
+**`ONTOP_ECS_ENDPOINT` is read at startup but referenced nowhere in any code path.** All
+three operations (`query`, `update`, `construct_and_validate`) route exclusively to Neptune
+(`NEPTUNE_SLGD_ENDPOINT` or `NEPTUNE_LGD_ENDPOINT`).
+
+| GraphQL field | Schema says (intended) | atlas-sparql-mcp does (actual) | Mismatch? |
+|---------------|------------------------|-------------------------------|-----------|
+| `customer(uri)` | "SPARQL via Ontop" | Neptune SLGD direct | **YES — P1 intended, P2 actual** |
+| `household(uri)` | "SPARQL via Ontop" | Neptune SLGD direct | **YES** |
+| `searchCustomers` | "SPARQL via Ontop" | Neptune SLGD direct | **YES** |
+| `wealthSignals` | "Direct Neptune SPARQL" | Neptune SLGD direct | No mismatch |
+| `advisoryRelationships` | "Direct Neptune SPARQL" | Neptune SLGD direct | No mismatch |
+| `referrals` | "Direct Neptune SPARQL" | Neptune SLGD direct | No mismatch |
+| `auditTrail` | "Direct Neptune SPARQL" | Neptune SLGD direct | No mismatch |
+| `themes` | "Direct Neptune SPARQL" | Neptune SLGD direct | No mismatch |
+| `capabilities` | "atlas-registry-mcp" | atlas-registry-mcp proxy Lambda | No mismatch |
+| `resolveEntity` | "atlas-er-mcp" | atlas-er-mcp proxy Lambda | No mismatch |
+| `routeReferral` mutation | "atlas-registry-mcp" | atlas-registry-mcp proxy | No mismatch |
+| `detectSignals` mutation | "atlas-registry-mcp" | atlas-registry-mcp proxy | No mismatch |
+
+**Three fields are intended to go through Ontop (Pattern 1) but currently route directly to Neptune:**
+`customer`, `household`, `searchCustomers`.
+
+---
+
+## Section C — Which UI data genuinely needs Pattern 1 (Ontop/Iceberg)?
+
+**The 200 promoted Customer entities ARE in the SLGD.** WS1 Module 5 wrote them with full PROV-O provenance (`atlas:promotedFrom`, `atlas:promotedBy`). WS1 Module 4 wrote `atlas:Transaction` triples to the LGD. `atlas:AdvisoryRelationship`, `atlas:WealthSignal`, `atlas:RoutingDecision`, `atlas:Referral`, and `atlas:AuditRecord` are all graph-native (Pattern 2 territory).
+
+| Entity | In Neptune SLGD today? | In Athena/Iceberg? | Which path can serve it? |
+|--------|----------------------|-------------------|--------------------------|
+| `Customer` (uri, customerId, label, household) | **YES** — 200 promoted | YES (Parquet in S3, no Glue table) | **Pattern 2 works today** |
+| `Account` (accountId, accountType, balanceUSD) | NO — accounts were generated but not promoted into SLGD; only the Customer wrapper was promoted | YES (Parquet in S3, no Glue table) | **Neither path fully works today; Pattern 2 partial** |
+| `Transaction` (date, amount, type) | In LGD only (WS1 nb04 wrote to LGD) — NOT in SLGD | YES (Parquet in S3) | Pattern 2 via LGD (graph_tier=lgd); Pattern 1 needs Glue tables |
+| `Household` (uri, label, members) | **YES** — household membership promoted in WS1 | YES (Parquet) | **Pattern 2 works today** |
+| `WealthSignal` (signalType, strength, provenance) | **YES** — derived and written to SLGD in WS1 Module 5 | No | **Pattern 2 only (graph-native)** |
+| `AdvisoryRelationship` (advisor, dates, type) | **YES** — 105 legacy relationships in SLGD | YES (Parquet, advisory-relationships) | **Pattern 2 works today** |
+| `Referral`, `RoutingDecision`, `AuditRecord` | YES — created by the referral workflow | No | **Pattern 2 only (graph-native)** |
+| `ThemeAssertion` | YES (stub) or NO — created by Phase 2 theme-summarizer | No | Pattern 2 after theme-summarizer runs |
+
+**Conclusion:** The three Pattern-1-intended fields (`customer`, `household`, `searchCustomers`) are backed by data **already in the SLGD** from WS1 Module 5 promotion. Pattern 1 (Ontop/Iceberg) is the architecturally intended path — it demonstrates federation in place — but it is not the only path to the data. Pattern 2 can serve the same entities from Neptune today.
+
+The one entity class that Pattern 2 cannot serve from the SLGD is `Account` — accounts were generated and uploaded to S3 (WS1 nb04) and written to the LGD as triples, but were NOT promoted to the SLGD. The `CUSTOMER_360_QUERY` requests `accounts` sub-fields. Those accounts exist in the LGD; if `atlas-sparql-mcp` queries SLGD for account data, it will return empty. **This is a gap independent of Pattern 1 vs Pattern 2** — it's a promotion gap. For the UI to render account balances and transactions, either (a) the SLGD must be populated with Account data (a WS1 nb04/05 extension), or (b) the resolver must route account queries to `graph_tier=lgd`.
+
+---
+
+## Section D — Pattern 1 completion cost (sizing only)
+
+### D1 — Glue/Athena table creation (touches WS1)
+
+**What must be created:** Glue database `atlas_workshop` + 3 tables:
+- `customer_master` over `s3://atlas-ontology-staging-981814817046/data/iceberg/customer_master/`
+- `transaction_history` over `s3://atlas-ontology-staging-981814817046/data/iceberg/transaction_history/`
+- `advisory_relationships` — parquet not yet in S3 (advisory relationship data was loaded to Neptune via WS1 nb04 Pattern A but the parquet wasn't separately written to the Iceberg prefix)
+
+**Where this step belongs:** WS1 `04_three_connection_patterns.ipynb`. The markdown describes step 4 as "create an Iceberg table via AWS Glue Data Catalog" but no code cell implements it. A new code cell using `glue.create_table()` or an Athena `CREATE TABLE ... USING ICEBERG` DDL must be added to nb04, after the Parquet upload cells.
+
+**Risk:** This edits an already-deployed WS1 notebook (but is additive — adds a cell, doesn't change existing cells).
+
+### D2 — Ontop image/config (G5, WS2 only)
+
+Six changes (no WS1 touch):
+1. `Dockerfile` at `use-case-applications/cdk/ontop/` — FROM ontop/ontop:5, COPY R2RML files, COPY atlas.properties, install Athena JDBC driver
+2. `atlas.properties` — Athena JDBC connection config (key schema confirmed; exact values need Simba JDBC 3.x docs confirmation)
+3. `ontop.ts` — `fromRegistry` → `fromAsset`; fix `ONTOP_MAPPING_FILE` from `.obda` to `.ttl`; fix JDBC_URL to Athena form (or remove — Athena JDBC URL belongs in properties file); add `circuitBreaker`; add `startPeriod`
+4. ECS task IAM — add `athena:*`, `glue:Get*`, `s3:GetObject/PutObject` on data+results buckets
+5. Athena JDBC driver JAR — source from AWS; must be committed to repo or fetched at Docker build time
+6. Mapping format decision — Ontop 5 accepts R2RML `.ttl` directly; the single combined mapping must cover all 3 pattern-A/B tables
+
+### D3 — atlas-sparql-mcp routing (WS2 only)
+
+One code change to `atlas_sparql_mcp.py`: `_handle_query()` currently ignores `ONTOP_ECS_ENDPOINT` and always routes to Neptune. To implement Pattern 1, the function needs a branch: when the query targets entity data (Customer, Account, Household — the Iceberg-backed types), route to Ontop's HTTP SPARQL endpoint; when the query targets graph-native data (WealthSignal, AdvisoryRelationship, Referral — the Neptune-native types), route to Neptune.
+
+**The routing decision criteria:** The cleanest approach is a new `source` parameter in the MCP call (e.g., `source: "iceberg"` vs `source: "graph"`), set by the AppSync resolver based on the field type. The resolver knows which types come from Iceberg; the MCP just needs to be told. Alternatively, the MCP can inspect the query for specific type patterns. Either way this is a ~20-line code change in `_handle_query()`.
+
+---
+
+## Section E — Verdict and scope options
+
+### Can the two UIs prove the system on Pattern 2 alone?
+
+**PARTIAL — with two caveats:**
+
+1. **`customer`, `household`, `searchCustomers`** — the three Pattern-1-intended fields can be served from Neptune SLGD today. Pattern 2 works for these. The UIs will render customer lists, household members, and the Entity 360 customer card.
+
+2. **`accounts` sub-field (CUSTOMER_360_QUERY)** — Account data is in the LGD, not the SLGD. If the resolver queries SLGD for accounts, it returns empty. This is a gap independent of Pattern 1/2: either accounts must be promoted to SLGD (a WS1 extension), or the resolver must explicitly use `graph_tier=lgd` for account queries. **Without this fix, the Entity 360 screen will render the customer card but show empty account balances and transaction history.**
+
+3. All graph-native data (WealthSignal, AdvisoryRelationship, Referral, AuditRecord) works on Pattern 2 today — these live in Neptune.
+
+4. `themes` (Wealth UI) depends on Phase 2 theme-summarizer having run; if no ThemeAssertion instances exist in the graph, the themes page renders empty.
+
+5. `resolveEntity` (atlas-er-mcp) — requires the `atlas-entity-resolution` ER workflow to exist (G3, unverified).
+
+---
+
+### Option X — Capstone proves via Pattern 2 now; Pattern 1 completed after
+
+**Critical path:**
+1. Fix the remaining deploy blockers: CDK bootstrap (G1), S3 file uploads (G2), ER workflow verification (G3), Cognito callback URL (G8), Ontop Dockerfile — but scoped to a **non-crashing Ontop** rather than a functioning one (the container must start; it doesn't need to serve queries yet). A stub `atlas.properties` pointing at a dummy JDBC URL would satisfy this — Ontop would start, the health check would pass, and Pattern 1 queries would fail gracefully (Ontop returns SPARQL error; MCP returns structured error; UI shows "data unavailable"). **OR** disable Ontop entirely in the first deploy: set `ONTOP_MAPPING_FILE` to a no-op, comment it out of the construct, and document it as "federation path coming in next sprint."
+2. Fix the `accounts` routing gap: promote Account/Transaction data to SLGD (preferred, aligns with the architecture), or route account queries to `graph_tier=lgd` (simpler, but architecturally inconsistent).
+3. Deploy. Run Phase 1 nb06 Category 5 assertions against live infrastructure (they require editing the deferred `defer()` calls to real `check()` logic — G12).
+4. Pattern 1 (Ontop federation) completed as follow-on: WS1 nb04 Glue table step, Ontop config, MCP routing change.
+
+**What's deferred:** Full federation-in-place (Pattern 1). The workshop teaches the architecture but doesn't exercise the Ontop path in the capstone proof run.
+
+**What's gained:** A deployed, working two-UI system that proves Pattern 2 (Neptune SPARQL), agent orchestration, and the audit trail — the core of the capstone claim.
+
+---
+
+### Option Y — Complete Pattern 1 fully before first deploy
+
+**Critical path:** Everything in Option X, plus:
+1. WS1 nb04: add Glue table creation cell (edits deployed WS1)
+2. Author `atlas.properties` (Athena JDBC config — needs Simba JDBC 3.x docs confirmation first)
+3. Source Athena JDBC driver JAR (external dependency)
+4. Dockerfile authoring
+5. Fix `ONTOP_MAPPING_FILE` and JDBC target in `ontop.ts`
+6. Add IAM for Athena/Glue/S3 to ECS task role
+7. Fix `atlas-sparql-mcp` routing (20-line code change)
+8. Verify Athena queries work against the Glue tables (likely requires a test run inside the VPC)
+
+**Dependencies and risks:**
+- Step 2 has an unresolved external dependency (Simba JDBC 3.x config needs confirmation; wrong config = Ontop silent failure)
+- Step 1 requires editing WS1 (deployed, working) — low risk but real risk
+- Steps 3–8 are all WS2-only; the CDK rebuild is self-contained
+
+**What's gained:** The first deploy exercises both read paths. The workshop teaches what it says it teaches from day one.
+
+**What's risked:** Delayed first proof. If the Athena JDBC config is wrong or the Glue tables don't query correctly through Ontop, debugging happens in a partially-deployed environment rather than against a known-working Neptune baseline.
+
+---
+
+*This section read: wholesale-ui/src/graphql/{queries,fragments,mutations}.ts, wealth-ui/src/graphql/queries.ts, all UI hooks, spec/05-appsync-graphql/schema.graphql, spec/05-appsync-graphql/resolver-patterns.md, cdk/lib/constructs/appsync.ts (already read in Pass 1), and the complete atlas_sparql_mcp.py (294 lines). No content was summarized — all was read in full.*
