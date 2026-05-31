@@ -94,19 +94,26 @@ class NeptuneClient:
         if named_graph:
             validated = f"FROM <{named_graph}>\n{validated}"
 
-        headers = {"Accept": "application/sparql-results+json"}
-        url = f"{self._sparql_url}?query={requests.utils.quote(validated)}"
-        signed_headers = self._sign_request("GET", url, headers)
+        # Use POST with query in body — same pattern as the working signed helpers.
+        # GET with SigV4 requires exact Host header preservation which requests.get()
+        # doesn't guarantee; POST is more reliable and Neptune supports both.
+        url = self._sparql_url
+        data = f"query={requests.utils.quote(validated)}"
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/sparql-results+json",
+            "Host": url.split("/")[2],
+        }
+        aw = AWSRequest(method="POST", url=url, headers=headers, data=data)
+        SigV4Auth(self._session.get_credentials().get_frozen_credentials(), "neptune-db", self._region).add_auth(aw)
+        prep = requests.Request(method="POST", url=url, headers=dict(aw.headers), data=data).prepare()
+        sess = requests.Session()
+        response = sess.send(prep, timeout=self._timeout, verify=True)
 
-        response = requests.get(
-            url,
-            headers=signed_headers,
-            timeout=self._timeout,
-        )
         response.raise_for_status()
-        data = response.json()
+        result = response.json()
         # Neptune SPARQL JSON format: {"head": {"vars": [...]}, "results": {"bindings": [...]}}
-        vars_ = data["head"]["vars"]
+        vars_ = result["head"]["vars"]
         return [
             {v: b[v]["value"] if v in b else None for v in vars_}
             for b in data["results"]["bindings"]
