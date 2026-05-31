@@ -195,7 +195,8 @@ subject — correct.** No URI adjustment needed in the CONSTRUCT queries.
 2. **nb04 — `cell-10c-write-advisory-rels-lgd`** (NEW): Write AdvisoryRelationship + Advisor to LGD
 3. **nb05 — `cell-06b-promote-accounts`** (NEW): Promote Account + Transaction to SLGD (-resolved URIs)
 4. **nb05 — `cell-06c-promote-advisory-rels`** (NEW): Promote AdvisoryRelationship + Advisor to SLGD
-5. **nb05 — `cell-09f-derive-signals-live`** (NEW): Run CONSTRUCT against live SLGD, INSERT results
+5. **nb05 — `cell-06d-promote-households`** (NEW): Promote `atlas:memberOf` + `atlas:Household` typing to SLGD (200 memberOf + 63 Household type triples, sourced from `customer-master.json`)
+6. **nb05 — `cell-09f-derive-signals-live`** (NEW, self-cleaning): DELETE prior derived signals → CONSTRUCT from live SLGD → pyshacl validate → INSERT. Idempotent: re-run always converges to 2 LargeDeposit + 16 HouseholdAggregation. Provenance scope `prov:wasGeneratedBy <signal-derivation-run>` guarantees DELETE cannot touch promoted entities.
 
 ---
 
