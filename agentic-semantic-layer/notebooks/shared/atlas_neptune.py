@@ -105,7 +105,8 @@ class NeptuneClient:
         )
         response.raise_for_status()
         data = response.json()
-        vars_ = data["results"]["head"]["vars"]
+        # Neptune SPARQL JSON format: {"head": {"vars": [...]}, "results": {"bindings": [...]}}
+        vars_ = data["head"]["vars"]
         return [
             {v: b[v]["value"] if v in b else None for v in vars_}
             for b in data["results"]["bindings"]
