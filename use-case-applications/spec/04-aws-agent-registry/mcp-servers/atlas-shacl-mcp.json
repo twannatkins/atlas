@@ -10,7 +10,7 @@
     "timeout_seconds": 30,
     "memory_mb": 1024,
     "environment_variables": {
-      "SHAPES_S3_URI": "s3://atlas-workshop-1/ontology/atlas-shapes.ttl"
+      "SHAPES_S3_URI": "s3://${ontology_staging_bucket}/ontology/atlas-shapes.ttl"
     }
   },
   "iam_policy": {
@@ -22,7 +22,7 @@
           "Action": [
             "s3:GetObject"
           ],
-          "Resource": "arn:aws:s3:::atlas-workshop-1/ontology/*"
+          "Resource": "arn:aws:s3:::${ontology_staging_bucket}/ontology/*"
         },
         {
           "Effect": "Allow",

@@ -49,6 +49,8 @@ export interface AgentCoreRuntimesProps {
   readonly ontopEndpoint: string;
   /** Resolved Agent Registry endpoint URL. */
   readonly registryEndpoint?: string;
+  /** S3 bucket name for ontology, prompt, and query artifacts (from WS1 CFN output). */
+  readonly ontologyStagingBucket: string;
 }
 
 const ENTRYPOINT = ["opentelemetry-instrument", "main.py"];
@@ -98,7 +100,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
       }),
       authorizerConfiguration: authConfig,
       environmentVariables: {
-        SHAPES_S3_URI: "s3://atlas-workshop-1/ontology/atlas-shapes.ttl",
+        SHAPES_S3_URI: `s3://${props.ontologyStagingBucket}/ontology/atlas-shapes.ttl`,
       },
       tags: { Workshop: "atlas-workshop-2", Component: "atlas-shacl-mcp" },
     });
@@ -178,8 +180,8 @@ export class AgentCoreRuntimesConstruct extends Construct {
       }),
       authorizerConfiguration: authConfig,
       environmentVariables: {
-        GROUND_TRUTH_S3_URI: "s3://atlas-ontology-staging-981814817046/prompts/ground-truth.yaml",
-        PREFIXES_S3_URI: "s3://atlas-ontology-staging-981814817046/prompts/prefixes.txt",
+        GROUND_TRUTH_S3_URI: `s3://${props.ontologyStagingBucket}/prompts/ground-truth.yaml`,
+        PREFIXES_S3_URI: `s3://${props.ontologyStagingBucket}/prompts/prefixes.txt`,
         SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
         BEDROCK_EMBEDDING_MODEL_ID: "amazon.titan-embed-text-v2:0",
       },
@@ -201,7 +203,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
         environmentVariables: {
           SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
           SHACL_MCP_ARN: this.atlasShaclMcp.agentRuntimeArn,
-          SIGNAL_QUERIES_S3_URI: "s3://atlas-workshop-1/queries/wealth-signals.yaml",
+          SIGNAL_QUERIES_S3_URI: `s3://${props.ontologyStagingBucket}/queries/wealth-signals.yaml`,
         },
         tags: { Workshop: "atlas-workshop-2", Component: "wealth-signal-detector" },
       },
@@ -238,7 +240,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
           SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
           BEDROCK_TEXT_MODEL_ID: "us.anthropic.claude-sonnet-4-6",
           PROMPT_TEMPLATE_S3_URI:
-            "s3://atlas-workshop-1/prompts/referral-rationale.txt",
+            `s3://${props.ontologyStagingBucket}/prompts/referral-rationale.txt`,
         },
         tags: {
           Workshop: "atlas-workshop-2",

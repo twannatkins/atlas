@@ -20,6 +20,7 @@ from typing import Any, Dict, List
 from atlas_sparql import validate, AtlasSPARQLError, prefixed, safe_uri
 
 import boto3
+import yaml
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -35,6 +36,54 @@ VALID_PERSONAS = [
     "atlas-ontology-steward",
 ]
 
+# Cached signal definitions (loaded once per cold start from S3 or fallback dict).
+_signal_definitions: dict | None = None
+
+
+def _load_signal_definitions() -> dict:
+    """Load signal query definitions from S3 (SIGNAL_QUERIES_S3_URI) or embedded fallback.
+
+    S3 format: wealth-signals.yaml with a top-level `signals` list. Only entries
+    with `enabled: true` are loaded. Falls back to PHASE_1_SIGNALS if S3 is
+    unset or unreachable, so unit tests and offline dev remain green.
+    """
+    global _signal_definitions
+    if _signal_definitions is not None:
+        return _signal_definitions
+
+    if SIGNAL_QUERIES_S3_URI:
+        try:
+            parts = SIGNAL_QUERIES_S3_URI.replace("s3://", "").split("/", 1)
+            bucket, key = parts[0], parts[1]
+            s3 = boto3.client("s3")
+            response = s3.get_object(Bucket=bucket, Key=key)
+            data = yaml.safe_load(response["Body"].read().decode("utf-8"))
+            _signal_definitions = {
+                entry["signal_type"]: {
+                    "construct_sparql": entry["construct_sparql"],
+                    "shape_uri": entry["shape_uri"],
+                    "strength": entry["strength"],
+                }
+                for entry in data.get("signals", [])
+                if entry.get("enabled", False)
+            }
+            logger.info(json.dumps({
+                "event": "signal_definitions_loaded",
+                "source": "s3",
+                "count": len(_signal_definitions),
+            }))
+            return _signal_definitions
+        except Exception as exc:
+            logger.warning(json.dumps({
+                "event": "signal_definitions_s3_fallback",
+                "reason": str(exc),
+            }))
+
+    # Embedded fallback — keeps tests green when SIGNAL_QUERIES_S3_URI is unset.
+    _signal_definitions = PHASE_1_SIGNALS
+    return _signal_definitions
+
+
 # Phase 1 signal types and their CONSTRUCT queries.
 #
 # All three types use the atlas-part-2: namespace — these are WS2-derived signals,
@@ -44,6 +93,8 @@ VALID_PERSONAS = [
 # Predicate fix: WS1 uses account → hasTransaction → txn (account is subject).
 # The original code had txn → inAccount → acct (reversed). Fixed to match the
 # actual promoted triple direction: ?acct atlas:hasTransaction ?txn.
+#
+# This dict is the embedded fallback used when SIGNAL_QUERIES_S3_URI is unset.
 PHASE_1_SIGNALS = {
     "atlas-part-2:LargeInboundWireSignal": {
         "construct_sparql": """
@@ -154,11 +205,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return _error_response(invocation_id, start_time, "validation_failed",
                                    f"persona_claim must be one of: {VALID_PERSONAS}")
 
-        # Determine which signals to detect
+        # Determine which signals to detect (S3-loaded or embedded fallback)
+        all_signals = _load_signal_definitions()
         if signal_types:
-            signals_to_run = {k: v for k, v in PHASE_1_SIGNALS.items() if k in signal_types}
+            signals_to_run = {k: v for k, v in all_signals.items() if k in signal_types}
         else:
-            signals_to_run = PHASE_1_SIGNALS
+            signals_to_run = all_signals
 
         # Execute CONSTRUCT queries and validate
         signals_minted: List[Dict[str, Any]] = []

@@ -17,7 +17,7 @@
     "environment_variables": {
       "SPARQL_MCP_ARN": "${atlas_sparql_mcp_arn}",
       "BEDROCK_TEXT_MODEL_ID": "us.anthropic.claude-sonnet-4-6",
-      "PROMPT_TEMPLATE_S3_URI": "s3://atlas-workshop-2/prompts/rationale-template.txt"
+      "PROMPT_TEMPLATE_S3_URI": "s3://${ontology_staging_bucket}/prompts/referral-rationale.txt"
     }
   },
   "iam_policy": {
@@ -43,7 +43,7 @@
           "Action": [
             "s3:GetObject"
           ],
-          "Resource": "arn:aws:s3:::atlas-workshop-2/prompts/*"
+          "Resource": "arn:aws:s3:::${ontology_staging_bucket}/prompts/*"
         },
         {
           "Effect": "Allow",

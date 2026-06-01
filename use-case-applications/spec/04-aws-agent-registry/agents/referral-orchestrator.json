@@ -9,7 +9,7 @@
   "registry_record_type": "CUSTOM",
   "runtime": {
     "type": "step_functions",
-    "state_machine_definition_s3": "s3://atlas-workshop-2/state-machines/referral-orchestrator.json",
+    "state_machine_definition_s3": "s3://${ontology_staging_bucket}/state-machines/referral-orchestrator.json",
     "step_lambdas": [
       "select-advisor",
       "validate-routing",

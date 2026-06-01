@@ -1,0 +1,98 @@
+# wealth-signals.yaml — Signal query definitions for wealth-signal-detector.
+#
+# This file is the single source of truth for Phase 1 SPARQL CONSTRUCT queries.
+# The agent loads it from S3 at cold-start (SIGNAL_QUERIES_S3_URI) and falls back
+# to the embedded PHASE_1_SIGNALS dict if the URI is unset or unreachable.
+#
+# Token convention: {target_uri} is substituted by the agent at runtime via
+# str.format(target_uri=...) after safe_uri() validation.
+#
+# To add a signal: add an entry under `signals`, set enabled: true, and ensure
+# WS1 derives the required triples before enabling in production.
+#
+# Upload path (Pass 3): s3://<ontology_staging_bucket>/queries/wealth-signals.yaml
+
+signals:
+  - signal_type: "atlas-part-2:LargeInboundWireSignal"
+    enabled: true
+    shape_uri: "atlas:WealthSignalTypeShape"
+    strength: "strong"
+    # Fires when a customer has a DEPOSIT transaction exceeding $500k.
+    # Predicate direction: account is subject — ?acct atlas:hasTransaction ?txn.
+    construct_sparql: |
+      PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
+      PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
+      PREFIX prov: <http://www.w3.org/ns/prov#>
+      PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+      CONSTRUCT {{
+          ?signal a atlas:WealthSignal ;
+              atlas:hasSignalType atlas-part-2:LargeInboundWireSignal ;
+              atlas:aboutCustomer <{target_uri}> ;
+              atlas:signalStrength "strong" ;
+              atlas:evidencedBy ?txn ;
+              prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
+      }} WHERE {{
+          <{target_uri}> a atlas:Customer ;
+              atlas:hasAccount ?acct .
+          ?acct atlas:hasTransaction ?txn .
+          ?txn atlas:amountUSD ?amount ;
+               atlas:transactionType "DEPOSIT"^^xsd:string .
+          FILTER(?amount > 500000)
+          BIND(IRI(CONCAT("urn:signal/wire-", STRUUID())) AS ?signal)
+      }}
+
+  - signal_type: "atlas-part-2:SegmentShiftSignal"
+    enabled: true
+    shape_uri: "atlas:WealthSignalTypeShape"
+    strength: "moderate"
+    # Fires when a customer's account total transaction volume exceeds $250k,
+    # indicating a potential segment-tier crossing.
+    # Predicate direction: account is subject — ?acct atlas:hasTransaction ?txn.
+    construct_sparql: |
+      PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
+      PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
+      PREFIX prov: <http://www.w3.org/ns/prov#>
+      PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+      CONSTRUCT {{
+          ?signal a atlas:WealthSignal ;
+              atlas:hasSignalType atlas-part-2:SegmentShiftSignal ;
+              atlas:aboutCustomer <{target_uri}> ;
+              atlas:signalStrength "moderate" ;
+              prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
+      }} WHERE {{
+          <{target_uri}> a atlas:Customer ;
+              atlas:hasAccount ?acct .
+          ?acct atlas:hasTransaction ?txn .
+          ?txn atlas:amountUSD ?amount .
+          FILTER(?amount > 250000)
+          BIND(IRI(CONCAT("urn:signal/shift-", STRUUID())) AS ?signal)
+      }}
+
+  - signal_type: "atlas-part-2:NoAdvisorCoverageSignal"
+    # DESCOPED for Phase 1 capstone: WS1 does not derive this signal type.
+    # Re-enabling requires a WS1-side derivation pass (see docs/ws2-comprehension.md).
+    # The MINUS pattern below is Neptune-safe (avoids false negatives from nested
+    # FILTER NOT EXISTS { FILTER NOT EXISTS { } } on Neptune).
+    enabled: false
+    shape_uri: "atlas:WealthSignalTypeShape"
+    strength: "gap"
+    construct_sparql: |
+      PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
+      PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
+      PREFIX prov: <http://www.w3.org/ns/prov#>
+      CONSTRUCT {{
+          ?signal a atlas:WealthSignal ;
+              atlas:hasSignalType atlas-part-2:NoAdvisorCoverageSignal ;
+              atlas:aboutCustomer <{target_uri}> ;
+              atlas:signalStrength "gap" ;
+              prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
+      }} WHERE {{
+          <{target_uri}> a atlas:Customer .
+          MINUS {{
+              <{target_uri}> atlas:hasAdvisor ?rel .
+              ?rel a atlas:AdvisoryRelationship .
+              OPTIONAL {{ ?rel atlas:coverageEndDate ?end }}
+              FILTER(!bound(?end))
+          }}
+          BIND(IRI(CONCAT("urn:signal/gap-", STRUUID())) AS ?signal)
+      }}

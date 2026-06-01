@@ -34,6 +34,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       this.node.tryGetContext("neptuneLgdEndpoint") ?? neptuneEndpoint;
     const vpcId = this.node.tryGetContext("vpcId");
     const privateSubnetIds = this.node.tryGetContext("privateSubnetIds");
+    const ontologyStagingBucket = this.node.tryGetContext("ontologyStagingBucket") ?? "";
 
     if (!neptuneEndpoint || !vpcId) {
       cdk.Annotations.of(this).addWarning(
@@ -99,6 +100,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       neptuneSlgdEndpoint: neptuneEndpoint ?? "",
       neptuneLgdEndpoint: neptuneLgdEndpoint ?? "",
       ontopEndpoint: ontop.endpoint,
+      ontologyStagingBucket,
     });
 
     // ─── 11. AppSync GraphQL API ────────────────────────────────────
