@@ -123,23 +123,33 @@ PHASE_1_SIGNALS = {
         "strength": "strong",
     },
     "atlas-part-2:SegmentShiftSignal": {
+        # Sub-SELECT pattern: GROUP BY / HAVING inside a nested SELECT; outer
+        # CONSTRUCT builds the signal from the qualifying ?acct. Aggregate semantics
+        # (total account volume > $250k) distinguish this from LargeInboundWireSignal
+        # (single txn > $500k). Matches wealth-signals.yaml SegmentShiftSignal entry.
         "construct_sparql": """
             PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
             PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
             PREFIX prov: <http://www.w3.org/ns/prov#>
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
             CONSTRUCT {{
                 ?signal a atlas:WealthSignal ;
                     atlas:hasSignalType atlas-part-2:SegmentShiftSignal ;
                     atlas:aboutCustomer <{target_uri}> ;
                     atlas:signalStrength "moderate" ;
+                    atlas:evidencedByAccount ?acct ;
                     prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
             }} WHERE {{
-                <{target_uri}> a atlas:Customer ;
-                    atlas:hasAccount ?acct .
-                ?acct atlas:hasTransaction ?txn .
-                ?txn atlas:amountUSD ?amount .
-                FILTER(?amount > 250000)
+                {{
+                    SELECT ?acct (SUM(?amount) AS ?total)
+                    WHERE {{
+                        <{target_uri}> a atlas:Customer ;
+                            atlas:hasAccount ?acct .
+                        ?acct atlas:hasTransaction ?txn .
+                        ?txn atlas:amountUSD ?amount .
+                    }}
+                    GROUP BY ?acct
+                    HAVING (SUM(?amount) > 250000)
+                }}
                 BIND(IRI(CONCAT("urn:signal/shift-", STRUUID())) AS ?signal)
             }}
         """,

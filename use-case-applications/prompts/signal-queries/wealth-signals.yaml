@@ -45,26 +45,38 @@ signals:
     enabled: true
     shape_uri: "atlas:WealthSignalTypeShape"
     strength: "moderate"
-    # Fires when a customer's account total transaction volume exceeds $250k,
-    # indicating a potential segment-tier crossing.
+    # Fires when a customer's AGGREGATE account volume exceeds $250k — sustained
+    # activity indicating a segment-tier crossing, not a single large deposit.
+    # Distinct from LargeInboundWireSignal (single txn > $500k).
+    # Sub-SELECT handles GROUP BY / HAVING; outer CONSTRUCT builds the signal triple
+    # from the qualifying ?acct. This is the valid SPARQL 1.1 pattern for
+    # aggregate + CONSTRUCT (GROUP BY inside CONSTRUCT WHERE is not supported directly).
     # Predicate direction: account is subject — ?acct atlas:hasTransaction ?txn.
+    # NOTE: acceptance test against live substrate required to confirm the aggregate
+    # fires correctly for the capstone scenario customers.
     construct_sparql: |
       PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
       PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
       PREFIX prov: <http://www.w3.org/ns/prov#>
-      PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
       CONSTRUCT {{
           ?signal a atlas:WealthSignal ;
               atlas:hasSignalType atlas-part-2:SegmentShiftSignal ;
               atlas:aboutCustomer <{target_uri}> ;
               atlas:signalStrength "moderate" ;
+              atlas:evidencedByAccount ?acct ;
               prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
       }} WHERE {{
-          <{target_uri}> a atlas:Customer ;
-              atlas:hasAccount ?acct .
-          ?acct atlas:hasTransaction ?txn .
-          ?txn atlas:amountUSD ?amount .
-          FILTER(?amount > 250000)
+          {{
+              SELECT ?acct (SUM(?amount) AS ?total)
+              WHERE {{
+                  <{target_uri}> a atlas:Customer ;
+                      atlas:hasAccount ?acct .
+                  ?acct atlas:hasTransaction ?txn .
+                  ?txn atlas:amountUSD ?amount .
+              }}
+              GROUP BY ?acct
+              HAVING (SUM(?amount) > 250000)
+          }}
           BIND(IRI(CONCAT("urn:signal/shift-", STRUUID())) AS ?signal)
       }}
 
