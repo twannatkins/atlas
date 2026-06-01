@@ -27,10 +27,11 @@ CONSTRUCT {
 } WHERE {
     <{target_uri}> a atlas:Customer ;
         atlas:hasAccount ?acct .
-    ?txn atlas:inAccount ?acct ;
-        atlas:amountUSD ?amount ;
-        atlas:transactionDate ?date .
+    ?acct atlas:hasTransaction ?txn .
+    ?txn atlas:amountUSD ?amount ;
+         atlas:transactionDate ?date ;
+         atlas:transactionType "DEPOSIT"^^xsd:string .
     FILTER(?amount > {threshold_amount})
     BIND(NOW() AS ?now)
-    BIND(IRI(CONCAT("atlas:signal/wire-", STRUUID())) AS ?signal)
+    BIND(IRI(CONCAT("urn:signal/wire-", STRUUID())) AS ?signal)
 }

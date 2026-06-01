@@ -801,3 +801,20 @@ One code change to `atlas_sparql_mcp.py`: `_handle_query()` currently ignores `O
 ---
 
 *This section read: wholesale-ui/src/graphql/{queries,fragments,mutations}.ts, wealth-ui/src/graphql/queries.ts, all UI hooks, spec/05-appsync-graphql/schema.graphql, spec/05-appsync-graphql/resolver-patterns.md, cdk/lib/constructs/appsync.ts (already read in Pass 1), and the complete atlas_sparql_mcp.py (294 lines). No content was summarized — all was read in full.*
+
+---
+
+## NoAdvisorCoverageSignal — proposed WS1 addition (descoped 2026-05-31)
+
+**What it is:** A coverage-gap signal: a customer has investable assets but no active wealth advisor. Semantically distinct from `atlas:LargeDepositPattern` (a deposit event) and `atlas:HouseholdAggregationSignal` (a household aggregate). It would be the most actionable signal for a consumer banker — the referral target is unambiguous.
+
+**Why it was descoped:** WS1 never derives this type. `wealth-signal-detector` referenced `atlas-part-2:NoAdvisorCoverageSignal` but WS1 produces only `atlas:LargeDepositPattern` and `atlas:HouseholdAggregationSignal`. Enabling the type in WS2 before the WS1 derivation exists would require WS2 to INSERT a signal the substrate doesn't produce — violating the "signals are derived, never hand-inserted" principle.
+
+**How to implement (future WS1 pass):**
+
+1. Add `atlas-part-2:NoAdvisorCoverageSignal` to `agentic-semantic-layer/ontology/atlas-part2-extensions.ttl` (or equivalent WS2 extension TTL) under the `atlas-part-2:` namespace.
+2. Add a derivation step in WS1 `nb05 cell-09f-derive-signals-live` (or a new cell-09h) that runs the coverage-gap rule: for each promoted Customer with a CHECKING or SAVINGS balance above a threshold AND no active AdvisoryRelationship, derive a `NoAdvisorCoverageSignal` instance.
+3. The SPARQL must use MINUS (not nested FILTER NOT EXISTS) to avoid Neptune's false-negative on nested negation. The correct pattern is in `prompts/signal-queries/no-advisor-coverage.sparql`.
+4. Re-enable the entry in `PHASE_1_SIGNALS` in `wealth_signal_detector.py`.
+
+**Neptune FILTER NOT EXISTS note:** Nested `FILTER NOT EXISTS { ... FILTER NOT EXISTS { ... } }` returns false negatives on Neptune — covered customers are classified as uncovered. Use `MINUS` or `OPTIONAL { ... } + FILTER(!bound(?x))` instead. This was confirmed against the live cluster on 2026-05-31 (see WS1 surgical clean documentation).

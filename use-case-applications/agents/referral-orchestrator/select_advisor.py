@@ -27,9 +27,8 @@ SELECT ?advisor ?label ?capacity ?specialization WHERE {{
         rdfs:label ?label .
     OPTIONAL {{ ?advisor atlas:currentCapacity ?capacity }}
     OPTIONAL {{ ?advisor atlas:specialization ?specialization }}
-    FILTER NOT EXISTS {{
-        ?advisor atlas:onLeave true
-    }}
+    OPTIONAL {{ ?advisor atlas:onLeave ?leave }}
+    FILTER(!bound(?leave) || ?leave != true)
 }}
 ORDER BY DESC(?capacity)
 """

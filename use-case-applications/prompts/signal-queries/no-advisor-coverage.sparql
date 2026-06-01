@@ -1,7 +1,15 @@
 # No Advisor Coverage Signal — SPARQL CONSTRUCT query
 #
-# Fired by wealth-signal-detector when a wealth-eligible customer has
-# no active atlas:AdvisoryRelationship. Indicates a coverage gap.
+# DESCOPED for Phase 1 capstone: WS1 does not derive atlas-part-2:NoAdvisorCoverageSignal.
+# WS1 derives only atlas:LargeDepositPattern and atlas:HouseholdAggregationSignal.
+# Enabling this type requires a WS1-side derivation pass. See docs/ws2-comprehension.md.
+#
+# The query below is the Neptune-safe version using MINUS instead of the original
+# nested FILTER NOT EXISTS { FILTER NOT EXISTS { } }, which produces false negatives
+# on Neptune when the inner pattern finds no bindings.
+#
+# To re-enable: (1) implement WS1-side derivation; (2) uncomment in PHASE_1_SIGNALS;
+# (3) remove the DESCOPED marker from this file.
 #
 # Parameters:
 #   {target_uri} — the atlas:Customer URI to check
@@ -14,19 +22,21 @@ PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-CONSTRUCT {
-    ?signal a atlas:WealthSignal ;
-        atlas:hasSignalType atlas-part-2:NoAdvisorCoverageSignal ;
-        atlas:aboutCustomer <{target_uri}> ;
-        atlas:signalStrength "gap" ;
-        prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> ;
-        prov:generatedAtTime ?now .
-} WHERE {
-    <{target_uri}> a atlas:Customer .
-    FILTER NOT EXISTS {
-        <{target_uri}> atlas:hasAdvisor ?rel .
-        FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
-    }
-    BIND(NOW() AS ?now)
-    BIND(IRI(CONCAT("atlas:signal/gap-", STRUUID())) AS ?signal)
-}
+# CONSTRUCT {
+#     ?signal a atlas:WealthSignal ;
+#         atlas:hasSignalType atlas-part-2:NoAdvisorCoverageSignal ;
+#         atlas:aboutCustomer <{target_uri}> ;
+#         atlas:signalStrength "gap" ;
+#         prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> ;
+#         prov:generatedAtTime ?now .
+# } WHERE {
+#     <{target_uri}> a atlas:Customer .
+#     MINUS {
+#         <{target_uri}> atlas:hasAdvisor ?rel .
+#         ?rel a atlas:AdvisoryRelationship .
+#         OPTIONAL { ?rel atlas:coverageEndDate ?end }
+#         FILTER(!bound(?end))
+#     }
+#     BIND(NOW() AS ?now)
+#     BIND(IRI(CONCAT("urn:signal/gap-", STRUUID())) AS ?signal)
+# }
