@@ -27,6 +27,11 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
 
     // ─── Context parameters (from Workshop 1 CFN outputs) ───────────
     const neptuneEndpoint = this.node.tryGetContext("neptuneClusterEndpoint");
+    // neptuneLgdEndpoint defaults to the SLGD endpoint when not supplied so the
+    // stack still synthesizes, but behavioral-signal-agent needs the real LGD
+    // endpoint to query session-level data. Provide it via cdk.json or --context.
+    const neptuneLgdEndpoint =
+      this.node.tryGetContext("neptuneLgdEndpoint") ?? neptuneEndpoint;
     const vpcId = this.node.tryGetContext("vpcId");
     const privateSubnetIds = this.node.tryGetContext("privateSubnetIds");
 
@@ -92,7 +97,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       userPoolClient: cognito.userPoolClient,
       memory,
       neptuneSlgdEndpoint: neptuneEndpoint ?? "",
-      neptuneLgdEndpoint: neptuneEndpoint ?? "",
+      neptuneLgdEndpoint: neptuneLgdEndpoint ?? "",
       ontopEndpoint: ontop.endpoint,
     });
 
