@@ -1,10 +1,11 @@
 {
   "app": "npx ts-node bin/atlas-workshop-2.ts",
   "context": {
-    "neptuneClusterEndpoint": "atlas-slgd.cluster-c0bie06scpwu.us-east-1.neptune.amazonaws.com",
-    "neptuneLgdEndpoint": "atlas-lgd.cluster-c0bie06scpwu.us-east-1.neptune.amazonaws.com",
+    "neptuneClusterEndpoint": "",
+    "neptuneLgdEndpoint": "",
     "neptuneClusterArn": "",
-    "vpcId": "vpc-0ab6e0fb6982db7b6",
-    "privateSubnetIds": "subnet-028d75e13e01a02ef,subnet-01a86d403154704e5,subnet-0b3b2539260db64d6,subnet-0b41f2294f1fac988"
+    "ontologyStagingBucket": "",
+    "vpcId": "",
+    "privateSubnetIds": ""
   }
 }
