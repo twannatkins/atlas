@@ -90,7 +90,7 @@ export class StepFunctionsConstruct extends Construct {
     );
 
     const stateMachine = new sfn.StateMachine(this, "ReferralOrchestrator", {
-      stateMachineName: "atlas-referral-orchestrator",
+      // No hardcoded stateMachineName — CDK auto-generates a stack-unique physical name.
       definitionBody: sfn.DefinitionBody.fromChainable(definition),
       timeout: cdk.Duration.minutes(5),
       tracingEnabled: true,

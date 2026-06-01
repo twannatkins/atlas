@@ -41,7 +41,7 @@ export class CognitoConstruct extends Construct {
 
     // User Pool with custom persona attribute
     this.userPool = new cognito.UserPool(this, "UserPool", {
-      userPoolName: "atlas-workshop-2",
+      // No hardcoded userPoolName — CDK auto-generates a stack-unique physical name.
       selfSignUpEnabled: false,
       signInAliases: { email: true },
       customAttributes: {

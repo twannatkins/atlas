@@ -56,7 +56,9 @@ export class AppSyncConstruct extends Construct {
     );
 
     const api = new appsync.GraphqlApi(this, "Api", {
-      name: "atlas-workshop-2",
+      // Stack name appended so multiple ATLAS stacks in the same account don't collide.
+      // AppSync allows duplicate display names but having a unique name aids debugging.
+      name: `atlas-workshop-2-${cdk.Stack.of(this).stackName}`,
       definition: appsync.Definition.fromFile(schemaPath),
       authorizationConfig: {
         defaultAuthorization: {

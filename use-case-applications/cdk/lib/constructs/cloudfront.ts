@@ -20,8 +20,10 @@ export class CloudFrontConstruct extends Construct {
     super(scope, id);
 
     // Wholesale UI (Phase 1)
+    // No hardcoded bucketName — CDK auto-generates a stack-unique physical name,
+    // which prevents bucket-name collisions when the stack is redeployed or when
+    // multiple ATLAS stacks coexist in the same account.
     const wholesaleBucket = new s3.Bucket(this, "WholesaleBucket", {
-      bucketName: `atlas-wholesale-ui-${cdk.Aws.ACCOUNT_ID}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -46,7 +48,6 @@ export class CloudFrontConstruct extends Construct {
 
     // Wealth UI (Phase 2)
     const wealthBucket = new s3.Bucket(this, "WealthBucket", {
-      bucketName: `atlas-wealth-ui-${cdk.Aws.ACCOUNT_ID}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,

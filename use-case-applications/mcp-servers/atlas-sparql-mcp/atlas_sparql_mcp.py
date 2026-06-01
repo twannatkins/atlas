@@ -49,6 +49,16 @@ VALID_PERSONAS = [
     "atlas-auditor",
 ]
 
+# Fail fast at Lambda cold-start if the required endpoint is absent. An empty endpoint
+# silently produces an SSL connection error on the first query rather than a clear
+# misconfiguration message.
+if not NEPTUNE_SLGD_ENDPOINT:
+    raise RuntimeError(
+        "NEPTUNE_SLGD_ENDPOINT is not set. "
+        "Set it to the Neptune SLGD cluster endpoint hostname (no port, no protocol). "
+        "The value comes from the atlas-neptune-twotier CloudFormation stack SLGDEndpoint output."
+    )
+
 # SigV4 session — reused across invocations for connection pooling
 _boto_session = boto3.Session()
 
@@ -122,6 +132,13 @@ def _handle_query(event: Dict[str, Any], invocation_id: str, start_time: float) 
         headers = {"Accept": "application/sparql-results+json"}
         signed_headers = _sigv4_headers("GET", query_url, headers)
         response = http_requests.get(query_url, headers=signed_headers, timeout=30)
+        if response.status_code == 403:
+            return _error_response(
+                invocation_id, start_time, "neptune_auth_error",
+                "Neptune returned 403 Forbidden. Verify the Lambda execution role has "
+                "neptune-db:ReadDataViaQuery (and neptune-db:WriteDataViaQuery for updates) "
+                "granted by the NeptuneIamAuthPolicy from the atlas-neptune-twotier stack."
+            )
         response.raise_for_status()
         results = response.json()
         rows = _parse_sparql_results(results)

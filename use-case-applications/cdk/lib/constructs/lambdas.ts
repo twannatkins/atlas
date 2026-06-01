@@ -59,7 +59,7 @@ export class LambdaConstruct extends Construct {
     for (const stepName of stepLambdas) {
       const handlerFile = stepName.replace(/-/g, "_");
       const fn = new lambda.Function(this, `Fn-${stepName}`, {
-        functionName: `referral-orchestrator-${stepName}`,
+        // No hardcoded functionName — CDK auto-generates a stack-unique physical name.
         runtime: lambda.Runtime.PYTHON_3_12,
         handler: `${handlerFile}.handler`,
         code: lambda.Code.fromAsset(sourceDir),
