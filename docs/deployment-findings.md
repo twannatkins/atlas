@@ -183,6 +183,16 @@ are both fully deployed and verified** in this environment. Reasons:
 
 ---
 
+## WS2 Deployment fixes — resolved issues
+
+| # | Issue | Resolution | Status |
+|---|-------|-----------|--------|
+| G1 | **AgentCore entrypoint** — `["opentelemetry-instrument","main.py"]` failed at runtime (OTEL exe not in raw source ZIP). `["python","main.py"]` rejected by AgentCore server-side validator (system executables blocked as launchers). | Changed to `["main.py"]` — the managed PYTHON_3_12 runtime invokes the script directly. Confirmed via live API probe: passes entrypoint validation, advances to S3 check. | `FIXED` |
+| G1-OBS | **Observability accuracy** — prior tracking overstated the gap as "removes distributed tracing (publication blocker)." Research confirmed: AgentCore provides **native CloudWatch observability automatically** (per-invocation metrics, spans, logs, trace IDs) without bundling OTEL. `opentelemetry-instrument` is optional enhancement for *custom framework-level traces* (LangGraph reasoning steps, GenAI semantic convention spans) — not required for SR 11-7 baseline audit coverage. | No action needed for capstone. If richer framework tracing is desired, bundle ADOT via `BundlingOptions` + Docker or a pre-built container image in a future pass. | `INFORMATIONAL` |
+| G2 | **Memory rollback-race** — AgentCore Memory orphaned (billing) during rollback because CFN could provision Memory while runtimes were still creating; a runtime failure then left Memory in CREATING state (cannot delete mid-transition). | Added 33-entry `DependsOn` on Memory construct: all 11 non-CCM runtimes + their roles/policies. CCM excluded (would cycle via `grantFullAccess` token). Memory now creates only after 11 runtimes succeed. Confirmed working: zero Memory CREATE_FAILED on the race-fix deploy. | `FIXED` (partial — CCM-specific failure residual risk remains; see comment in `agentcore-runtimes.ts`) |
+
+---
+
 ## WS2 watch-list (predicted, unverified)
 
 Based on WS1 findings, watch for these in the WS2 CDK deploy:

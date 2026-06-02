@@ -16,7 +16,8 @@ import { AppSyncConstruct } from "./constructs/appsync";
 import { LambdaConstruct } from "./constructs/lambdas";
 import { CloudFrontConstruct } from "./constructs/cloudfront";
 import { StepFunctionsConstruct } from "./constructs/step-functions";
-import { LakeFormationConstruct } from "./constructs/lake-formation";
+// DEFERRED: LakeFormationConstruct requires account-level LF-admin grant.
+// import { LakeFormationConstruct } from "./constructs/lake-formation";
 import { AgentCoreMemoryConstruct } from "./constructs/agentcore-memory";
 import { AgentCoreRuntimesConstruct } from "./constructs/agentcore-runtimes";
 import { OrchestratorRegistrationConstruct } from "./constructs/orchestrator-registration";
@@ -76,7 +77,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
 
     // ─── 6. Register referral-orchestrator CUSTOM record ────────────
     // Must follow StepFunctions so stateMachineArn is a resolved token.
-    new OrchestratorRegistrationConstruct(this, "OrchestratorRegistration", {
+    const orchestratorRegistration = new OrchestratorRegistrationConstruct(this, "OrchestratorRegistration", {
       stateMachineArn: stepFunctions.stateMachineArn,
     });
 
@@ -84,12 +85,23 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     const cloudfront = new CloudFrontConstruct(this, "CloudFront");
 
     // ─── 8. Lake Formation tag policies ─────────────────────────────
-    new LakeFormationConstruct(this, "LakeFormation", {
-      personas: cognito.personas,
-    });
+    // DEFERRED: Lake Formation tags require account-level LF-admin grant
+    //   (lakeformation:CreateLFTag on the catalog), which is a WS0 foundation
+    //   prerequisite — a runner's fresh account won't have it either. Not exercised
+    //   in the Phase 1 referral capstone. Re-enable once the foundation template
+    //   grants the CDK CloudFormation execution role LF data-lake-administrator rights
+    //   via put-data-lake-settings. See docs/ws0-foundation-spec.md.
+    // new LakeFormationConstruct(this, "LakeFormation", {
+    //   personas: cognito.personas,
+    // });
 
     // ─── 9. AgentCore Memory store ──────────────────────────────────
+    // Memory rollback-race fix (2nd edge): Memory also depends on OrchestratorRegistration
+    // so it starts only after the custom resource Lambda completes successfully. Without
+    // this, a fast-failing OrchestratorRegistration can trigger rollback while Memory is
+    // still mid-CREATING (~90s window), orphaning it. See docs/deployment-findings.md.
     const memory = new AgentCoreMemoryConstruct(this, "Memory");
+    memory.node.addDependency(orchestratorRegistration);
 
     // ─── 10. AgentCore Runtimes (12 MCP-shaped components) ──────────
     // Runtimes before AppSync so Runtime ARNs are available for proxy Lambdas.

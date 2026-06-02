@@ -40,9 +40,12 @@ export class OntopConstruct extends Construct {
       cpu: 1024,
     });
 
-    // Ontop container — uses the official ontop/ontop image
+    // Ontop container — uses the official ontop/ontop image.
+    // DEFERRED: atlas.obda and atlas.properties mapping files are not yet authored.
+    // The service runs with desiredCount:0 (no tasks) so the stack deploys cleanly.
+    // Restore desiredCount to 1 and provide mapping files before enabling Ontop queries.
     taskDef.addContainer("Ontop", {
-      image: ecs.ContainerImage.fromRegistry("ontop/ontop:5"),
+      image: ecs.ContainerImage.fromRegistry("ontop/ontop:5.5.0"),
       portMappings: [{ containerPort: 8080 }],
       environment: {
         ONTOP_MAPPING_FILE: "/opt/ontop/mappings/atlas.obda",
@@ -58,11 +61,12 @@ export class OntopConstruct extends Construct {
       },
     });
 
-    // Fargate service — minimum 1 task to avoid cold starts
+    // Fargate service — desiredCount:0 until atlas.obda + atlas.properties are authored.
+    // Set to 1 once mapping files are in place to enable live Ontop queries.
     const service = new ecs.FargateService(this, "Service", {
       cluster,
       taskDefinition: taskDef,
-      desiredCount: 1,
+      desiredCount: 0,
       securityGroups: [props.securityGroup],
       assignPublicIp: false,
     });

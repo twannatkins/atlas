@@ -5,10 +5,14 @@
  * instances. Each component's source directory is uploaded to a CDK-managed
  * S3 bucket at synth time via AgentRuntimeArtifact.fromCodeAsset.
  *
- * Entrypoint: ["opentelemetry-instrument", "main.py"]
- * AWS Distro for OpenTelemetry instruments every invocation automatically.
- * Execution traces appear in CloudWatch Transaction Search without
- * per-handler instrumentation code.
+ * Entrypoint: ["main.py"]
+ * AgentCore Runtime invokes main.py directly using its managed PYTHON_3_12 interpreter.
+ * No launcher wrapper is needed. AgentCore provides native observability automatically
+ * (per-invocation metrics, spans, CloudWatch Logs) — opentelemetry-instrument is an
+ * optional enhancement for custom framework-level traces (e.g. LangGraph reasoning
+ * steps), not required for baseline SR 11-7 audit coverage. If richer framework tracing
+ * is desired in a future pass, bundle the ADOT distro via BundlingOptions + Docker or a
+ * pre-built container image. See docs/deployment-findings.md.
  *
  * Authorization: RuntimeAuthorizerConfiguration.usingCognito wires the
  * Cognito user pool directly into AgentCore Identity validation. The Runtime
@@ -53,7 +57,13 @@ export interface AgentCoreRuntimesProps {
   readonly ontologyStagingBucket: string;
 }
 
-const ENTRYPOINT = ["opentelemetry-instrument", "main.py"];
+// ["main.py"] is the correct no-OTEL entrypoint for fromCodeAsset: the managed
+// PYTHON_3_12 runtime invokes main.py directly. System executables ("python",
+// "python3") are rejected by AgentCore's server-side entrypoint validator. The
+// CDK README shows ["opentelemetry-instrument","main.py"] as its example but OTEL
+// is optional — AgentCore provides native CloudWatch observability automatically
+// without it. See docs/deployment-findings.md for the entrypoint validation analysis.
+const ENTRYPOINT = ["main.py"];
 const PYTHON_3_12 = agentcore.AgentCoreRuntime.PYTHON_3_12;
 
 /** Resolve the absolute path to a component source directory. */
@@ -311,6 +321,25 @@ export class AgentCoreRuntimesConstruct extends Construct {
         },
       },
     );
+
+    // Memory rollback-race fix: create Memory AFTER the 11 non-CCM runtimes so a
+    // runtime-creation failure rolls back before Memory starts provisioning. AgentCore
+    // Memory is slow to create and cannot be deleted mid-CREATING — a Memory caught
+    // half-created during rollback orphans (billing). Ordering it last among the risky
+    // resources prevents that. CCM is excluded from this dependency set because CCM's
+    // IAM policy already depends on Memory (via grantFullAccess token), so adding
+    // Memory → CCM would cycle. The 11-runtime ordering is safe and acyclic.
+    // See docs/deployment-findings.md.
+    const nonCcmRuntimes = [
+      this.atlasShaclMcp, this.atlasSparqlMcp, this.atlasErMcp,
+      this.atlasFiboMcp, this.atlasRegistryMcp, this.nlToSparqlAgent,
+      this.wealthSignalDetector, this.householdTraverser,
+      this.referralRationaleDrafter, this.behavioralSignalAgent,
+      this.themeSummarizer,
+    ];
+    for (const runtime of nonCcmRuntimes) {
+      props.memory.node.addDependency(runtime);
+    }
 
     // conversational-context-manager is the only Runtime with Memory access
     props.memory.memory.grantFullAccess(this.conversationalContextManager);
