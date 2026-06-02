@@ -208,6 +208,207 @@ Based on WS1 findings, watch for these in the WS2 CDK deploy:
 
 ---
 
+## Fresh-account readiness — WS0 account-prep package requirements
+
+This section captures every gap between "works in this account" and "works in a fresh AWS account."
+It was produced from a live deployment audit of both workshops and is the requirements input for the
+WS0 account-prep package. The full specification (including the networking baseline already documented)
+lives in `docs/ws0-foundation-spec.md`; this section is the findings log cross-reference.
+
+Items are tagged by delivery path: `[AUTOMATABLE]` (can be expressed in CFN/CDK), `[MANUAL]`
+(requires a human console or CLI action; not CFN-expressible), or `[TOOLCHAIN]` (runner's local
+environment, not the AWS account).
+
+---
+
+### FA1 — VPC, subnets, NAT gateway `[AUTOMATABLE]`
+
+**Finding:** WS1's CFN template takes `VpcId` and `SubnetIds` as required parameters and creates
+neither. WS2 CDK imports the VPC by ID. Neither workshop provisions networking. In this account the
+SageMaker Unified Studio domain VPC served as the shared baseline. In a fresh account no such VPC
+exists.
+
+WS2 additionally requires a NAT gateway (or equivalent VPC endpoints) for private-subnet resources
+to reach the internet: ECS Fargate tasks need NAT to pull ECR images; Lambda functions need NAT for
+Bedrock API calls; without it, WS2 Modules 7–8 fail silently with no useful error.
+
+**VpcCidr alignment hazard:** WS1's `NeptuneSecurityGroup` ingress uses `VpcCidr` (default
+`10.0.0.0/16`). The AWS default VPC is `172.31.0.0/16`. A runner who supplies their default VPC
+without updating `VpcCidr` will deploy successfully but Neptune will be unreachable — no error at
+deploy time, silent 403 at query time. `[SELF-BITING NOVICE-ONLY]`
+
+**Proposed fix:** Foundation template provisions VPC with CIDR `10.0.0.0/16` (non-default, avoids
+collision), 2 public + 2+ private subnets across AZs, NAT gateway, and exports `atlas-foundation-vpc-id`,
+`atlas-foundation-private-subnet-ids`, `atlas-foundation-vpc-cidr`. Full spec in
+`docs/ws0-foundation-spec.md §What the Foundation template must provision`.
+
+---
+
+### FA2 — SageMaker Studio domain and the two-execution-role problem `[AUTOMATABLE]` (if Studio required)
+
+**Finding:** WS1 and WS2 notebooks run inside SageMaker Unified Studio. The domain, user profile, and
+execution role(s) must pre-exist. SageMaker Unified Studio (DataZone-backed) creates **two separate
+DataZone-managed execution roles**: a domain default role and a kernel-running role. The notebook kernel
+actually runs as the kernel role. Applying IAM permissions only to the domain default role does nothing.
+
+This was discovered mid-session (finding R8). Both roles must receive every permission below. Until
+the Foundation template provisions an explicit execution role and configures Studio to use it, any
+permission change must be applied twice — and the second role is not obvious from the console.
+
+**Consequence:** any single-role permission grant silently fails for notebook cells. Gates print PASS
+from in-memory data; actual Neptune/Bedrock writes return 403.
+
+**Open question:** if Studio is no longer required (runners use JupyterHub or Cloud9), this item drops.
+See `docs/ws0-foundation-spec.md §Open questions`.
+
+---
+
+### FA3 — WS1 does not attach its own IAM policy `[AUTOMATABLE]` post-WS1
+
+**Finding (L1, `LIVE-STATE SELF-BITING`):** WS1 CFN creates `atlas-neptune-iam-auth` but never
+attaches it to any role. A fresh deploy leaves the policy orphaned. The notebook execution role cannot
+reach Neptune with IAM auth until the policy is manually attached to both execution roles.
+
+**Additional permissions not granted by WS1 CFN (L2–L4, `LIVE-STATE`):**
+- `cloudformation:DescribeStacks` — notebooks read their own CFN outputs
+- `s3:PutObject / GetObject / ListBucket` on the staging bucket — bulk load and artifact reads
+- `rds:DescribeDBClusters` on both Neptune cluster ARNs — WS1 Gate 4
+
+**Also required for WS1 Modules 7–8 and WS2:**
+- `bedrock:InvokeModel` on Titan Embeddings and Claude Sonnet ARNs
+
+**Consequence:** WS1 Gate 4 fails silently. Neptune writes 403 with no useful error. WS1 Modules 7–8
+fail with `AccessDeniedException`. WS2 agents that call Bedrock error or return empty responses.
+
+**Proposed fix:** Foundation runbook step (after WS1 CFN deploy): attach `atlas-neptune-iam-auth` to
+both execution roles and add an inline policy covering the above actions. Long-term: Foundation template
+provisions a single explicit role with all required permissions; Studio domain uses that role.
+
+---
+
+### FA4 — IDC persona groups for WS2 `[AUTOMATABLE]` (if IDC enabled)
+
+**Finding:** WS2 Cognito federates from IAM Identity Center. Five groups must exist before WS2 deploys:
+`atlas-consumer-banker`, `atlas-wealth-advisor`, `atlas-bsa-analyst`, `atlas-ontology-steward`,
+`atlas-auditor`. If they are absent, WS2 CDK deploy succeeds but all authenticated users receive the
+default (no-persona) policy — the four-layer permission model collapses silently.
+
+**Automatable via CFN Custom Resource** once IDC is enabled (see FB2 below). Group creation uses the
+`aws identitystore` API, which is callable from Lambda.
+
+**Consequence:** persona gating non-functional. Consumer Banker sees all customers. Regulatory teaching
+story breaks. Not caught at deploy time — a subtle runtime failure.
+
+---
+
+### FA5 — Lake Formation admin grant `[AUTOMATABLE]`
+
+**Finding:** WS2's `LakeFormationConstruct` (currently commented out) requires `lakeformation:CreateLFTag`
+on the catalog. The CDK CFN execution role is not an LF admin by default. Fresh account deploy fails
+with `AccessDenied`.
+
+`put-data-lake-settings` grants the CDK execution role LF admin rights. Can be delivered as a
+CFN Custom Resource Lambda in the Foundation template.
+
+**Current status:** `LakeFormationConstruct` commented out — not exercised in Phase 1 capstone. Must
+be re-enabled before persona-scoped data access (Layer 3 of the four-layer model) is demonstrated.
+Full detail in `docs/ws0-foundation-spec.md §Lake Formation admin grant`.
+
+---
+
+### FA6 — CDK bootstrap `[AUTOMATABLE]` (one-time CLI)
+
+**Finding:** WS2 deploys via CDK. `cdk bootstrap aws://<account>/us-east-1` must be run once in the
+target account/region before `cdk deploy`. This creates `CDKToolkit`, the CDK assets bucket, and the
+CDK execution role. Without it, `cdk deploy` fails immediately.
+
+This is idempotent and safe to re-run. It should be step 1 in the WS0 runbook.
+
+---
+
+### FB1 — Bedrock model access enablement `[MANUAL]`
+
+**Finding:** `bedrock:InvokeModel` in IAM is necessary but not sufficient. Model access is an
+account-level entitlement enabled via the Bedrock console "Model access" page. There is no CFN
+resource or API for this step. Required models:
+
+- `amazon.titan-embed-text-v2:0` (WS1 Module 7, WS2 nl-to-sparql-agent)
+- `us.anthropic.claude-sonnet-4-6` (WS1 Module 7–8, WS2 referral-rationale-drafter, theme-summarizer)
+
+**Non-US runners** must use `global.anthropic.claude-sonnet-4-6`. Currently hardcoded throughout
+(portability refactor deferred — see FC2).
+
+**Consequence:** WS1 Modules 7–8 fail with `AccessDeniedException`. Three WS2 agents return errors
+or empty responses.
+
+---
+
+### FB2 — IAM Identity Center enablement `[MANUAL]`
+
+**Finding:** IDC persona groups (FA4) require IAM Identity Center to be enabled. A fresh AWS account
+has IDC available but not active. Enabling IDC is a one-time console action with no CFN equivalent.
+
+**Operator step:** IAM Identity Center console → Enable. Takes ~60 seconds; irreversible for the
+account.
+
+**Consequence if skipped:** IDC group creation fails. Cognito federation configuration fails at the
+WS2 CDK deploy step that creates the Cognito–IDC federation.
+
+---
+
+### FC1 — Docker required at `cdk synth` time `[TOOLCHAIN]`
+
+**Finding:** WS2's `OrchestratorRegistrationConstruct` uses `Code.fromAsset` with Docker
+`BundlingOptions` to pip-install `boto3>=1.43` into the Lambda ZIP. If Docker is not running on the
+machine executing `cdk synth`, synth fails with a Docker daemon connection error before any CloudFormation
+call is made.
+
+A runner using a browser-based Cloud9 environment, a SageMaker terminal, or any environment without
+Docker will be blocked.
+
+**Options for a future pass (not solved now):**
+- Pre-build the Lambda ZIP and commit or store it as a static asset (eliminates Docker at synth)
+- Use a Lambda layer pinning boto3 (no per-function bundling)
+- Replace the custom resource with a CDK `AwsCustomResource` that uses the CDK provider's built-in
+  boto3 (which is always current in the provider Lambda runtime)
+
+**Consequence:** `cdk synth` and `cdk deploy` both fail before reaching CloudFormation.
+
+---
+
+### FC2 — Region hardcoding: `us-east-1` and `us.` inference profile `[TOOLCHAIN]`
+
+**Finding (P1, `NOVICE-ONLY CARRIES-TO-WS2`, deferred):**
+- All 12 WS2 AgentCore runtime environment variables hardcode `BEDROCK_TEXT_MODEL_ID: "us.anthropic.claude-sonnet-4-6"`
+- WS1 notebooks default all `boto3.client()` calls to `us-east-1`
+- WS2 `cdk.json` and CDK stack assume `us-east-1`
+- `us.anthropic.claude-sonnet-4-6` is the US cross-region pool only; non-US runners need `global.*`
+
+Full portability refactor is deferred until both workshops are verified end-to-end in this account.
+Must be completed before offering the workshop outside `us-east-1`.
+
+---
+
+### FD1 — Ontop mapping files: content gap, not account-prep gap `[CONTENT]`
+
+**Finding:** WS2 Ontop ECS service is deployed with `desiredCount: 0` because `atlas.obda` and
+`atlas.properties` do not yet exist. The container exits immediately at startup without them. This is
+a content authoring gap (the R2RML/OBDA mappings must be written), not a missing account prerequisite.
+The account is correctly configured; the WS0 package does not need to address this.
+
+Tracked here to prevent confusion when the Ontop pass runs: the account is ready; the work is content.
+
+---
+
+### Cross-reference to `docs/ws0-foundation-spec.md`
+
+The full specification for the WS0 Foundation package (what to build, how WS1/WS2 consume it, open
+questions, export names) lives in `docs/ws0-foundation-spec.md`. This section is the findings log:
+what was discovered during live deployment, in the order it was discovered. The spec is the design;
+the findings are the evidence.
+
+---
+
 ## WS1 Live SLGD Pipeline — completion record
 
 **Branch:** `feature/agentcore-native` (HEAD `5b8faf9`)  
