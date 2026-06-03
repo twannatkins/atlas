@@ -31,5 +31,5 @@ new AtlasWorkshop2Stack(app, "AtlasWorkshop2", {
     region,
   },
   description:
-    "ATLAS Workshop 2 — Agents, MCP servers, AppSync, Cognito, CloudFront, Step Functions",
+    "ATLAS Workshop 2 - Agents, MCP servers, AppSync, Cognito, CloudFront, Step Functions",
 });

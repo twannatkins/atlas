@@ -8,9 +8,10 @@
 # The differences between the two UIs are in which fragments they query,
 # not in the schema itself. This is Thesis 2: two UIs, one backbone.
 
-scalar DateTime
-scalar Decimal
-scalar URI
+# AppSync built-in scalars used in place of custom scalars:
+#   AWSDateTime — ISO 8601 timestamp (replaces custom DateTime)
+#   Float       — IEEE 754 double (replaces custom Decimal; AppSync has no Decimal built-in)
+#   AWSURL      — URL/IRI string (replaces custom URI)
 
 # ─────────────────────────────────────────────────────────────────────
 # Provenance — every entity that carries audit trail
@@ -24,7 +25,7 @@ type Provenance {
   """The agent or process that generated this entity"""
   generatedBy: String
   """When this entity was generated"""
-  generatedAtTime: DateTime
+  generatedAtTime: AWSDateTime
   """The data source that contributed the raw observation"""
   sourceDataset: String
 }
@@ -58,7 +59,7 @@ type Account {
   uri: ID!
   accountId: String!
   accountType: String!
-  balanceUSD: Decimal
+  balanceUSD: Float
   holdings: [Holding!]!
   transactions(limit: Int = 50): [Transaction!]!
   provenance: Provenance
@@ -79,8 +80,8 @@ atlas:Transaction — A discrete financial event against an Account.
 """
 type Transaction {
   uri: ID!
-  transactionDate: DateTime!
-  amountUSD: Decimal!
+  transactionDate: AWSDateTime!
+  amountUSD: Float!
   transactionType: String!
   provenance: Provenance
 }
@@ -102,7 +103,7 @@ atlas:WealthSignal — An observation indicating wealth-management eligibility.
 type WealthSignal {
   uri: ID!
   signalType: String!
-  signalDate: DateTime
+  signalDate: AWSDateTime
   strength: String
   evidencedBy: [Transaction!]!
   score: Score
@@ -115,11 +116,11 @@ atlas:Score — A probabilistic-explainable numeric score.
 """
 type Score {
   uri: ID!
-  scoreValue: Decimal!
+  scoreValue: Float!
   isProbabilistic: Boolean!
   hasExplainability: Boolean!
   modelVersion: String
-  confidence: Decimal
+  confidence: Float
 }
 
 """
@@ -127,8 +128,8 @@ atlas:ObservationWindow — A time-bounded evaluation window.
 """
 type ObservationWindow {
   uri: ID!
-  startDate: DateTime!
-  endDate: DateTime!
+  startDate: AWSDateTime!
+  endDate: AWSDateTime!
 }
 
 """
@@ -157,7 +158,7 @@ atlas:HumanReview — A human reviewer's decision on a routed lead.
 type HumanReview {
   uri: ID!
   reviewOutcome: String!
-  reviewDate: DateTime!
+  reviewDate: AWSDateTime!
   reviewer: Advisor
   provenance: Provenance
 }
@@ -180,8 +181,8 @@ type AdvisoryRelationship {
   uri: ID!
   customer: Customer!
   advisor: Advisor!
-  coverageStartDate: DateTime!
-  coverageEndDate: DateTime
+  coverageStartDate: AWSDateTime!
+  coverageEndDate: AWSDateTime
   relationshipType: String!
   lineOfBusiness: String
   isActive: Boolean!
@@ -196,7 +197,7 @@ type AuditRecord {
   aboutHousehold: Household
   routingDecision: RoutingDecision
   targetAdvisor: Advisor
-  generatedAtTime: DateTime!
+  generatedAtTime: AWSDateTime!
   workflowStatus: String!
   provenance: Provenance
 }
@@ -216,7 +217,7 @@ atlas:PreviousSurfacing — A historical wealth-candidate evaluation.
 type PreviousSurfacing {
   uri: ID!
   outcome: String!
-  surfacingDate: DateTime!
+  surfacingDate: AWSDateTime!
 }
 
 # ─────────────────────────────────────────────────────────────────────
@@ -233,7 +234,7 @@ type Referral {
   approvedRationale: String!
   routingDecision: RoutingDecision
   originatedBy: String!
-  referralDate: DateTime!
+  referralDate: AWSDateTime!
   provenance: Provenance
 }
 
@@ -243,7 +244,7 @@ atlas-part-2:ThemeAssertion — A market or portfolio theme (Phase 2).
 type ThemeAssertion {
   uri: ID!
   themeLabel: String!
-  themeDate: DateTime
+  themeDate: AWSDateTime
   sourceArticles: [String!]!
   appliesTo: [Customer!]!
 }

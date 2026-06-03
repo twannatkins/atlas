@@ -34,14 +34,14 @@ export class NetworkingConstruct extends Construct {
     // Security group for Lambda functions — restricted egress
     this.lambdaSecurityGroup = new ec2.SecurityGroup(this, "LambdaSG", {
       vpc: this.vpc,
-      description: "ATLAS Workshop 2 — Lambda functions",
+      description: "ATLAS Workshop 2 - Lambda functions",
       allowAllOutbound: false,
     });
 
     // Security group for Ontop ECS Fargate — restricted egress
     this.ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSG", {
       vpc: this.vpc,
-      description: "ATLAS Workshop 2 — Ontop ECS Fargate",
+      description: "ATLAS Workshop 2 - Ontop ECS Fargate",
       allowAllOutbound: false,
     });
 
