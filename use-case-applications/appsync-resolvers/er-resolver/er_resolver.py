@@ -15,7 +15,8 @@ import os
 import sys
 from typing import Any, Dict
 
-import boto3
+import urllib.parse
+import urllib.request
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -23,17 +24,32 @@ logger.setLevel(logging.INFO)
 ER_MCP_ARN = os.environ.get("ER_MCP_ARN", "")
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
+def _agentcore_endpoint(runtime_arn: str) -> str:
+    encoded = urllib.parse.quote(runtime_arn, safe="")
+    return f"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/{encoded}/invocations"
+
+def _invoke_agentcore(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(_agentcore_endpoint(runtime_arn), data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", f"Bearer {bearer_token}")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+_current_bearer_token: str = ""
+
+sys.path.insert(0, os.path.dirname(__file__))
 
 from atlas_sparql import prefixed, safe_uri
 
 
 def handler(event: Dict[str, Any], context: Any) -> Any:
     """AppSync resolver entry point for Entity Resolution."""
+    global _current_bearer_token
     field_name = event.get("info", {}).get("fieldName", "")
     arguments = event.get("arguments", {})
     identity = event.get("identity", {})
+    _current_bearer_token = (event.get("request") or {}).get("headers", {}).get("authorization", "")
 
     persona_claim = _extract_persona(identity)
 
@@ -58,18 +74,12 @@ def _resolve_entity(args: Dict, persona: str) -> Dict[str, Any] | None:
     source_system = args.get("sourceSystem", "")
     source_id = args.get("sourceId", "")
 
-    # Step 1: Look up canonical URI via atlas-er-mcp
-    lambda_client = boto3.client("lambda")
-    er_response = lambda_client.invoke(
-        FunctionName=ER_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
-            "operation": "lookup",
-            "source_system": source_system,
-            "source_id": source_id,
-        }),
-    )
-    er_result = json.loads(er_response["Payload"].read())
+    # Step 1: Look up canonical URI via atlas-er-mcp (AgentCore HTTP)
+    er_result = _invoke_agentcore(ER_MCP_ARN, {
+        "operation": "lookup",
+        "source_system": source_system,
+        "source_id": source_id,
+    }, _current_bearer_token)
 
     if er_result.get("status") != "success":
         return None
@@ -91,17 +101,13 @@ def _resolve_entity(args: Dict, persona: str) -> Dict[str, Any] | None:
         }}
     """)
 
-    sparql_response = lambda_client.invoke(
-        FunctionName=SPARQL_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
-            "operation": "query",
-            "sparql": sparql,
-            "persona_claim": persona,
-            "graph_tier": "slgd",
-        }),
-    )
-    sparql_result = json.loads(sparql_response["Payload"].read())
+    # Step 2: Fetch customer data via atlas-sparql-mcp (AgentCore HTTP)
+    sparql_result = _invoke_agentcore(SPARQL_MCP_ARN, {
+        "operation": "query",
+        "sparql": sparql,
+        "persona_claim": persona,
+        "graph_tier": "slgd",
+    }, _current_bearer_token)
     rows = sparql_result.get("rows", [])
 
     if not rows:

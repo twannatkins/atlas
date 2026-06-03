@@ -22,17 +22,40 @@ import time
 import uuid
 from typing import Any, Dict, List
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..",
-                                "agentic-semantic-layer", "notebooks", "shared"))
+# atlas_sparql.py is vendored alongside this file for Lambda deployment.
+# The WS1 shared module is at agentic-semantic-layer/notebooks/shared/atlas_sparql.py —
+# copied here via CDK asset bundling so Lambda can import it.
+sys.path.insert(0, os.path.dirname(__file__))
 
 from atlas_sparql import prefixed, safe_uri, safe_int
 
-import boto3
+import urllib.parse
+import urllib.request
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
+
+# AgentCore HTTP endpoint for a runtime ARN.
+# Runtimes use customJWTAuthorizer (Cognito) — caller passes the user's access token
+# as Bearer. The AppSync event carries the raw Authorization header at
+# event["request"]["headers"]["authorization"].
+def _agentcore_endpoint(runtime_arn: str) -> str:
+    encoded = urllib.parse.quote(runtime_arn, safe="")
+    return f"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/{encoded}/invocations"
+
+def _invoke_agentcore(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+    """POST to an AgentCore runtime endpoint with the user's JWT as Bearer."""
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(_agentcore_endpoint(runtime_arn), data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", f"Bearer {bearer_token}")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+# Bearer token extracted from the AppSync request headers — threaded through all resolvers.
+_current_bearer_token: str = ""
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -46,9 +69,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     invocation_id = str(uuid.uuid4())
     start_time = time.time()
 
+    global _current_bearer_token
     field_name = event.get("info", {}).get("fieldName", "")
     arguments = event.get("arguments", {})
     identity = event.get("identity", {})
+    # Extract the Cognito access token forwarded by AppSync — required for AgentCore auth.
+    _current_bearer_token = (event.get("request") or {}).get("headers", {}).get("authorization", "")
 
     # Extract persona claim from Cognito JWT claims
     persona_claim = _extract_persona(identity)
@@ -292,19 +318,13 @@ def _resolve_themes(args: Dict, persona: str) -> List[Dict]:
 
 
 def _query_sparql(sparql: str, persona_claim: str) -> List[Dict]:
-    """Invoke atlas-sparql-mcp for a read query."""
-    lambda_client = boto3.client("lambda")
-    response = lambda_client.invoke(
-        FunctionName=SPARQL_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({
-            "operation": "query",
-            "sparql": sparql,
-            "persona_claim": persona_claim,
-            "graph_tier": "slgd",
-        }),
-    )
-    result = json.loads(response["Payload"].read())
+    """Invoke atlas-sparql-mcp via AgentCore HTTP."""
+    result = _invoke_agentcore(SPARQL_MCP_ARN, {
+        "operation": "query",
+        "sparql": sparql,
+        "persona_claim": persona_claim,
+        "graph_tier": "slgd",
+    }, _current_bearer_token)
     if result.get("status") == "error":
         raise RuntimeError(result.get("message", "SPARQL MCP error"))
     return result.get("rows", [])
