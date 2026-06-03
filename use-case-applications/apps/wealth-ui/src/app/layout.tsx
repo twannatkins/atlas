@@ -6,7 +6,8 @@
  */
 
 import React from "react";
-import "../../shared/ui/tokens.css";
+import "../../../shared/ui/tokens.css";
+import { Providers } from "./providers";
 
 export const metadata = {
   title: "ATLAS Wealth UI — Advisor Workbench",
@@ -21,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
