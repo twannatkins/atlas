@@ -58,12 +58,22 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     });
 
     // ─── 3. Cognito + IDC federation ────────────────────────────────
-    const cognito = new CognitoConstruct(this, "Cognito");
+    const cognito = new CognitoConstruct(this, "Cognito", {
+      // enableUserPasswordAuth: capstone-proof affordance only. Pass -c enableUserPasswordAuth=true
+      // at deploy time for dev token-injection testing. Default false (SRP-only published default).
+      enableUserPasswordAuth:
+        this.node.tryGetContext("enableUserPasswordAuth") === "true",
+    });
 
     // ─── 4. Lambda deployments (5 step Lambdas for referral orchestrator) ──
     const lambdas = new LambdaConstruct(this, "Lambdas", {
       vpc: networking.vpc,
       securityGroup: networking.lambdaSecurityGroup,
+      // Step Lambdas call Neptune directly (JWT-only AgentCore runtimes have no SigV4 path).
+      neptuneIamAuthPolicyArn: cdk.Fn.importValue("atlas-neptune-iam-auth-policy"),
+      neptuneSlgdEndpoint: neptuneEndpoint ?? "",
+      neptuneLgdEndpoint: neptuneLgdEndpoint ?? "",
+      shapesS3Uri: `s3://${ontologyStagingBucket}/ontology/atlas-shapes.ttl`,
     });
 
     // ─── 5. Step Functions state machine ────────────────────────────
@@ -113,6 +123,19 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       neptuneLgdEndpoint: neptuneLgdEndpoint ?? "",
       ontopEndpoint: ontop.endpoint,
       ontologyStagingBucket,
+      // VPC mode — committed default so runtimes can reach Neptune in the private VPC.
+      // The existing NAT gateway keeps Bedrock/S3 reachable from private subnets.
+      vpc: networking.vpc,
+      privateSubnets: networking.privateSubnets,
+      // atlas-neptune-iam-auth managed policy from WS1 — grants ReadDataViaQuery +
+      // WriteDataViaQuery on both Neptune clusters. Attached to each runtime execution
+      // role so runtimes can query Neptune with SigV4 IAM auth.
+      neptuneIamAuthPolicyArn: cdk.Fn.importValue("atlas-neptune-iam-auth-policy"),
+      // Docker bundling: opt-in for environments with Docker at synth time.
+      // Default false — committed repo stays Studio-safe (no Docker daemon in Studio kernels).
+      // Pass -c bundleRuntimeDeps=true to enable for local dev / CI.
+      bundleRuntimeDeps:
+        this.node.tryGetContext("bundleRuntimeDeps") === "true",
     });
 
     // ─── 11. AppSync GraphQL API ────────────────────────────────────

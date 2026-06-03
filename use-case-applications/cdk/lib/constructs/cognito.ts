@@ -27,6 +27,16 @@ export interface CognitoProps {
   productionCallbackUrl?: string;
   /** Include http://localhost:3000/callback for local development. Default false. */
   includeLocalCallbacks?: boolean;
+  /**
+   * Enable USER_PASSWORD_AUTH on the app client. Default false (SRP-only).
+   *
+   * CAPSTONE-PROOF AFFORDANCE ONLY: enables fetching a real Cognito idToken
+   * via `initiate-auth USER_PASSWORD_AUTH` for localStorage injection during
+   * development verification. The published workshop default is SRP-only.
+   * Enable only via CDK context (-c enableUserPasswordAuth=true) in a dev
+   * account; never set to true in committed cdk.json or production config.
+   */
+  enableUserPasswordAuth?: boolean;
 }
 
 export class CognitoConstruct extends Construct {
@@ -79,7 +89,12 @@ export class CognitoConstruct extends Construct {
 
     // App client for the React UIs
     this.userPoolClient = this.userPool.addClient("WebClient", {
-      authFlows: { userSrp: true },
+      authFlows: {
+        userSrp: true,
+        // USER_PASSWORD_AUTH: enabled only when enableUserPasswordAuth flag is set via
+        // CDK context. Off by default — the published workshop uses SRP-only.
+        userPassword: props?.enableUserPasswordAuth ?? false,
+      },
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],

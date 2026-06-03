@@ -14,6 +14,7 @@
 
 import * as cdk from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as path from "path";
 import * as fs from "fs";
@@ -22,6 +23,19 @@ import { Construct } from "constructs";
 export interface LambdaProps {
   vpc: ec2.IVpc;
   securityGroup: ec2.SecurityGroup;
+  /**
+   * ARN of the atlas-neptune-iam-auth managed policy from WS1.
+   * Grants neptune-db:ReadDataViaQuery + WriteDataViaQuery on both Neptune clusters.
+   * The step Lambdas call Neptune directly (bypassing JWT-only AgentCore runtimes)
+   * and need this policy to SigV4-sign their SPARQL requests.
+   */
+  neptuneIamAuthPolicyArn: string;
+  /** Neptune SLGD cluster endpoint hostname (no port/protocol). */
+  neptuneSlgdEndpoint: string;
+  /** Neptune LGD cluster endpoint hostname. */
+  neptuneLgdEndpoint: string;
+  /** S3 URI of atlas-shapes.ttl for inline SHACL validation. */
+  shapesS3Uri: string;
 }
 
 export class LambdaConstruct extends Construct {
@@ -62,12 +76,50 @@ export class LambdaConstruct extends Construct {
         // No hardcoded functionName — CDK auto-generates a stack-unique physical name.
         runtime: lambda.Runtime.PYTHON_3_12,
         handler: `${handlerFile}.handler`,
-        code: lambda.Code.fromAsset(sourceDir),
+        // Docker bundling installs requirements.txt (rdflib, pyshacl for validate-routing).
+        // Same gated pattern as agentcore-runtimes — only runs when Docker is available.
+        code: lambda.Code.fromAsset(sourceDir, {
+          bundling: {
+            image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+            command: [
+              "bash", "-c",
+              "pip install -r requirements.txt -t /asset-output --quiet && cp -r . /asset-output/",
+            ],
+          },
+        }),
         timeout: cdk.Duration.seconds(30),
         memorySize: 512,
         vpc: props.vpc,
         securityGroups: [props.securityGroup],
+        environment: {
+          NEPTUNE_SLGD_ENDPOINT: props.neptuneSlgdEndpoint,
+          NEPTUNE_LGD_ENDPOINT: props.neptuneLgdEndpoint,
+          SHAPES_S3_URI: props.shapesS3Uri,
+        },
       });
+
+      // Attach atlas-neptune-iam-auth so step Lambdas can SigV4-sign Neptune requests.
+      // The MCPs are JWT-only AgentCore runtimes (no IAM auth path); step Lambdas call
+      // Neptune directly using SigV4 from this execution role.
+      const neptunePolicy = iam.ManagedPolicy.fromManagedPolicyArn(
+        this, `NeptunePolicy-${stepName}`, props.neptuneIamAuthPolicyArn,
+      );
+      fn.role?.addManagedPolicy(neptunePolicy);
+
+      // validate-routing loads atlas-shapes.ttl from S3 for inline SHACL validation.
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ["s3:GetObject"],
+        resources: [`arn:aws:s3:::${props.shapesS3Uri.replace("s3://", "").split("/")[0]}/*`],
+      }));
+
+      // notify-advisor fires CloudWatch Events — add events:PutEvents if not already granted.
+      if (stepName === "notify-advisor") {
+        fn.addToRolePolicy(new iam.PolicyStatement({
+          actions: ["events:PutEvents"],
+          resources: ["*"],
+        }));
+      }
+
       this.functions.set(stepName, fn);
     }
   }

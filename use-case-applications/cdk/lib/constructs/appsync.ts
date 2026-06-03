@@ -31,18 +31,40 @@ export interface AppSyncProps {
   erMcpArn: string;
 }
 
-/** Inline Python for a proxy Lambda that forwards the AppSync event to an AgentCore Runtime. */
+/**
+ * Inline Python for a proxy Lambda that forwards the AppSync event to an AgentCore Runtime.
+ *
+ * Uses invoke_agent_runtime_for_user (OAuth/Cognito path) rather than invoke_agent_runtime
+ * (SigV4/IAM path). The runtimes are configured with Cognito authorizer, so the caller must
+ * forward the user's JWT. AppSync passes the raw Authorization header value in
+ * event["identity"]["resolverContext"] — we extract it and pass it as the bearer token.
+ */
+/**
+ * Inline Python for a proxy Lambda that forwards the AppSync event to an AgentCore Runtime.
+ *
+ * AgentCore runtimes configured with customJWTAuthorizer (Cognito) require the caller to
+ * pass a Cognito ACCESS token (not idToken) as Bearer in a plain HTTPS POST — boto3's
+ * invoke_agent_runtime uses SigV4 and cannot inject a custom Authorization header.
+ * We use urllib instead to make the unsigned POST directly to the AgentCore data-plane
+ * endpoint, forwarding the user's access token from the AppSync request header.
+ *
+ * The UI stores both idToken (atlas_token) and accessToken (atlas_access_token) in
+ * localStorage. Apollo sends the access token in Authorization.
+ */
 const PROXY_HANDLER = `
-import boto3, json, os
+import json, os, urllib.request
 RUNTIME_ARN = os.environ["AGENT_RUNTIME_ARN"]
-client = boto3.client("bedrock-agentcore")
+import urllib.parse
+ENCODED_ARN = urllib.parse.quote(RUNTIME_ARN, safe="")
+ENDPOINT = f"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/{ENCODED_ARN}/invocations"
 def handler(event, context):
-    resp = client.invoke_agent_runtime(
-        agentRuntimeArn=RUNTIME_ARN,
-        payload=json.dumps(event).encode(),
-        contentType="application/json",
-    )
-    return json.loads(resp["response"].read())
+    token = (event.get("request") or {}).get("headers", {}).get("authorization", "")
+    body = json.dumps(event).encode()
+    req = urllib.request.Request(ENDPOINT, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
 `.trim();
 
 export class AppSyncConstruct extends Construct {
@@ -74,14 +96,59 @@ export class AppSyncConstruct extends Construct {
       },
     });
 
-    // ── Proxy Lambdas ────────────────────────────────────────────────────────
-    // Each is a 10-line inline function. Code.fromInline avoids S3 asset upload
-    // for trivially small functions and keeps the proxy pattern explicit in the
-    // CDK source rather than in a separate file the reader has to find.
+    // ── Resolver Lambdas ─────────────────────────────────────────────────────
+    // Resolver logic lives in appsync-resolvers/{sparql,registry,er}-resolver/.
+    // Each resolver dispatches on fieldName, builds the correct MCP payload,
+    // calls the AgentCore runtime via HTTP (Bearer token forwarded from the
+    // AppSync request headers), and shapes the response into GraphQL types.
+    //
+    // The original inline PROXY_HANDLER (forwarding raw AppSync events to the
+    // AgentCore HTTP endpoint) was replaced here in commit [resolver-transport-fix]
+    // because the MCP runtimes expect native MCP payloads, not AppSync events.
+    // The written resolvers have the correct dispatch + shaping logic; only their
+    // transport (lambda.invoke) was wrong — swapped to AgentCore HTTP.
 
-    const sparqlProxyFn = this.makeProxy("SparqlProxy", props.sparqlMcpArn);
-    const registryProxyFn = this.makeProxy("RegistryProxy", props.registryMcpArn);
-    const erProxyFn = this.makeProxy("ErProxy", props.erMcpArn);
+    const resolverBase = path.join(__dirname, "..", "..", "..", "appsync-resolvers");
+
+    const sparqlProxyFn = new lambda.Function(this, "SparqlProxy", {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: "sparql_resolver.handler",
+      code: lambda.Code.fromAsset(path.join(resolverBase, "sparql-resolver")),
+      timeout: cdk.Duration.seconds(30),
+      environment: { SPARQL_MCP_ARN: props.sparqlMcpArn },
+    });
+    sparqlProxyFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ["bedrock-agentcore:InvokeAgentRuntimeForUser"],
+      resources: [`${props.sparqlMcpArn}*`],
+    }));
+
+    const registryProxyFn = new lambda.Function(this, "RegistryProxy", {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: "registry_resolver.handler",
+      code: lambda.Code.fromAsset(path.join(resolverBase, "registry-resolver")),
+      timeout: cdk.Duration.seconds(30),
+      environment: { REGISTRY_MCP_ARN: props.registryMcpArn },
+    });
+    registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ["bedrock-agentcore:InvokeAgentRuntimeForUser"],
+      resources: [`${props.registryMcpArn}*`],
+    }));
+
+    const erProxyFn = new lambda.Function(this, "ErProxy", {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: "er_resolver.handler",
+      code: lambda.Code.fromAsset(path.join(resolverBase, "er-resolver")),
+      timeout: cdk.Duration.seconds(30),
+      // er_resolver calls both ER_MCP and SPARQL_MCP in sequence
+      environment: {
+        ER_MCP_ARN: props.erMcpArn,
+        SPARQL_MCP_ARN: props.sparqlMcpArn,
+      },
+    });
+    erProxyFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ["bedrock-agentcore:InvokeAgentRuntimeForUser"],
+      resources: [`${props.erMcpArn}*`, `${props.sparqlMcpArn}*`],
+    }));
 
     // ── Lambda datasources ───────────────────────────────────────────────────
 
@@ -110,21 +177,4 @@ export class AppSyncConstruct extends Construct {
     this.apiUrl = api.graphqlUrl;
   }
 
-  /** Create a thin proxy Lambda pointing at a given AgentCore Runtime ARN. */
-  private makeProxy(id: string, runtimeArn: string): lambda.Function {
-    const fn = new lambda.Function(this, id, {
-      runtime: lambda.Runtime.PYTHON_3_12,
-      handler: "index.handler",
-      code: lambda.Code.fromInline(PROXY_HANDLER),
-      timeout: cdk.Duration.seconds(30),
-      environment: { AGENT_RUNTIME_ARN: runtimeArn },
-    });
-
-    fn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ["bedrock-agentcore:InvokeAgentRuntime"],
-      resources: [runtimeArn],
-    }));
-
-    return fn;
-  }
 }

@@ -22,6 +22,8 @@ export class NetworkingConstruct extends Construct {
   public readonly vpc: ec2.IVpc;
   public readonly lambdaSecurityGroup: ec2.SecurityGroup;
   public readonly ecsSecurityGroup: ec2.SecurityGroup;
+  /** The private subnets as ISubnet objects, for constructs that need ec2.SubnetSelection. */
+  public readonly privateSubnets: ec2.ISubnet[];
 
   constructor(scope: Construct, id: string, props: NetworkingProps) {
     super(scope, id);
@@ -30,6 +32,18 @@ export class NetworkingConstruct extends Construct {
     this.vpc = ec2.Vpc.fromLookup(this, "Vpc", {
       vpcId: props.vpcId || undefined,
     });
+
+    // Import private subnets as ISubnet objects so downstream constructs
+    // (e.g. AgentCore runtimes) can pass them as ec2.SubnetSelection.
+    //
+    // AgentCore VPC mode constraint: only subnets in supported AZs can be used.
+    // In us-east-1, AgentCore supports use1-az1 (us-east-1c), use1-az2 (us-east-1d),
+    // and use1-az4 (us-east-1a). It does NOT support use1-az6 (us-east-1b).
+    // The privateSubnetIds context value must exclude any subnet in an unsupported AZ.
+    // In this account: subnet-028d75e13e01a02ef (us-east-1b/use1-az6) is excluded.
+    this.privateSubnets = props.privateSubnetIds.map((id) =>
+      ec2.Subnet.fromSubnetId(this, `PrivateSubnet-${id}`, id),
+    );
 
     // Security group for Lambda functions — restricted egress
     this.lambdaSecurityGroup = new ec2.SecurityGroup(this, "LambdaSG", {

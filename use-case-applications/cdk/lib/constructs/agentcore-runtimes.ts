@@ -37,6 +37,9 @@
 
 import * as path from "path";
 import * as agentcore from "aws-cdk-lib/aws-bedrockagentcore";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 import { AgentCoreMemoryConstruct } from "./agentcore-memory";
@@ -55,6 +58,44 @@ export interface AgentCoreRuntimesProps {
   readonly registryEndpoint?: string;
   /** S3 bucket name for ontology, prompt, and query artifacts (from WS1 CFN output). */
   readonly ontologyStagingBucket: string;
+  /**
+   * VPC to place the runtime ENIs in.
+   * Required for the runtimes to reach Neptune in the private VPC.
+   * VPC mode uses the existing NAT gateway for outbound Bedrock/S3 access.
+   */
+  readonly vpc: ec2.IVpc;
+  /**
+   * Private subnets where the runtime ENIs are placed.
+   * Must be within the same VPC as Neptune. Neptune's SG allows 8182 from
+   * the full VPC CIDR, so any ENI in these subnets can reach it without
+   * additional SG rule changes.
+   */
+  readonly privateSubnets: ec2.ISubnet[];
+  /**
+   * ARN of the atlas-neptune-iam-auth managed policy from Workshop 1.
+   * Grants neptune-db:ReadDataViaQuery + WriteDataViaQuery on both Neptune clusters.
+   * Attached to each runtime execution role so the runtimes can query Neptune directly.
+   * This is the long-tracked L1 gap: WS1 creates the policy but never attaches it.
+   * Export name: atlas-neptune-iam-auth-policy (from atlas-neptune-twotier stack).
+   */
+  readonly neptuneIamAuthPolicyArn: string;
+  /**
+   * Pip-install requirements.txt into the runtime ZIP via Docker BundlingOptions.
+   * Default false (the committed default ships raw source ZIPs — runtimes will NOT
+   * start until deps are bundled). Set to true only in environments with a Docker
+   * daemon available (e.g. local dev: pass -c bundleRuntimeDeps=true at deploy time).
+   *
+   * PUBLICATION BLOCKER: the portable fix is Option C — a scripts/build-runtimes.sh
+   * that pip-installs to a ./build dir, zips, and uploads to the WS1 staging bucket,
+   * then CDK references the ZIPs via fromS3. No Docker required at cdk synth.
+   * Tracked in docs/deployment-findings.md.
+   *
+   * Why Docker bundling is self-biting for the published workshop: SageMaker Studio /
+   * SageMaker Unified Studio notebook kernels have no Docker daemon — `cdk synth`
+   * from within Studio would fail immediately when this flag is ON. The flag-OFF default
+   * keeps the committed repo Studio-safe.
+   */
+  readonly bundleRuntimeDeps?: boolean;
 }
 
 // ["main.py"] is the correct no-OTEL entrypoint for fromCodeAsset: the managed
@@ -69,6 +110,42 @@ const PYTHON_3_12 = agentcore.AgentCoreRuntime.PYTHON_3_12;
 /** Resolve the absolute path to a component source directory. */
 function componentPath(relativeToUseCase: string): string {
   return path.join(__dirname, "..", "..", "..", relativeToUseCase);
+}
+
+/**
+ * Build an AgentRuntimeArtifact for a fromCodeAsset runtime.
+ *
+ * When bundleRuntimeDeps is true: Docker BundlingOptions pip-install requirements.txt
+ * into the asset ZIP so BedrockAgentCoreApp and all other deps are present at runtime.
+ * When false (default): raw source ZIP — runtimes won't start until deps are bundled
+ * via the portable Option C path (scripts/build-runtimes.sh → fromS3).
+ */
+function makeArtifact(
+  componentRelPath: string,
+  bundleRuntimeDeps: boolean,
+): agentcore.AgentRuntimeArtifact {
+  const assetPath = componentPath(componentRelPath);
+  if (bundleRuntimeDeps) {
+    return agentcore.AgentRuntimeArtifact.fromCodeAsset({
+      path: assetPath,
+      runtime: PYTHON_3_12,
+      entrypoint: ENTRYPOINT,
+      bundling: {
+        // pip-install into /asset-output so all deps (bedrock-agentcore, rdflib, etc.)
+        // are present when AgentCore executes main.py inside the microVM.
+        image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+        command: [
+          "bash", "-c",
+          "pip install -r requirements.txt -t /asset-output --quiet && cp -r . /asset-output/",
+        ],
+      },
+    });
+  }
+  return agentcore.AgentRuntimeArtifact.fromCodeAsset({
+    path: assetPath,
+    runtime: PYTHON_3_12,
+    entrypoint: ENTRYPOINT,
+  });
 }
 
 export class AgentCoreRuntimesConstruct extends Construct {
@@ -91,6 +168,19 @@ export class AgentCoreRuntimesConstruct extends Construct {
   constructor(scope: Construct, id: string, props: AgentCoreRuntimesProps) {
     super(scope, id);
 
+    const bundle = props.bundleRuntimeDeps ?? false;
+
+    // VPC mode: place runtime ENIs in the private subnets so they can reach
+    // Neptune on port 8182. Neptune's SG allows the full VPC CIDR at 8182,
+    // so no additional ingress rule is needed. CDK auto-creates a dedicated
+    // security group with allowAllOutbound=true — runtimes reach Bedrock and
+    // S3 via the existing NAT gateway. VPC mode is the committed default (not
+    // gated) because the runtimes must reach Neptune in every deployment.
+    const networkConfig = agentcore.RuntimeNetworkConfiguration.usingVpc(this, {
+      vpc: props.vpc,
+      vpcSubnets: { subnets: props.privateSubnets },
+    });
+
     const authConfig = agentcore.RuntimeAuthorizerConfiguration.usingCognito(
       props.userPool,
       [props.userPoolClient],
@@ -103,12 +193,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasShaclMcp = new agentcore.Runtime(this, "AtlasShaclMcp", {
       runtimeName: "atlas_shacl_mcp",
       description: "SHACL shape validation against the ATLAS ontology",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("mcp-servers/atlas-shacl-mcp"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-shacl-mcp", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         SHAPES_S3_URI: `s3://${props.ontologyStagingBucket}/ontology/atlas-shapes.ttl`,
       },
@@ -118,12 +205,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasSparqlMcp = new agentcore.Runtime(this, "AtlasSparqlMcp", {
       runtimeName: "atlas_sparql_mcp",
       description: "SPARQL query execution against Neptune SLGD/LGD and Ontop",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("mcp-servers/atlas-sparql-mcp"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-sparql-mcp", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         NEPTUNE_SLGD_ENDPOINT: props.neptuneSlgdEndpoint,
         NEPTUNE_LGD_ENDPOINT: props.neptuneLgdEndpoint,
@@ -136,12 +220,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasErMcp = new agentcore.Runtime(this, "AtlasErMcp", {
       runtimeName: "atlas_er_mcp",
       description: "AWS Entity Resolution workflow invocation",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("mcp-servers/atlas-er-mcp"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-er-mcp", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         ER_WORKFLOW_NAME: "atlas-entity-resolution",
       },
@@ -151,12 +232,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasFiboMcp = new agentcore.Runtime(this, "AtlasFiboMcp", {
       runtimeName: "atlas_fibo_mcp",
       description: "FIBO class and property lookup via atlas-sparql-mcp",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("mcp-servers/atlas-fibo-mcp"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-fibo-mcp", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
       },
@@ -166,12 +244,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasRegistryMcp = new agentcore.Runtime(this, "AtlasRegistryMcp", {
       runtimeName: "atlas_registry_mcp",
       description: "Agent Registry discovery and capability listing",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("mcp-servers/atlas-registry-mcp"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-registry-mcp", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         REGISTRY_ENDPOINT: props.registryEndpoint ?? "",
       },
@@ -183,12 +258,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.nlToSparqlAgent = new agentcore.Runtime(this, "NlToSparqlAgent", {
       runtimeName: "nl_to_sparql_agent",
       description: "Translates natural-language questions into validated SPARQL",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("agents/nl-to-sparql-agent"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("agents/nl-to-sparql-agent", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         GROUND_TRUTH_S3_URI: `s3://${props.ontologyStagingBucket}/prompts/ground-truth.yaml`,
         PREFIXES_S3_URI: `s3://${props.ontologyStagingBucket}/prompts/prefixes.txt`,
@@ -204,12 +276,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "wealth_signal_detector",
         description: "Detects wealth-event signals via SPARQL and SHACL validation",
-        agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-          path: componentPath("agents/wealth-signal-detector"),
-          runtime: PYTHON_3_12,
-          entrypoint: ENTRYPOINT,
-        }),
+        agentRuntimeArtifact: makeArtifact("agents/wealth-signal-detector", bundle),
         authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
         environmentVariables: {
           SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
           SHACL_MCP_ARN: this.atlasShaclMcp.agentRuntimeArn,
@@ -222,12 +291,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.householdTraverser = new agentcore.Runtime(this, "HouseholdTraverser", {
       runtimeName: "household_traverser",
       description: "Traverses household membership and relationship graphs",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("agents/household-traverser"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("agents/household-traverser", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
       },
@@ -240,12 +306,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "referral_rationale_drafter",
         description: "Drafts probabilistic wealth-referral rationale for human review",
-        agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-          path: componentPath("agents/referral-rationale-drafter"),
-          runtime: PYTHON_3_12,
-          entrypoint: ENTRYPOINT,
-        }),
+        agentRuntimeArtifact: makeArtifact("agents/referral-rationale-drafter", bundle),
         authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
         environmentVariables: {
           SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
           BEDROCK_TEXT_MODEL_ID: "us.anthropic.claude-sonnet-4-6",
@@ -265,12 +328,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "behavioral_signal_agent",
         description: "Detects behavioral anomaly signals via SPARQL and SHACL",
-        agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-          path: componentPath("agents/behavioral-signal-agent"),
-          runtime: PYTHON_3_12,
-          entrypoint: ENTRYPOINT,
-        }),
+        agentRuntimeArtifact: makeArtifact("agents/behavioral-signal-agent", bundle),
         authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
         environmentVariables: {
           SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
           SHACL_MCP_ARN: this.atlasShaclMcp.agentRuntimeArn,
@@ -285,12 +345,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.themeSummarizer = new agentcore.Runtime(this, "ThemeSummarizer", {
       runtimeName: "theme_summarizer",
       description: "Summarizes wealth themes as LLM-generated narrative for review",
-      agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-        path: componentPath("agents/theme-summarizer"),
-        runtime: PYTHON_3_12,
-        entrypoint: ENTRYPOINT,
-      }),
+      agentRuntimeArtifact: makeArtifact("agents/theme-summarizer", bundle),
       authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
       environmentVariables: {
         SPARQL_MCP_ARN: this.atlasSparqlMcp.agentRuntimeArn,
         BEDROCK_TEXT_MODEL_ID: "us.anthropic.claude-sonnet-4-6",
@@ -305,12 +362,9 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "conversational_context_manager",
         description: "Multi-turn conversation with AgentCore Memory persistence",
-        agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
-          path: componentPath("agents/conversational-context-manager"),
-          runtime: PYTHON_3_12,
-          entrypoint: ENTRYPOINT,
-        }),
+        agentRuntimeArtifact: makeArtifact("agents/conversational-context-manager", bundle),
         authorizerConfiguration: authConfig,
+      networkConfiguration: networkConfig,
         environmentVariables: {
           NL_TO_SPARQL_AGENT_ARN: this.nlToSparqlAgent.agentRuntimeArn,
           AGENTCORE_MEMORY_NAMESPACE: "atlas-wealth-conv",
@@ -343,5 +397,23 @@ export class AgentCoreRuntimesConstruct extends Construct {
 
     // conversational-context-manager is the only Runtime with Memory access
     props.memory.memory.grantFullAccess(this.conversationalContextManager);
+
+    // Attach atlas-neptune-iam-auth to every runtime execution role so runtimes
+    // can call Neptune with SigV4 IAM auth. This is the L1 fix for the long-tracked
+    // gap: WS1 creates the policy but never attaches it to anything. Each attachment
+    // gets a unique construct ID to avoid collisions.
+    const neptunePolicy = iam.ManagedPolicy.fromManagedPolicyArn(
+      this, "NeptuneIamAuthPolicy", props.neptuneIamAuthPolicyArn,
+    );
+    const allRuntimes = [
+      this.atlasShaclMcp, this.atlasSparqlMcp, this.atlasErMcp,
+      this.atlasFiboMcp, this.atlasRegistryMcp, this.nlToSparqlAgent,
+      this.wealthSignalDetector, this.householdTraverser,
+      this.referralRationaleDrafter, this.behavioralSignalAgent,
+      this.themeSummarizer, this.conversationalContextManager,
+    ];
+    for (const runtime of allRuntimes) {
+      runtime.role.addManagedPolicy(neptunePolicy);
+    }
   }
 }
