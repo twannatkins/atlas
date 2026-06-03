@@ -190,6 +190,28 @@ are both fully deployed and verified** in this environment. Reasons:
 | G1 | **AgentCore entrypoint** — `["opentelemetry-instrument","main.py"]` failed at runtime (OTEL exe not in raw source ZIP). `["python","main.py"]` rejected by AgentCore server-side validator (system executables blocked as launchers). | Changed to `["main.py"]` — the managed PYTHON_3_12 runtime invokes the script directly. Confirmed via live API probe: passes entrypoint validation, advances to S3 check. | `FIXED` |
 | G1-OBS | **Observability accuracy** — prior tracking overstated the gap as "removes distributed tracing (publication blocker)." Research confirmed: AgentCore provides **native CloudWatch observability automatically** (per-invocation metrics, spans, logs, trace IDs) without bundling OTEL. `opentelemetry-instrument` is optional enhancement for *custom framework-level traces* (LangGraph reasoning steps, GenAI semantic convention spans) — not required for SR 11-7 baseline audit coverage. | No action needed for capstone. If richer framework tracing is desired, bundle ADOT via `BundlingOptions` + Docker or a pre-built container image in a future pass. | `INFORMATIONAL` |
 | G2 | **Memory rollback-race** — AgentCore Memory orphaned (billing) during rollback because CFN could provision Memory while runtimes were still creating; a runtime failure then left Memory in CREATING state (cannot delete mid-transition). | Added 33-entry `DependsOn` on Memory construct: all 11 non-CCM runtimes + their roles/policies. CCM excluded (would cycle via `grantFullAccess` token). Memory now creates only after 11 runtimes succeed. Confirmed working: zero Memory CREATE_FAILED on the race-fix deploy. | `FIXED` (partial — CCM-specific failure residual risk remains; see comment in `agentcore-runtimes.ts`) |
+| G3 | **Runtime dependency packaging** — all 12 `main.py` files import `from bedrock_agentcore.runtime import BedrockAgentCoreApp` (a ~600-line Starlette/uvicorn ASGI server for the AgentCore `/invocations` + `/ping` HTTP contract). `bedrock-agentcore` was missing from every `requirements.txt` and `fromCodeAsset` ships a raw source ZIP with no `pip install`. Runtimes fail on import → 30s timeout. CREATE_COMPLETE is deceptive: the runtimes provision green but crash at first invocation. | Added `bedrock-agentcore==1.11.0` to all 12 `requirements.txt`. Added gated `bundleRuntimeDeps` flag (default OFF) to `agentcore-runtimes.ts`: when `true`, Docker BundlingOptions pip-install the requirements into the ZIP at synth time. **Flag is OFF by default** — committed repo still ships raw ZIPs (Studio-safe). Enable with `-c bundleRuntimeDeps=true` for environments with Docker at synth. See below for the publication fix. | `PARTIAL` — capstone works with flag ON; publication requires Option C (see below) |
+
+**G3 — Runtime packaging: publication fix required (PUBLICATION BLOCKER)**
+
+The gated Docker BundlingOptions closes the gap for local development (Docker running), but is **self-biting for the published workshop**: SageMaker Studio / SageMaker Unified Studio notebook kernels have no Docker daemon. A runner following the workshop from Studio (the intended environment) cannot run `cdk synth` with `bundleRuntimeDeps=true` — it fails immediately.
+
+**Option C — portable pre-bundled ZIPs (the publication fix, no Docker at synth):**
+
+Create `scripts/build-runtimes.sh`. For each of the 12 runtimes:
+```bash
+cd <runtime-dir>
+pip install -r requirements.txt -t ./build --quiet
+cp *.py ./build/
+zip -r runtime-<name>.zip build/
+aws s3 cp runtime-<name>.zip s3://<staging-bucket>/runtimes/<name>.zip
+```
+Then update `agentcore-runtimes.ts` to use `AgentRuntimeArtifact.fromS3(...)` referencing the pre-built ZIPs in the staging bucket. CDK synth needs no Docker — it just reads the S3 key. The build script is a documented workshop prerequisite (run once after deploying WS1, before deploying WS2).
+
+**Option B — ECR images (AWS-canonical pattern, production-shape):**
+Per `agentcore-samples` CDK examples: build a Docker image per runtime (or a shared base), push to ECR, reference via `fromImageUri`. CodeBuild + ECR is the AWS-recommended path. Requires a build pipeline but zero Docker at `cdk synth`. This is the right long-term answer if the workshop evolves toward production-shaped deployment.
+
+**Status:** Option C is the PUBLICATION BLOCKER — the workshop cannot be published without it or Option B. Tracked here; the gated flag is the capstone-proof bridge.
 
 ---
 
