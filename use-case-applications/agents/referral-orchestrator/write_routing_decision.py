@@ -1,26 +1,26 @@
 """
 write-routing-decision — Step Functions sub-Lambda #3.
 
-Writes the atlas:RoutingDecision to the SLGD with full PROV-O attribution.
+Writes atlas:RoutingDecision to SLGD with PROV-O attribution.
+Calls Neptune directly (SigV4 POST UPDATE).
+
+selectedRoute value is "ROUTE_ADVISOR_QUEUE" — the conformant value from
+the closed set enforced by atlas:RoutingPolicyShape. The prior value
+"route_to_advisor" was not in the closed set and would fail SHACL.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 import uuid
 from typing import Any, Dict
 
-from atlas_sparql import prefixed
-
-import boto3
+from neptune_client import sparql_update
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -34,14 +34,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     routing_decision_uri = f"atlas:routing/{invocation_id}"
 
-    # Build INSERT with PROV-O attribution
+    # selectedRoute = "ROUTE_ADVISOR_QUEUE" — the conformant closed-set value.
+    # atlas:RoutingPolicyShape (atlas-shapes.ttl) requires exactly one of:
+    # ROUTE_ADVISOR_QUEUE, ROUTE_SUPPRESSION_LIST, ROUTE_ESCALATION.
     insert_sparql = f"""
     PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
     PREFIX prov: <http://www.w3.org/ns/prov#>
     PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
     INSERT DATA {{
         <{routing_decision_uri}> a atlas:RoutingDecision ;
-            atlas:selectedRoute "route_to_advisor" ;
+            atlas:selectedRoute "ROUTE_ADVISOR_QUEUE" ;
             atlas:targetAdvisor <{selected_advisor_uri}> ;
             atlas:aboutHousehold <{household_uri}> ;
             atlas:approvedRationale "{_escape_sparql(approved_rationale)}" ;
@@ -52,25 +54,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
 
     try:
-        agentcore_client = boto3.client("bedrock-agentcore")
-        response = agentcore_client.invoke_agent_runtime(
-            agentRuntimeArn=SPARQL_MCP_ARN,
-            payload=json.dumps({
-                "operation": "update",
-                "sparql": insert_sparql,
-                "persona_claim": persona_claim,
-            }).encode(),
-            contentType="application/json",
-        )
-        result = json.loads(response["response"].read())
-        if result.get("status") == "error":
-            return {**event, "status": "workflow_error", "error": result.get("message", "Write failed")}
+        sparql_update(insert_sparql)
     except Exception as exc:
+        logger.error(json.dumps({"invocation_id": invocation_id, "error": str(exc)}))
         return {**event, "status": "workflow_error", "error": str(exc)}
 
+    logger.info(json.dumps({
+        "invocation_id": invocation_id,
+        "event": "routing_decision_written",
+        "routing_decision_uri": routing_decision_uri,
+    }))
     return {**event, "status": "decision_written", "routing_decision_uri": routing_decision_uri}
 
 
 def _escape_sparql(text: str) -> str:
-    """Escape special characters for SPARQL string literals."""
     return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")

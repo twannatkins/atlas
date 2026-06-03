@@ -1,8 +1,15 @@
 """
 select-advisor — Step Functions sub-Lambda #1.
 
-Queries the SLGD for advisors with capacity, specialization match,
-and geographic proximity. Returns ranked candidates.
+Queries the SLGD for advisors and selects a candidate for the referral.
+Calls Neptune directly (SigV4 POST) — the AgentCore SPARQL MCP runtime
+uses JWT-only auth with no backend SigV4 path.
+
+Advisor predicate inventory (confirmed from SLGD):
+  atlas:advisorId, rdf:type, atlas:promotedFrom, atlas:promotedBy.
+rdfs:label and atlas:currentCapacity are NOT populated for synthetic
+advisors. Selection is first-match (capacity ranking deferred to when
+real advisor data is available).
 """
 
 from __future__ import annotations
@@ -10,63 +17,56 @@ from __future__ import annotations
 import json
 import logging
 import os
-import time
 import uuid
 from typing import Any, Dict
 
-import boto3
+from neptune_client import sparql_query
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
-
+# ADVISOR_QUERY uses only populated predicates (advisorId confirmed in SLGD).
+# rdfs:label and atlas:currentCapacity are absent in synthetic data — querying
+# them would return zero rows. Label falls back to the advisorId.
 ADVISOR_QUERY = """
-SELECT ?advisor ?label ?capacity ?specialization WHERE {{
+PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
+SELECT ?advisor ?advisorId WHERE {
     ?advisor a atlas:Advisor ;
-        rdfs:label ?label .
-    OPTIONAL {{ ?advisor atlas:currentCapacity ?capacity }}
-    OPTIONAL {{ ?advisor atlas:specialization ?specialization }}
-    OPTIONAL {{ ?advisor atlas:onLeave ?leave }}
-    FILTER(!bound(?leave) || ?leave != true)
-}}
-ORDER BY DESC(?capacity)
+             atlas:advisorId ?advisorId .
+}
+LIMIT 9
 """
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Select eligible advisors for the referral."""
+    """Select an eligible advisor for the referral."""
     invocation_id = event.get("invocation_id", str(uuid.uuid4()))
-    start_time = time.time()
 
-    household_uri = event.get("household_uri", "")
     persona_claim = event.get("persona_claim", "atlas-consumer-banker")
 
     try:
-        agentcore_client = boto3.client("bedrock-agentcore")
-        response = agentcore_client.invoke_agent_runtime(
-            agentRuntimeArn=SPARQL_MCP_ARN,
-            payload=json.dumps({
-                "operation": "query",
-                "sparql": ADVISOR_QUERY,
-                "persona_claim": persona_claim,
-                "graph_tier": "slgd",
-            }).encode(),
-            contentType="application/json",
-        )
-        result = json.loads(response["response"].read())
-        advisors = result.get("rows", [])
+        advisors = sparql_query(ADVISOR_QUERY, graph_tier="slgd")
 
         if not advisors:
+            logger.warning(json.dumps({"invocation_id": invocation_id, "warning": "No advisors found in SLGD"}))
             return {**event, "status": "no_eligible_advisor", "selected_advisor_uri": "", "candidates": []}
 
-        # Select top candidate
         selected = advisors[0]
+        advisor_uri = selected.get("advisor", "")
+        advisor_label = selected.get("advisorId", advisor_uri)  # fallback to ID
+
+        logger.info(json.dumps({
+            "invocation_id": invocation_id,
+            "event": "advisor_selected",
+            "advisor_uri": advisor_uri,
+            "total_candidates": len(advisors),
+        }))
+
         return {
             **event,
             "status": "advisor_selected",
-            "selected_advisor_uri": selected.get("advisor", ""),
-            "selected_advisor_label": selected.get("label", ""),
+            "selected_advisor_uri": advisor_uri,
+            "selected_advisor_label": advisor_label,
             "candidates": advisors[:5],
         }
 

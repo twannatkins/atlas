@@ -1,27 +1,22 @@
 """
 audit-write — Step Functions sub-Lambda #5.
 
-Writes the complete handoff record to atlas:AuditRecord with PROV-O
-attribution. This is the final step in the orchestration workflow.
+Writes atlas:AuditRecord with PROV-O attribution.
+Calls Neptune directly (SigV4 POST UPDATE).
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 import uuid
 from typing import Any, Dict
 
-from atlas_sparql import prefixed
-
-import boto3
+from neptune_client import sparql_update
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -32,11 +27,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     originating_banker_id = event.get("originating_banker_id", "")
     routing_decision_uri = event.get("routing_decision_uri", "")
     signal_uris = event.get("signal_uris", [])
-    persona_claim = event.get("persona_claim", "atlas-consumer-banker")
 
     audit_record_uri = f"atlas:audit/{invocation_id}"
 
-    # Build audit INSERT with full PROV-O attribution
     signals_triples = "\n".join(
         f'        <{audit_record_uri}> atlas:referencesSignal <{s}> .'
         for s in signal_uris
@@ -60,22 +53,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
 
     try:
-        agentcore_client = boto3.client("bedrock-agentcore")
-        response = agentcore_client.invoke_agent_runtime(
-            agentRuntimeArn=SPARQL_MCP_ARN,
-            payload=json.dumps({
-                "operation": "update",
-                "sparql": insert_sparql,
-                "persona_claim": persona_claim,
-            }).encode(),
-            contentType="application/json",
-        )
-        result = json.loads(response["response"].read())
-        if result.get("status") == "error":
-            return {**event, "status": "workflow_error", "error": result.get("message", "Audit write failed")}
+        sparql_update(insert_sparql)
     except Exception as exc:
+        logger.error(json.dumps({"invocation_id": invocation_id, "error": str(exc)}))
         return {**event, "status": "workflow_error", "error": str(exc)}
 
+    logger.info(json.dumps({
+        "invocation_id": invocation_id,
+        "event": "audit_written",
+        "audit_record_uri": audit_record_uri,
+    }))
     return {
         **event,
         "status": "routed",
