@@ -15,6 +15,11 @@ node_modules/
 # Notebook outputs (regenerated on run)
 notebooks/**/output/
 
+# Next.js build output (regenerated on every build)
+.next/
+out/
+next-env.d.ts
+
 # Local infrastructure state
 *.tfstate
 .terraform/
@@ -24,3 +29,4 @@ notebooks/**/output/
 .pytest_cache/
 .ruff_cache/
 delivery-plan/
+.env.local
