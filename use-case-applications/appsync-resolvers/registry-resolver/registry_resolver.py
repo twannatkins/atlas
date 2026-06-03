@@ -18,19 +18,36 @@ import time
 import uuid
 from typing import Any, Dict
 
-import boto3
+import urllib.parse
+import urllib.request
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 REGISTRY_MCP_ARN = os.environ.get("REGISTRY_MCP_ARN", "")
 
+def _agentcore_endpoint(runtime_arn: str) -> str:
+    encoded = urllib.parse.quote(runtime_arn, safe="")
+    return f"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/{encoded}/invocations"
+
+def _invoke_agentcore(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(_agentcore_endpoint(runtime_arn), data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", f"Bearer {bearer_token}")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+_current_bearer_token: str = ""
+
 
 def handler(event: Dict[str, Any], context: Any) -> Any:
     """AppSync resolver entry point for registry operations."""
+    global _current_bearer_token
     field_name = event.get("info", {}).get("fieldName", "")
     arguments = event.get("arguments", {})
     identity = event.get("identity", {})
+    _current_bearer_token = (event.get("request") or {}).get("headers", {}).get("authorization", "")
 
     persona_claim = _extract_persona(identity)
 
@@ -67,17 +84,20 @@ def _resolve_capabilities(args: Dict, persona: str) -> list:
     agents = result.get("agents", [])
     mcp_servers = result.get("mcp_servers", [])
 
-    # Map to GraphQL Capability type
+    # Map to GraphQL Capability type.
+    # Supports both shapes:
+    #   - AWS Agent Registry records (nested registryMetadata with snake_case keys)
+    #   - ATLAS embedded fallback descriptors (flat camelCase keys on the agent dict)
     capabilities = []
     for agent in agents:
         meta = agent.get("registryMetadata", agent.get("registry_metadata", {}))
         capabilities.append({
             "name": agent.get("agentName", agent.get("name", "")),
-            "displayName": meta.get("display_name", ""),
-            "displayIcon": meta.get("display_icon", ""),
+            "displayName": meta.get("display_name", agent.get("displayName", "")),
+            "displayIcon": meta.get("display_icon", agent.get("displayIcon", "")),
             "posture": agent.get("posture", ""),
-            "capabilityTag": meta.get("capability_tag", ""),
-            "phase": meta.get("phase", 1),
+            "capabilityTag": meta.get("capability_tag", agent.get("capabilityTag", "")),
+            "phase": meta.get("phase", agent.get("phase", 1)),
         })
     return capabilities
 
@@ -148,14 +168,8 @@ def _resolve_detect_signals(args: Dict, persona: str) -> list:
 
 
 def _invoke_registry(operation: str, payload: Dict) -> Dict:
-    """Invoke atlas-registry-mcp."""
-    lambda_client = boto3.client("lambda")
-    response = lambda_client.invoke(
-        FunctionName=REGISTRY_MCP_ARN,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({"operation": operation, **payload}),
-    )
-    result = json.loads(response["Payload"].read())
+    """Invoke atlas-registry-mcp via AgentCore HTTP."""
+    result = _invoke_agentcore(REGISTRY_MCP_ARN, {"operation": operation, **payload}, _current_bearer_token)
     if result.get("status") == "error":
         raise RuntimeError(result.get("message", "Registry MCP error"))
     return result

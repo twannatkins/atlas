@@ -126,12 +126,19 @@ def _handle_query(event: Dict[str, Any], invocation_id: str, start_time: float) 
     endpoint = NEPTUNE_SLGD_ENDPOINT if graph_tier == "slgd" else NEPTUNE_LGD_ENDPOINT
     sparql_url = f"https://{endpoint}:8182/sparql"
 
-    # Execute query with SigV4-signed request
+    # Execute query with SigV4-signed POST request.
+    # POST is required for SPARQL queries containing PREFIX ... <https://...> IRIs:
+    # Neptune's SigV4 canonicalization of GET query strings re-encodes the percent-encoded
+    # characters in IRI literals, causing a signature mismatch and 403. Placing the query
+    # in the POST body avoids query-string canonicalization entirely.
     try:
-        query_url = f"{sparql_url}?query={url_quote(validated_sparql)}"
-        headers = {"Accept": "application/sparql-results+json"}
-        signed_headers = _sigv4_headers("GET", query_url, headers)
-        response = http_requests.get(query_url, headers=signed_headers, timeout=30)
+        body = f"query={url_quote(validated_sparql)}"
+        headers = {
+            "Accept": "application/sparql-results+json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        signed_headers = _sigv4_headers("POST", sparql_url, headers, body)
+        response = http_requests.post(sparql_url, data=body, headers=signed_headers, timeout=30)
         if response.status_code == 403:
             return _error_response(
                 invocation_id, start_time, "neptune_auth_error",
@@ -226,13 +233,16 @@ def _handle_construct_and_validate(event: Dict[str, Any], invocation_id: str, st
     except AtlasSPARQLError as exc:
         return _error_response(invocation_id, start_time, "sparql_validation_error", str(exc))
 
-    # Execute CONSTRUCT with SigV4-signed request
+    # Execute CONSTRUCT with SigV4-signed POST request (same reason as _handle_query).
     sparql_url = f"https://{NEPTUNE_SLGD_ENDPOINT}:8182/sparql"
     try:
-        query_url = f"{sparql_url}?query={url_quote(validated_sparql)}"
-        headers = {"Accept": "application/sparql-results+json"}
-        signed_headers = _sigv4_headers("GET", query_url, headers)
-        response = http_requests.get(query_url, headers=signed_headers, timeout=30)
+        body = f"query={url_quote(validated_sparql)}"
+        headers = {
+            "Accept": "application/sparql-results+json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        signed_headers = _sigv4_headers("POST", sparql_url, headers, body)
+        response = http_requests.post(sparql_url, data=body, headers=signed_headers, timeout=30)
         response.raise_for_status()
         results = response.json()
         triples_minted = _parse_construct_results(results)

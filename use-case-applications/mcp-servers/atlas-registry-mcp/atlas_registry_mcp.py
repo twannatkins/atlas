@@ -22,13 +22,96 @@ import time
 import uuid
 from typing import Any, Dict
 
-import boto3
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Environment
 REGISTRY_ENDPOINT = os.environ.get("REGISTRY_ENDPOINT", "")
+
+# ── Agent Registry integration ────────────────────────────────────────────────
+#
+# AWS Agent Registry is in Preview (as of 2026). This MCP supports two paths:
+#
+#   PATH A — AWS Agent Registry (when available and populated):
+#     When ATLAS_REGISTRY_ID is set and the registry has APPROVED records, we
+#     search the live registry via bedrock-agentcore-control.search_registry_records().
+#     Each approved record carries a CUSTOM descriptor whose inlineContent JSON
+#     embeds the ATLAS capability metadata (display_name, capability_tag, phase,
+#     discoverable_by). This is the production-shape path that the workshop teaches.
+#
+#   PATH B — Embedded descriptor fallback (default / Preview workaround):
+#     When Agent Registry is unavailable (not enabled, no records, or service
+#     errors), we fall back to the descriptor JSON metadata embedded below.
+#     The same metadata lives authoritatively in spec/04-aws-agent-registry/.
+#     This path requires zero service dependencies and works in any account.
+#
+# To switch to PATH A:
+#   1. Enable AWS Agent Registry in your account.
+#   2. Run the registration script (spec/04-aws-agent-registry/register.py) to
+#      publish and approve ATLAS records in a registry named "atlas-workshop-2".
+#   3. Set the ATLAS_REGISTRY_ID env var on this runtime (the registry's 12-char ID).
+#   The MCP will automatically prefer PATH A when ATLAS_REGISTRY_ID is present
+#   and the registry returns records; it falls back to PATH B otherwise.
+
+ATLAS_REGISTRY_ID = os.environ.get("ATLAS_REGISTRY_ID", "")
+
+# Embedded capability descriptors — PATH B fallback.
+# Mirrors the JSON files in spec/04-aws-agent-registry/agents/ and mcp-servers/.
+# Update here when those descriptors change.
+_CAPABILITIES_FALLBACK = [
+    {"name": "household-traverser",           "displayName": "Traverse household",              "displayIcon": "affiliate",   "posture": "read",      "capabilityTag": "deterministic",  "phase": 1, "discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward"]},
+    {"name": "nl-to-sparql-agent",            "displayName": "Ask the graph",                   "displayIcon": "search",      "posture": "read",      "capabilityTag": "deterministic",  "phase": 1, "discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-bsa-analyst", "atlas-ontology-steward"]},
+    {"name": "referral-orchestrator",         "displayName": "Route to advisor",                "displayIcon": "route",       "posture": "write",     "capabilityTag": "workflow",       "phase": 1, "discoverable_by": ["atlas-consumer-banker"]},
+    {"name": "referral-rationale-drafter",    "displayName": "Draft referral rationale",        "displayIcon": "messages",    "posture": "generate",  "capabilityTag": "human-in-loop",  "phase": 1, "discoverable_by": ["atlas-consumer-banker"]},
+    {"name": "wealth-signal-detector",        "displayName": "Detect wealth signals",           "displayIcon": "radar",       "posture": "read",      "capabilityTag": "deterministic",  "phase": 1, "discoverable_by": ["atlas-consumer-banker", "atlas-wealth-advisor", "atlas-ontology-steward"]},
+    {"name": "behavioral-signal-agent",       "displayName": "Detect behavioral signals",       "displayIcon": "activity",    "posture": "read",      "capabilityTag": "deterministic",  "phase": 2, "discoverable_by": ["atlas-wealth-advisor"]},
+    {"name": "conversational-context-manager","displayName": "Ask the graph (conversational)",  "displayIcon": "message-2",   "posture": "read",      "capabilityTag": "memory-backed",  "phase": 2, "discoverable_by": ["atlas-wealth-advisor"]},
+    {"name": "theme-summarizer",              "displayName": "Summarize theme",                 "displayIcon": "newspaper",   "posture": "generate",  "capabilityTag": "informational",  "phase": 2, "discoverable_by": ["atlas-wealth-advisor"]},
+]
+
+
+def _list_capabilities_from_registry(persona_claim: str) -> list:
+    """PATH A — query AWS Agent Registry for approved ATLAS capability records.
+
+    Searches the registry for records whose CUSTOM descriptor inlineContent carries
+    a discoverable_by list that includes the given persona. Falls back to an empty
+    list (triggering PATH B) on any error, including service unavailability.
+    """
+    if not ATLAS_REGISTRY_ID:
+        return []
+    try:
+        import boto3 as _boto3
+        client = _boto3.client("bedrock-agentcore-control")
+        response = client.search_registry_records(
+            registryId=ATLAS_REGISTRY_ID,
+            search_query=f"ATLAS capabilities for persona {persona_claim}",
+            max_results=20,
+        )
+        capabilities = []
+        for record in response.get("registryRecordSummaries", []):
+            try:
+                descriptor_content = record.get("descriptors", {}).get("custom", {}).get("inlineContent", "{}")
+                meta = json.loads(descriptor_content)
+                discoverable_by = meta.get("discoverable_by", [])
+                if not discoverable_by or persona_claim in discoverable_by:
+                    capabilities.append({
+                        "name": record.get("name", ""),
+                        "displayName": meta.get("display_name", record.get("description", "")),
+                        "displayIcon": meta.get("display_icon", ""),
+                        "posture": meta.get("posture", ""),
+                        "capabilityTag": meta.get("capability_tag", ""),
+                        "phase": meta.get("phase", 1),
+                        "discoverable_by": discoverable_by,
+                    })
+            except Exception:
+                continue
+        return capabilities
+    except Exception as exc:
+        logger.info(json.dumps({
+            "event": "registry_fallback",
+            "reason": f"AWS Agent Registry unavailable or returned error: {exc}. Using embedded descriptors.",
+        }))
+        return []
 
 VALID_PERSONAS = [
     "atlas-consumer-banker",
@@ -79,15 +162,17 @@ def _handle_list_capabilities(event: Dict[str, Any], invocation_id: str, start_t
         return _error_response(invocation_id, start_time, "validation_error", f"persona_claim must be one of: {VALID_PERSONAS}")
 
     try:
-        agentcore_client = boto3.client("bedrock-agentcore")
-
-        # List agents filtered by persona
-        agents_response = agentcore_client.list_agents()
-        agents = _filter_by_persona(agents_response.get("agents", []), persona_claim)
-
-        # List MCP servers (all are discoverable by all personas in Phase 1)
-        mcp_response = agentcore_client.list_agents()  # Registry uses same API
-        mcp_servers = _filter_by_persona(mcp_response.get("mcpServers", []), persona_claim)
+        # PATH A — try live AWS Agent Registry first (when ATLAS_REGISTRY_ID is set).
+        # PATH B — fall back to embedded descriptors if registry is unavailable/empty.
+        # The fallback is intentional for accounts where Agent Registry (Preview) is
+        # not enabled or has not been populated via the registration script.
+        agents = _list_capabilities_from_registry(persona_claim)
+        if not agents:
+            agents = _filter_by_persona(_CAPABILITIES_FALLBACK, persona_claim)
+            logger.info(json.dumps({"event": "using_fallback_registry", "persona": persona_claim, "count": len(agents)}))
+        else:
+            logger.info(json.dumps({"event": "using_aws_registry", "persona": persona_claim, "count": len(agents)}))
+        mcp_servers = []  # MCP servers are infrastructure; only agents surface in the UI palette
 
     except Exception as exc:
         return _error_response(invocation_id, start_time, "registry_error", f"Agent Registry query failed: {exc}")
@@ -195,10 +280,18 @@ def _handle_invoke_capability(event: Dict[str, Any], invocation_id: str, start_t
 
 
 def _filter_by_persona(items: list, persona_claim: str) -> list:
-    """Filter registry items by persona claim discoverable_by field."""
+    """Filter capabilities by persona claim.
+
+    Checks top-level discoverable_by (the _CAPABILITIES format) first,
+    then falls back to registryMetadata.discoverable_by for legacy shapes.
+    An empty or absent discoverable_by list means discoverable by all personas.
+    """
     filtered = []
     for item in items:
-        discoverable_by = item.get("registryMetadata", {}).get("discoverable_by", [])
+        discoverable_by = (
+            item.get("discoverable_by") or
+            item.get("registryMetadata", {}).get("discoverable_by", [])
+        )
         if not discoverable_by or persona_claim in discoverable_by:
             filtered.append(item)
     return filtered
