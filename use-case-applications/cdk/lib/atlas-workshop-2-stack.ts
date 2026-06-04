@@ -136,6 +136,16 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       // Pass -c bundleRuntimeDeps=true to enable for local dev / CI.
       bundleRuntimeDeps:
         this.node.tryGetContext("bundleRuntimeDeps") === "true",
+      // Option C — portable pre-built dependency ZIPs in S3 (no Docker at synth).
+      // When set (non-empty), runtimes source their artifact from
+      // s3://<ontologyStagingBucket>/<prefix>/<runtime-name>.zip via fromS3 instead of
+      // fromCodeAsset. This is the Studio-safe way to ship runtimes WITH their deps:
+      // scripts/build-runtimes.sh pip-installs + zips + uploads each runtime, and CDK
+      // just references the S3 key — no Docker daemon required at `cdk synth`.
+      // Default unset (undefined) → existing fromCodeAsset behavior is byte-for-byte
+      // unchanged. Pass -c runtimeArtifactsS3Prefix=runtimes after running the build script.
+      runtimeArtifactsS3Prefix:
+        this.node.tryGetContext("runtimeArtifactsS3Prefix") || undefined,
     });
 
     // ─── 11. AppSync GraphQL API ────────────────────────────────────

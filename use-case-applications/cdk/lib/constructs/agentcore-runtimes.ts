@@ -96,6 +96,28 @@ export interface AgentCoreRuntimesProps {
    * keeps the committed repo Studio-safe.
    */
   readonly bundleRuntimeDeps?: boolean;
+  /**
+   * Option C — portable pre-built runtime artifacts in S3 (the publication fix).
+   *
+   * When set (non-empty), each runtime sources its artifact from a pre-built ZIP at
+   * s3://<ontologyStagingBucket>/<runtimeArtifactsS3Prefix>/<runtime-name>.zip via
+   * AgentRuntimeArtifact.fromS3 — instead of fromCodeAsset. The ZIPs are produced and
+   * uploaded out-of-band by scripts/build-runtimes.sh (pip install -t + zip + s3 cp),
+   * so each ZIP already contains bedrock-agentcore and the runtime's other deps next
+   * to main.py. CDK only references the S3 key, so NO Docker daemon is needed at synth
+   * — this is the only path that is both Studio-safe AND ships working runtimes.
+   *
+   * <runtime-name> is the kebab-case basename of the component source dir
+   * (e.g. "atlas-sparql-mcp", "nl-to-sparql-agent") — see RUNTIME_ARTIFACT_NAMES.
+   *
+   * Default undefined → fromCodeAsset behavior (raw or Docker) is byte-for-byte
+   * unchanged. This flag takes precedence over bundleRuntimeDeps when both are set:
+   * if pre-built S3 ZIPs are named, we use them and never invoke Docker.
+   *
+   * The staging bucket is the runner's own WS1 bucket (props.ontologyStagingBucket),
+   * already a deploy-time input — Option C reuses it, creating no new bucket.
+   */
+  readonly runtimeArtifactsS3Prefix?: string;
 }
 
 // ["main.py"] is the correct no-OTEL entrypoint for fromCodeAsset: the managed
@@ -113,18 +135,51 @@ function componentPath(relativeToUseCase: string): string {
 }
 
 /**
- * Build an AgentRuntimeArtifact for a fromCodeAsset runtime.
+ * Derive the S3 object basename for a component's pre-built ZIP.
+ * The key is "<runtimeArtifactsS3Prefix>/<basename>.zip" where basename is the
+ * kebab-case source-dir name (e.g. "mcp-servers/atlas-sparql-mcp" → "atlas-sparql-mcp").
+ * MUST stay in lockstep with scripts/build-runtimes.sh, which writes the same names.
+ */
+function artifactBasename(componentRelPath: string): string {
+  return componentRelPath.split("/").pop() as string;
+}
+
+/**
+ * Build an AgentRuntimeArtifact for a runtime. THREE packaging paths:
  *
- * When bundleRuntimeDeps is true: Docker BundlingOptions pip-install requirements.txt
- * into the asset ZIP so BedrockAgentCoreApp and all other deps are present at runtime.
- * When false (default): raw source ZIP — runtimes won't start until deps are bundled
- * via the portable Option C path (scripts/build-runtimes.sh → fromS3).
+ *   1. Option C (s3Prefix set) — fromS3: reference a pre-built ZIP at
+ *      s3://<stagingBucket>/<s3Prefix>/<name>.zip. The ZIP (built by
+ *      scripts/build-runtimes.sh) already contains bedrock-agentcore + deps next to
+ *      main.py. NO Docker at synth. Studio-safe AND functional. Takes precedence.
+ *   2. Docker bundling (bundleRuntimeDeps true) — fromCodeAsset + BundlingOptions:
+ *      pip-install requirements.txt into the asset ZIP at synth. Requires a Docker
+ *      daemon (local dev / CI only — unavailable in SageMaker Studio).
+ *   3. Raw source (default) — fromCodeAsset with no bundling: ships source only.
+ *      Runtimes provision green but crash on first invocation (the G3 gap) until
+ *      deps are supplied via path 1 or 2. This is the byte-for-byte committed default.
+ *
+ * Paths 2 and 3 are unchanged from the original implementation; path 1 is additive.
  */
 function makeArtifact(
   componentRelPath: string,
   bundleRuntimeDeps: boolean,
+  stagingBucket: string,
+  s3Prefix?: string,
 ): agentcore.AgentRuntimeArtifact {
+  // ── Path 1: Option C — pre-built S3 ZIP (no Docker). Precedence over Docker. ──
+  if (s3Prefix) {
+    return agentcore.AgentRuntimeArtifact.fromS3(
+      {
+        bucketName: stagingBucket,
+        objectKey: `${s3Prefix}/${artifactBasename(componentRelPath)}.zip`,
+      },
+      PYTHON_3_12,
+      ENTRYPOINT,
+    );
+  }
+
   const assetPath = componentPath(componentRelPath);
+  // ── Path 2: Docker bundling (unchanged) ──
   if (bundleRuntimeDeps) {
     return agentcore.AgentRuntimeArtifact.fromCodeAsset({
       path: assetPath,
@@ -141,6 +196,7 @@ function makeArtifact(
       },
     });
   }
+  // ── Path 3: raw source ZIP (unchanged default) ──
   return agentcore.AgentRuntimeArtifact.fromCodeAsset({
     path: assetPath,
     runtime: PYTHON_3_12,
@@ -169,6 +225,11 @@ export class AgentCoreRuntimesConstruct extends Construct {
     super(scope, id);
 
     const bundle = props.bundleRuntimeDeps ?? false;
+    // Option C: when set, runtimes source pre-built ZIPs from the staging bucket via
+    // fromS3 (no Docker). Threaded into every makeArtifact() call below. Undefined →
+    // the existing fromCodeAsset paths (raw or Docker) are used, unchanged.
+    const s3Prefix = props.runtimeArtifactsS3Prefix;
+    const stagingBucket = props.ontologyStagingBucket;
 
     // VPC mode: place runtime ENIs in the private subnets so they can reach
     // Neptune on port 8182. Neptune's SG allows the full VPC CIDR at 8182,
@@ -193,7 +254,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasShaclMcp = new agentcore.Runtime(this, "AtlasShaclMcp", {
       runtimeName: "atlas_shacl_mcp",
       description: "SHACL shape validation against the ATLAS ontology",
-      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-shacl-mcp", bundle),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-shacl-mcp", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -205,7 +266,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasSparqlMcp = new agentcore.Runtime(this, "AtlasSparqlMcp", {
       runtimeName: "atlas_sparql_mcp",
       description: "SPARQL query execution against Neptune SLGD/LGD and Ontop",
-      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-sparql-mcp", bundle),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-sparql-mcp", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -220,7 +281,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasErMcp = new agentcore.Runtime(this, "AtlasErMcp", {
       runtimeName: "atlas_er_mcp",
       description: "AWS Entity Resolution workflow invocation",
-      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-er-mcp", bundle),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-er-mcp", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -232,7 +293,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasFiboMcp = new agentcore.Runtime(this, "AtlasFiboMcp", {
       runtimeName: "atlas_fibo_mcp",
       description: "FIBO class and property lookup via atlas-sparql-mcp",
-      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-fibo-mcp", bundle),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-fibo-mcp", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -244,7 +305,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.atlasRegistryMcp = new agentcore.Runtime(this, "AtlasRegistryMcp", {
       runtimeName: "atlas_registry_mcp",
       description: "Agent Registry discovery and capability listing",
-      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-registry-mcp", bundle),
+      agentRuntimeArtifact: makeArtifact("mcp-servers/atlas-registry-mcp", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -258,7 +319,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.nlToSparqlAgent = new agentcore.Runtime(this, "NlToSparqlAgent", {
       runtimeName: "nl_to_sparql_agent",
       description: "Translates natural-language questions into validated SPARQL",
-      agentRuntimeArtifact: makeArtifact("agents/nl-to-sparql-agent", bundle),
+      agentRuntimeArtifact: makeArtifact("agents/nl-to-sparql-agent", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -276,7 +337,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "wealth_signal_detector",
         description: "Detects wealth-event signals via SPARQL and SHACL validation",
-        agentRuntimeArtifact: makeArtifact("agents/wealth-signal-detector", bundle),
+        agentRuntimeArtifact: makeArtifact("agents/wealth-signal-detector", bundle, stagingBucket, s3Prefix),
         authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
         environmentVariables: {
@@ -291,7 +352,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.householdTraverser = new agentcore.Runtime(this, "HouseholdTraverser", {
       runtimeName: "household_traverser",
       description: "Traverses household membership and relationship graphs",
-      agentRuntimeArtifact: makeArtifact("agents/household-traverser", bundle),
+      agentRuntimeArtifact: makeArtifact("agents/household-traverser", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -306,7 +367,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "referral_rationale_drafter",
         description: "Drafts probabilistic wealth-referral rationale for human review",
-        agentRuntimeArtifact: makeArtifact("agents/referral-rationale-drafter", bundle),
+        agentRuntimeArtifact: makeArtifact("agents/referral-rationale-drafter", bundle, stagingBucket, s3Prefix),
         authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
         environmentVariables: {
@@ -328,7 +389,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "behavioral_signal_agent",
         description: "Detects behavioral anomaly signals via SPARQL and SHACL",
-        agentRuntimeArtifact: makeArtifact("agents/behavioral-signal-agent", bundle),
+        agentRuntimeArtifact: makeArtifact("agents/behavioral-signal-agent", bundle, stagingBucket, s3Prefix),
         authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
         environmentVariables: {
@@ -345,7 +406,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
     this.themeSummarizer = new agentcore.Runtime(this, "ThemeSummarizer", {
       runtimeName: "theme_summarizer",
       description: "Summarizes wealth themes as LLM-generated narrative for review",
-      agentRuntimeArtifact: makeArtifact("agents/theme-summarizer", bundle),
+      agentRuntimeArtifact: makeArtifact("agents/theme-summarizer", bundle, stagingBucket, s3Prefix),
       authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
       environmentVariables: {
@@ -362,7 +423,7 @@ export class AgentCoreRuntimesConstruct extends Construct {
       {
         runtimeName: "conversational_context_manager",
         description: "Multi-turn conversation with AgentCore Memory persistence",
-        agentRuntimeArtifact: makeArtifact("agents/conversational-context-manager", bundle),
+        agentRuntimeArtifact: makeArtifact("agents/conversational-context-manager", bundle, stagingBucket, s3Prefix),
         authorizerConfiguration: authConfig,
       networkConfiguration: networkConfig,
         environmentVariables: {

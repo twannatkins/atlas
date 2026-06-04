@@ -20,6 +20,10 @@ notebooks/**/output/
 out/
 next-env.d.ts
 
+# Option C runtime packaging — transient pip-install + zip staging dir
+# (scripts/build-runtimes.sh; the artifacts live in S3, never in git)
+.runtime-build/
+
 # Local infrastructure state
 *.tfstate
 .terraform/
