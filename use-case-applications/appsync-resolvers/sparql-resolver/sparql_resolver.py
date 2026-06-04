@@ -190,15 +190,35 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
 
 
 def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
-    """Resolve wealth signals for a customer."""
-    customer_uri = safe_uri(args.get("customerUri", ""))
+    """Resolve wealth signals for a customer OR a household.
+
+    The authoritative link is atlas:producesSignal (Customer -> WealthSignal),
+    per the ontology (atlas-core.ttl:378-383) and the derivation CONSTRUCT
+    (05_entity_resolution.ipynb). The prior query used atlas:aboutCustomer, a
+    predicate that exists in neither the ontology nor the data, so it returned []
+    for every URI.
+
+    The argument may be a customer URI (direct producer) or a household URI (the
+    referral screen is household-scoped). The UNION handles both: a direct match,
+    plus a one-hop atlas:memberOf traversal so a household aggregates its members'
+    signals. SELECT DISTINCT de-duplicates shared HouseholdAggregation signals
+    (signal-has-*) that multiple members produce.
+
+    signalStrength is OPTIONAL and absent in the current synthetic data — it
+    renders empty rather than fabricated.
+    """
+    uri = safe_uri(args.get("customerUri", ""))
     sparql = prefixed(f"""
-        SELECT ?uri ?signalType ?strength ?signalDate WHERE {{
-            ?uri a atlas:WealthSignal ;
-                atlas:aboutCustomer <{customer_uri}> ;
+        SELECT DISTINCT ?uri ?signalType ?strength ?signalDate WHERE {{
+            {{ <{uri}> atlas:producesSignal ?uri_sig }}
+            UNION
+            {{ ?member atlas:memberOf <{uri}> ;
+                       atlas:producesSignal ?uri_sig }}
+            ?uri_sig a atlas:WealthSignal ;
                 atlas:hasSignalType ?signalType .
-            OPTIONAL {{ ?uri atlas:signalStrength ?strength }}
-            OPTIONAL {{ ?uri atlas:signalDate ?signalDate }}
+            BIND(?uri_sig AS ?uri)
+            OPTIONAL {{ ?uri_sig atlas:signalStrength ?strength }}
+            OPTIONAL {{ ?uri_sig atlas:signalDate ?signalDate }}
         }}
     """)
     rows = _query_sparql(sparql, persona)
@@ -207,10 +227,28 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
             "uri": r["uri"],
             "signalType": r.get("signalType", ""),
             "strength": r.get("strength", ""),
-            "signalDate": r.get("signalDate"),
+            # signalDate is typed AWSDateTime in the schema, but the derivation
+            # writes a bare xsd:date (e.g. "2026-03-03"). Normalize a date-only
+            # value to a valid AWSDateTime so AppSync can serialize it; pass through
+            # anything that already carries a time component, and leave null as null.
+            "signalDate": _as_datetime(r.get("signalDate")),
         }
         for r in rows
     ]
+
+
+def _as_datetime(value):
+    """Coerce a bare YYYY-MM-DD date to an AWSDateTime (midnight UTC).
+
+    The schema field is AWSDateTime; the SLGD stores signalDate as xsd:date with
+    no time component, which the AWSDateTime scalar rejects. This is output
+    normalization only — it does not change the stored triple.
+    """
+    if not value:
+        return None
+    if len(value) == 10 and value.count("-") == 2:
+        return f"{value}T00:00:00Z"
+    return value
 
 
 def _resolve_advisory_relationships(args: Dict, persona: str) -> List[Dict]:
