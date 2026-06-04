@@ -11,7 +11,12 @@ import { ProvenanceBadge } from "./provenance-badge";
 
 interface SignalCardProps {
   signalType: string;
-  strength: "strong" | "moderate" | "weak" | "gap";
+  /**
+   * Optional and currently unrendered: there is no derived signalStrength in the
+   * data, so the strength badge is omitted (see render below). Kept on the prop so
+   * a future derived strength can reinstate the badge without a signature change.
+   */
+  strength?: "strong" | "moderate" | "weak" | "gap";
   signalDate?: string;
   provenance?: {
     validatedBy?: string;
@@ -20,7 +25,11 @@ interface SignalCardProps {
   };
 }
 
-/** Human-readable labels for signal types (from SKOS prefLabel) */
+/**
+ * UI-side fallback labels for signal types. The resolver now returns the SKOS
+ * prefLabel for loaded concepts (so signalType usually arrives human-readable);
+ * this map is a fallback for the short WS2 type names when the label is absent.
+ */
 const SIGNAL_LABELS: Record<string, string> = {
   LargeInboundWireSignal: "Large inbound wire",
   SegmentShiftSignal: "Segment shift",
@@ -29,43 +38,31 @@ const SIGNAL_LABELS: Record<string, string> = {
   NetworkInfluenceSignal: "Network influence",
 };
 
-/** Strength descriptions for accessibility */
-const STRENGTH_LABELS: Record<string, string> = {
-  strong: "Strong signal",
-  moderate: "Moderate signal",
-  weak: "Weak signal",
-  gap: "Coverage gap",
-};
-
 export function SignalCard({
   signalType,
-  strength,
   signalDate,
   provenance,
 }: SignalCardProps) {
   const label = SIGNAL_LABELS[signalType] || signalType;
-  const strengthLabel = STRENGTH_LABELS[strength] || strength;
 
+  // Strength badge intentionally omitted: there is no atlas:signalStrength predicate
+  // in the derived data, so any badge ("strong"/"moderate"/"gap") would be fabricated
+  // rather than derived. Reinstate it only once a strength is genuinely derived
+  // (e.g. via atlas:Score). A neutral accent replaces the former strength-keyed color.
   return (
     <div
       className="rounded-lg border-l-4 p-4 shadow-sm"
       style={{
-        borderLeftColor: `var(--color-signal-${strength})`,
+        borderLeftColor: "var(--color-signal-neutral, #64748b)",
         borderRadius: "var(--signal-card-radius)",
         padding: "var(--signal-card-padding)",
         boxShadow: "var(--signal-card-shadow)",
       }}
       role="article"
-      aria-label={`${label} — ${strengthLabel}`}
+      aria-label={label}
     >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-neutral-800">{label}</h3>
-        <span
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-          style={{ color: `var(--color-signal-${strength})` }}
-        >
-          {strengthLabel}
-        </span>
       </div>
 
       {signalDate && (

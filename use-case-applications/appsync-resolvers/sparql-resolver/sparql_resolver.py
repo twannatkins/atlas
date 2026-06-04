@@ -209,7 +209,7 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
     """
     uri = safe_uri(args.get("customerUri", ""))
     sparql = prefixed(f"""
-        SELECT DISTINCT ?uri ?signalType ?strength ?signalDate WHERE {{
+        SELECT DISTINCT ?uri ?signalType ?signalLabel ?strength ?signalDate WHERE {{
             {{ <{uri}> atlas:producesSignal ?uri_sig }}
             UNION
             {{ ?member atlas:memberOf <{uri}> ;
@@ -217,6 +217,10 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
             ?uri_sig a atlas:WealthSignal ;
                 atlas:hasSignalType ?signalType .
             BIND(?uri_sig AS ?uri)
+            # Join the SKOS prefLabel for the signal type when it is loaded in the
+            # SLGD (WS1 types are; WS2 atlas-part-2: types are not yet — see Pass 2).
+            # OPTIONAL so an unlabeled type still returns; we fall back to the URI below.
+            OPTIONAL {{ ?signalType skos:prefLabel ?signalLabel }}
             OPTIONAL {{ ?uri_sig atlas:signalStrength ?strength }}
             OPTIONAL {{ ?uri_sig atlas:signalDate ?signalDate }}
         }}
@@ -225,7 +229,9 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
     return [
         {
             "uri": r["uri"],
-            "signalType": r.get("signalType", ""),
+            # Prefer the human-readable SKOS prefLabel; fall back to the type URI
+            # when the concept (and its label) is not loaded in the SLGD.
+            "signalType": r.get("signalLabel") or r.get("signalType", ""),
             "strength": r.get("strength", ""),
             # signalDate is typed AWSDateTime in the schema, but the derivation
             # writes a bare xsd:date (e.g. "2026-03-03"). Normalize a date-only
