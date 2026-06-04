@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { createAndStoreVerifier, deriveChallenge, consumeVerifier } from "./pkce";
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -82,14 +83,21 @@ export function useAuth(): AuthState {
 
   const signIn = useCallback(async () => {
     if (!IS_LOCAL_DEV) {
-      // Production: redirect to Cognito Hosted UI. The OAuth callback
-      // handler (not shown here) parses the authorization code, exchanges
-      // it for tokens, and stores the JWT in localStorage.
+      // Production: redirect to the Cognito hosted UI using the OAuth
+      // authorization-code flow with PKCE. The app client is a public SPA
+      // (no secret), so PKCE is required: we generate a code_verifier, send
+      // its S256 challenge here, and the /callback route exchanges the code
+      // with the original verifier. The callback handler stores the access
+      // token under "atlas_access_token" (the key the Apollo client reads).
       const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
       const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
       const redirectUri = encodeURIComponent(window.location.origin + "/callback");
+      const verifier = createAndStoreVerifier();
+      const challenge = await deriveChallenge(verifier);
       window.location.href =
-        `${cognitoDomain}/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=openid+profile`;
+        `${cognitoDomain}/oauth2/authorize?response_type=code&client_id=${clientId}` +
+        `&redirect_uri=${redirectUri}&scope=openid+profile` +
+        `&code_challenge=${challenge}&code_challenge_method=S256`;
       return;
     }
 
@@ -140,4 +148,77 @@ export function useAuth(): AuthState {
     signIn,
     signOut,
   };
+}
+
+/** Decode a JWT payload (no signature check — AppSync verifies server-side). */
+function decodeJwtPayload(token: string): Record<string, any> {
+  try {
+    const part = token.split(".")[1];
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Exchange the authorization code for tokens at Cognito's /oauth2/token endpoint
+ * (PKCE — sends the stored code_verifier, no client secret). Called by the
+ * /callback route. On success it persists the access token under
+ * "atlas_access_token" (the key the Apollo auth link reads) and derives the
+ * persona/user/display-name from the token claims, then returns the persona.
+ *
+ * Throws on any failure so the callback page can show an error instead of
+ * silently landing unauthenticated.
+ */
+export async function exchangeCodeForToken(code: string): Promise<{ persona: string }> {
+  const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
+  const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+  if (!cognitoDomain || !clientId) {
+    throw new Error("Cognito domain/client not configured (NEXT_PUBLIC_COGNITO_DOMAIN / _CLIENT_ID).");
+  }
+
+  const verifier = consumeVerifier();
+  if (!verifier) {
+    throw new Error("Missing PKCE verifier — start sign-in again.");
+  }
+
+  const redirectUri = window.location.origin + "/callback";
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: clientId,
+    code,
+    redirect_uri: redirectUri,
+    code_verifier: verifier,
+  });
+
+  const resp = await fetch(`${cognitoDomain}/oauth2/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Token exchange failed (${resp.status}): ${await resp.text()}`);
+  }
+  const tokens = await resp.json();
+  const accessToken: string = tokens.access_token;
+  if (!accessToken) {
+    throw new Error("Token response missing access_token.");
+  }
+
+  // The resolver reads custom:persona then falls back to cognito:groups[0]
+  // (sparql_resolver.py:115-119). Mirror that here for the UI's local state.
+  const claims = decodeJwtPayload(accessToken);
+  const groups: string[] = claims["cognito:groups"] || [];
+  const persona = claims["custom:persona"] || groups[0] || "atlas-consumer-banker";
+  const user = claims["username"] || claims["sub"] || "";
+
+  // atlas_access_token is the key providers.tsx prefers for the Authorization
+  // header; persona/user/display feed the existing session-restore in useAuth.
+  localStorage.setItem("atlas_access_token", accessToken);
+  localStorage.setItem("atlas_persona", persona);
+  localStorage.setItem("atlas_user_id", user);
+  localStorage.setItem("atlas_display_name", user);
+
+  return { persona };
 }

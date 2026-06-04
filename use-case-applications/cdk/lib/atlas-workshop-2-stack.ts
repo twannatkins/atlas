@@ -63,6 +63,22 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       // at deploy time for dev token-injection testing. Default false (SRP-only published default).
       enableUserPasswordAuth:
         this.node.tryGetContext("enableUserPasswordAuth") === "true",
+      // Hosted-UI domain for the OAuth code flow (DRIFT-2). Prefix is globally unique;
+      // overridable via -c cognitoDomainPrefix=. Default is account-scoped + deterministic
+      // so teardown can target it. Resolves to
+      // https://<prefix>.auth.us-east-1.amazoncognito.com.
+      hostedUiDomainPrefix:
+        this.node.tryGetContext("cognitoDomainPrefix") ?? `atlas-ws2-${this.account}`,
+      // Register every origin the UIs are served from — both CloudFront distributions
+      // and localhost dev. The code flow rejects any redirect_uri not in this list.
+      // Overridable via -c uiCallbackUrls=url1,url2,... (comma-joined).
+      callbackUrls: (
+        this.node.tryGetContext("uiCallbackUrls") as string | undefined
+      )?.split(",") ?? [
+        "https://d2u767clefsqd0.cloudfront.net/callback", // wholesale UI
+        "https://d1n2v02lda72pi.cloudfront.net/callback", // wealth UI
+        "http://localhost:3000/callback",                  // local dev
+      ],
     });
 
     // ─── 4. Lambda deployments (5 step Lambdas for referral orchestrator) ──
@@ -156,6 +172,8 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       sparqlMcpArn: runtimes.atlasSparqlMcp.agentRuntimeArn,
       registryMcpArn: runtimes.atlasRegistryMcp.agentRuntimeArn,
       erMcpArn: runtimes.atlasErMcp.agentRuntimeArn,
+      // routeReferral starts this state machine directly (proven path).
+      stateMachineArn: stepFunctions.stateMachineArn,
     });
 
     // ─── Outputs ────────────────────────────────────────────────────

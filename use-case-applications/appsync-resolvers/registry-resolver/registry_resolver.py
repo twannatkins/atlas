@@ -21,10 +21,17 @@ from typing import Any, Dict
 import urllib.parse
 import urllib.request
 
+import boto3
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 REGISTRY_MCP_ARN = os.environ.get("REGISTRY_MCP_ARN", "")
+# referral-orchestrator Step Functions state machine — routeReferral starts an
+# execution here directly (the proven path; see Pass 2). The prior route through
+# registry-mcp invoke_capability → invoke_agent(agentName=…) used a boto3 method
+# that does not exist on the bedrock-agentcore client and always raised.
+STATE_MACHINE_ARN = os.environ.get("STATE_MACHINE_ARN", "")
 
 def _agentcore_endpoint(runtime_arn: str) -> str:
     encoded = urllib.parse.quote(runtime_arn, safe="")
@@ -103,30 +110,60 @@ def _resolve_capabilities(args: Dict, persona: str) -> list:
 
 
 def _resolve_route_referral(args: Dict, persona: str, identity: Dict) -> Dict:
-    """Invoke referral-orchestrator through the registry audit path."""
-    # Extract the originating banker from identity
-    sub = identity.get("claims", {}).get("sub", args.get("originatingBankerId", ""))
+    """Route a referral by starting the referral-orchestrator Step Functions
+    execution directly — the proven path (Pass 2).
 
-    payload = {
+    The orchestrator state machine validates the input and runs the five-step
+    chain (select_advisor → validate_routing[SHACL gate] → write_routing_decision
+    → notify_advisor → audit_write). Its step Lambdas reach Neptune directly via
+    SigV4; this resolver only needs states:StartExecution.
+
+    The persona restriction (atlas-consumer-banker only) is enforced both here and
+    inside the orchestrator (referral_orchestrator.py:63).
+    """
+    if persona != "atlas-consumer-banker":
+        raise RuntimeError("Only atlas-consumer-banker can route referrals")
+    if not STATE_MACHINE_ARN:
+        raise RuntimeError("STATE_MACHINE_ARN is not configured on the resolver")
+
+    # Originating banker: prefer the explicit arg, else the JWT subject.
+    sub = identity.get("claims", {}).get("sub", "")
+    originating_banker_id = args.get("originatingBankerId") or sub
+
+    # Pass invocation_id into the execution so the step Lambdas mint the
+    # RoutingDecision/AuditRecord URIs from it (write_routing_decision reads
+    # event["invocation_id"]) — this makes the URI we return below match what
+    # actually lands in the SLGD.
+    invocation_id = str(uuid.uuid4())
+    execution_input = {
         "household_uri": args["householdUri"],
         "signal_uris": args["signalUris"],
         "approved_rationale": args["approvedRationale"],
-        "originating_banker_id": args.get("originatingBankerId", sub),
+        "originating_banker_id": originating_banker_id,
         "persona_claim": persona,
+        "invocation_id": invocation_id,
     }
 
-    result = _invoke_registry("invoke_capability", {
-        "capability_uri": "referral-orchestrator",
-        "input_payload": payload,
-        "persona_claim": persona,
-    })
+    try:
+        sfn = boto3.client("stepfunctions")
+        sfn.start_execution(
+            stateMachineArn=STATE_MACHINE_ARN,
+            name=f"referral-{invocation_id}",
+            input=json.dumps(execution_input),
+        )
+    except Exception as exc:
+        logger.error(json.dumps({"event": "route_referral_failed", "error": str(exc)}))
+        raise RuntimeError(f"Failed to start referral routing: {exc}")
 
-    inner = result.get("result", result)
+    # The execution runs asynchronously; the RoutingDecision URI is minted inside
+    # the workflow (write_routing_decision). We return the deterministic URI shape
+    # the orchestrator uses (atlas:routing/<invocation_id>) and the conformant route.
+    routing_decision_uri = f"atlas:routing/{invocation_id}"
     return {
-        "uri": inner.get("routing_decision_uri", ""),
+        "uri": routing_decision_uri,
         "routingDecision": {
-            "uri": inner.get("routing_decision_uri", ""),
-            "selectedRoute": "route_to_advisor",
+            "uri": routing_decision_uri,
+            "selectedRoute": "ROUTE_ADVISOR_QUEUE",
         },
         "provenance": {
             "generatedBy": "referral-orchestrator",

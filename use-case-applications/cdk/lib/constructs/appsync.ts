@@ -29,6 +29,12 @@ export interface AppSyncProps {
   registryMcpArn: string;
   /** AgentCore Runtime ARN for atlas-er-mcp. */
   erMcpArn: string;
+  /**
+   * ARN of the referral-orchestrator Step Functions state machine.
+   * routeReferral starts an execution here directly — the proven path. (The prior
+   * registry invoke_capability → invoke_agent route used a non-existent boto3 method.)
+   */
+  stateMachineArn: string;
 }
 
 /**
@@ -127,11 +133,20 @@ export class AppSyncConstruct extends Construct {
       handler: "registry_resolver.handler",
       code: lambda.Code.fromAsset(path.join(resolverBase, "registry-resolver")),
       timeout: cdk.Duration.seconds(30),
-      environment: { REGISTRY_MCP_ARN: props.registryMcpArn },
+      environment: {
+        REGISTRY_MCP_ARN: props.registryMcpArn,
+        // routeReferral starts this state machine directly (the proven path).
+        STATE_MACHINE_ARN: props.stateMachineArn,
+      },
     });
     registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ["bedrock-agentcore:InvokeAgentRuntimeForUser"],
       resources: [`${props.registryMcpArn}*`],
+    }));
+    // routeReferral → Step Functions StartExecution on the referral orchestrator.
+    registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ["states:StartExecution"],
+      resources: [props.stateMachineArn],
     }));
 
     const erProxyFn = new lambda.Function(this, "ErProxy", {
