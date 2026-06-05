@@ -15,6 +15,12 @@ import { Construct } from "constructs";
 export class CloudFrontConstruct extends Construct {
   public readonly wholesaleUiUrl: string;
   public readonly wealthUiUrl: string;
+  // Auto-generated S3 origin bucket names. Surfaced so the stack can emit them as
+  // CfnOutputs — a runner has no other way to discover the sync target (the buckets
+  // have no hardcoded name; CDK generates a stack-unique physical name). See the
+  // deploy runbook: `aws s3 sync out/ s3://<WholesaleBucketName>`.
+  public readonly wholesaleBucketName: string;
+  public readonly wealthBucketName: string;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -93,6 +99,7 @@ function handler(event) {
     });
 
     this.wholesaleUiUrl = `https://${wholesaleDist.distributionDomainName}`;
+    this.wholesaleBucketName = wholesaleBucket.bucketName;
 
     // Wealth UI (Phase 2)
     const wealthBucket = new s3.Bucket(this, "WealthBucket", {
@@ -118,5 +125,6 @@ function handler(event) {
     });
 
     this.wealthUiUrl = `https://${wealthDist.distributionDomainName}`;
+    this.wealthBucketName = wealthBucket.bucketName;
   }
 }

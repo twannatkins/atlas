@@ -195,6 +195,37 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       value: cloudfront.wholesaleUiUrl,
       description: "Wholesale UI CloudFront URL",
     });
+    new cdk.CfnOutput(this, "WealthUiUrl", {
+      value: cloudfront.wealthUiUrl,
+      description: "Wealth UI CloudFront URL",
+    });
+    // Deploy-runbook keystone (clean-account UI deploy). The two CloudFront origin
+    // buckets have no hardcoded name — CDK generates a stack-unique physical name — so
+    // a runner has no way to discover the `aws s3 sync out/ s3://<bucket>` target
+    // without these outputs. Surfacing them closes deploy-gap G1.
+    new cdk.CfnOutput(this, "WholesaleBucketName", {
+      value: cloudfront.wholesaleBucketName,
+      description: "S3 origin bucket for the Wholesale UI — sync `next build` out/ here",
+    });
+    new cdk.CfnOutput(this, "WealthBucketName", {
+      value: cloudfront.wealthBucketName,
+      description: "S3 origin bucket for the Wealth UI — sync `next build` out/ here",
+    });
+    // The UI .env.local needs the app-client id (NEXT_PUBLIC_COGNITO_CLIENT_ID). The
+    // stack previously output only CognitoUserPoolId, so docs referencing
+    // CognitoUserPoolWebClientId resolved to nothing. Closes deploy-gap G4 (client id).
+    new cdk.CfnOutput(this, "CognitoUserPoolWebClientId", {
+      value: cognito.userPoolClient.userPoolClientId,
+      description: "Cognito app-client id for the UIs (NEXT_PUBLIC_COGNITO_CLIENT_ID)",
+    });
+    // Hosted-UI base URL (NEXT_PUBLIC_COGNITO_DOMAIN). Emitted here at stack level with
+    // a clean key; previously emitted inside CognitoConstruct, where CDK appended a hash
+    // (CognitoHostedUiDomain<hash>) so an exact-key lookup for "CognitoHostedUiDomain"
+    // failed. Closes deploy-gap G4 (hosted-UI domain key).
+    new cdk.CfnOutput(this, "CognitoHostedUiDomain", {
+      value: cognito.hostedUiBaseUrl ?? "",
+      description: "Cognito hosted-UI base URL for the OAuth code flow (NEXT_PUBLIC_COGNITO_DOMAIN)",
+    });
     new cdk.CfnOutput(this, "OntopEndpoint", {
       value: ontop.endpoint,
       description: "Ontop internal ALB endpoint",
