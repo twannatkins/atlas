@@ -31,7 +31,7 @@ A simulated Wholesale UI that demonstrates the two-driver architecture:
 Agent Registry), a compliant compliance banner (tipping-off safe), and the
 human-in-the-loop routing gate.
 
-The notebook is `notebooks/phase-1-referral/05_wholesale_ui.ipynb`.
+The notebook is `notebooks/phase-1-referral/06_wholesale_ui.ipynb`.
 
 ## Steps
 
@@ -41,7 +41,7 @@ Before running any code, read cell 0 (`cell-00-title`) and cell 1
 
 ### Step 1 — Open the notebook and select the kernel
 
-Open `notebooks/phase-1-referral/05_wholesale_ui.ipynb` in SageMaker Studio.
+Open `notebooks/phase-1-referral/06_wholesale_ui.ipynb` in SageMaker Studio.
 Select the **ATLAS Workshop 2 (Python 3.12)** kernel.
 
 ### Step 2 — Read the concept section (cell 2)

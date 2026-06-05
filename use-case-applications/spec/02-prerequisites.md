@@ -88,7 +88,7 @@ If you are coming from Workshop 1, most of what's here is familiar. The exceptio
 
 Assign yourself to all five for the workshop. Production deployments would scope membership tightly.
 
-**The Workshop 2 teaching moment.** Notebook `05_wholesale_ui.ipynb` is where the four-layer permission model becomes visible. You sign in as the Consumer Banker, see one capability palette. You sign in as the BSA Analyst, see a different one. The substrate is identical; the difference is the IDC group claim. The novice should leave understanding which layer enforces which permission and why no single layer would be sufficient.
+**The Workshop 2 teaching moment.** Notebook `06_wholesale_ui.ipynb` is where the four-layer permission model becomes visible. You sign in as the Consumer Banker, see one capability palette. You sign in as the BSA Analyst, see a different one. The substrate is identical; the difference is the IDC group claim. The novice should leave understanding which layer enforces which permission and why no single layer would be sufficient.
 
 ### Comfort with Jupyter notebooks and basic TypeScript
 

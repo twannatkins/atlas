@@ -1,110 +1,103 @@
-# wealth-signals.yaml — Signal query definitions for wealth-signal-detector.
+# wealth-signals.yaml — Signal query definitions, reconciled to the live derivations.
 #
-# This file is the single source of truth for Phase 1 SPARQL CONSTRUCT queries.
-# The agent loads it from S3 at cold-start (SIGNAL_QUERIES_S3_URI) and falls back
-# to the embedded PHASE_1_SIGNALS dict if the URI is unset or unreachable.
+# AUTHORITATIVE SOURCES OF TRUTH (this file documents them; it does not own the writes):
+#   - LargeDepositPattern: derived + persisted by Workshop 1,
+#       agentic-semantic-layer/notebooks/05_entity_resolution.ipynb cell-09f
+#       (live CONSTRUCT + pyshacl validate-before-write). WS1 owns this signal.
+#   - NoAdvisorCoverage: derived by Workshop 2,
+#       use-case-applications/scripts/derive-no-advisor-coverage.py
+#       (gate-C CONSTRUCT + validate_signals() pyshacl gate + insert_query()).
 #
-# Token convention: {target_uri} is substituted by the agent at runtime via
+# Every CONSTRUCT below MIRRORS the real derivation's predicates exactly. The
+# attachment predicate is atlas:producesSignal (Customer -> WealthSignal), per the
+# ontology (atlas-core.ttl) and both live derivations. A prior version of this file
+# used atlas:aboutCustomer, atlas:evidencedByAccount, atlas:inAccount, and
+# atlas:signalStrength — NONE of which exist in the ontology or in any real
+# derivation. They have been removed; do not reintroduce them.
+#
+# Token convention: {target_uri} is substituted at runtime via
 # str.format(target_uri=...) after safe_uri() validation.
 #
-# To add a signal: add an entry under `signals`, set enabled: true, and ensure
-# WS1 derives the required triples before enabling in production.
-#
-# Upload path (Pass 3): s3://<ontology_staging_bucket>/queries/wealth-signals.yaml
+# Strength: there is no atlas:signalStrength predicate and the derivations emit no
+# strength. The `strength` field below is UI-presentation metadata only (not a
+# derived triple); it is intentionally absent from every CONSTRUCT.
 
 signals:
-  - signal_type: "atlas-part-2:LargeInboundWireSignal"
+  - signal_type: "atlas:LargeDepositPattern"
     enabled: true
     shape_uri: "atlas:WealthSignalTypeShape"
-    strength: "strong"
-    # Fires when a customer has a DEPOSIT transaction exceeding $500k.
-    # Predicate direction: account is subject — ?acct atlas:hasTransaction ?txn.
+    # Authoritative live derivation: WS1 nb05 cell-09f. This entry documents that
+    # rule; it does not re-own the write. Mirrors the WS1 CONSTRUCT exactly:
+    # a customer with a DEPOSIT >= $250k in the observation window AND no active
+    # advisory coverage produces a LargeDepositPattern signal evidenced by that txn.
+    # Predicate direction: account is subject — ?account atlas:hasTransaction ?txn.
     construct_sparql: |
       PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
-      PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
-      PREFIX prov: <http://www.w3.org/ns/prov#>
-      PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+      PREFIX inst:  <https://github.com/your-org/atlas/instance#>
+      PREFIX prov:  <http://www.w3.org/ns/prov#>
+      PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
       CONSTRUCT {{
           ?signal a atlas:WealthSignal ;
-              atlas:hasSignalType atlas-part-2:LargeInboundWireSignal ;
-              atlas:aboutCustomer <{target_uri}> ;
-              atlas:signalStrength "strong" ;
+              atlas:hasSignalType atlas:LargeDepositPattern ;
+              atlas:signalDate ?txnDate ;
               atlas:evidencedBy ?txn ;
-              prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
+              prov:wasGeneratedBy <https://github.com/your-org/atlas/instance#signal-derivation-run> .
+          <{target_uri}> atlas:producesSignal ?signal .
       }} WHERE {{
           <{target_uri}> a atlas:Customer ;
-              atlas:hasAccount ?acct .
-          ?acct atlas:hasTransaction ?txn .
+              atlas:hasAccount ?account .
+          ?account atlas:hasTransaction ?txn .
           ?txn atlas:amountUSD ?amount ;
+               atlas:transactionDate ?txnDate ;
                atlas:transactionType "DEPOSIT"^^xsd:string .
-          FILTER(?amount > 500000)
-          BIND(IRI(CONCAT("urn:signal/wire-", STRUUID())) AS ?signal)
-      }}
-
-  - signal_type: "atlas-part-2:SegmentShiftSignal"
-    enabled: true
-    shape_uri: "atlas:WealthSignalTypeShape"
-    strength: "moderate"
-    # Fires when a customer's AGGREGATE account volume exceeds $250k — sustained
-    # activity indicating a segment-tier crossing, not a single large deposit.
-    # Distinct from LargeInboundWireSignal (single txn > $500k).
-    # Sub-SELECT handles GROUP BY / HAVING; outer CONSTRUCT builds the signal triple
-    # from the qualifying ?acct. This is the valid SPARQL 1.1 pattern for
-    # aggregate + CONSTRUCT (GROUP BY inside CONSTRUCT WHERE is not supported directly).
-    # Predicate direction: account is subject — ?acct atlas:hasTransaction ?txn.
-    # NOTE: acceptance test against live substrate required to confirm the aggregate
-    # fires correctly for the capstone scenario customers.
-    construct_sparql: |
-      PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
-      PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
-      PREFIX prov: <http://www.w3.org/ns/prov#>
-      CONSTRUCT {{
-          ?signal a atlas:WealthSignal ;
-              atlas:hasSignalType atlas-part-2:SegmentShiftSignal ;
-              atlas:aboutCustomer <{target_uri}> ;
-              atlas:signalStrength "moderate" ;
-              atlas:evidencedByAccount ?acct ;
-              prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
-      }} WHERE {{
-          {{
-              SELECT ?acct (SUM(?amount) AS ?total)
-              WHERE {{
-                  <{target_uri}> a atlas:Customer ;
-                      atlas:hasAccount ?acct .
-                  ?acct atlas:hasTransaction ?txn .
-                  ?txn atlas:amountUSD ?amount .
-              }}
-              GROUP BY ?acct
-              HAVING (SUM(?amount) > 250000)
+          FILTER (?amount >= 250000)
+          FILTER NOT EXISTS {{
+              <{target_uri}> atlas:hasAdvisor ?rel .
+              ?rel a atlas:AdvisoryRelationship .
+              FILTER NOT EXISTS {{ ?rel atlas:coverageEndDate ?end }}
           }}
-          BIND(IRI(CONCAT("urn:signal/shift-", STRUUID())) AS ?signal)
+          BIND(IRI(CONCAT(STR(inst:), "signal-ldp-", STRUUID())) AS ?signal)
       }}
 
   - signal_type: "atlas-part-2:NoAdvisorCoverageSignal"
-    # DESCOPED for Phase 1 capstone: WS1 does not derive this signal type.
-    # Re-enabling requires a WS1-side derivation pass (see docs/ws2-comprehension.md).
-    # The MINUS pattern below is Neptune-safe (avoids false negatives from nested
-    # FILTER NOT EXISTS { FILTER NOT EXISTS { } } on Neptune).
-    enabled: false
+    enabled: true
     shape_uri: "atlas:WealthSignalTypeShape"
-    strength: "gap"
+    # Live derivation: scripts/derive-no-advisor-coverage.py (gate C). Fires when a
+    # customer ALREADY produces a WealthSignal (wealth-eligible) AND has no active
+    # advisory coverage — a coverage gap that matters, not a census of the uncovered.
+    # Absence signal: NO evidencedBy (no positive evidence txn) and NO signalDate
+    # (no event date) — WealthSignalTypeShape requires only one hasSignalType, so this
+    # conforms. Mirrors the script's emitted triples exactly.
     construct_sparql: |
       PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
       PREFIX atlas-part-2: <https://github.com/your-org/atlas/ontology/part2#>
-      PREFIX prov: <http://www.w3.org/ns/prov#>
+      PREFIX inst:  <https://github.com/your-org/atlas/instance#>
+      PREFIX prov:  <http://www.w3.org/ns/prov#>
       CONSTRUCT {{
           ?signal a atlas:WealthSignal ;
               atlas:hasSignalType atlas-part-2:NoAdvisorCoverageSignal ;
-              atlas:aboutCustomer <{target_uri}> ;
-              atlas:signalStrength "gap" ;
-              prov:wasGeneratedBy <urn:atlas:wealth-signal-detector> .
+              prov:wasGeneratedBy <https://github.com/your-org/atlas/instance#signal-derivation-run> .
+          <{target_uri}> atlas:producesSignal ?signal .
       }} WHERE {{
-          <{target_uri}> a atlas:Customer .
-          MINUS {{
+          <{target_uri}> a atlas:Customer ;
+              atlas:producesSignal ?anySig .
+          FILTER NOT EXISTS {{
               <{target_uri}> atlas:hasAdvisor ?rel .
               ?rel a atlas:AdvisoryRelationship .
-              OPTIONAL {{ ?rel atlas:coverageEndDate ?end }}
-              FILTER(!bound(?end))
+              FILTER NOT EXISTS {{ ?rel atlas:coverageEndDate ?end }}
           }}
-          BIND(IRI(CONCAT("urn:signal/gap-", STRUUID())) AS ?signal)
+          BIND(IRI(CONCAT(STR(inst:), "signal-nac-", STRUUID())) AS ?signal)
       }}
+
+  - signal_type: "atlas-part-2:SegmentShiftSignal"
+    # DEFERRED to the session-intelligence phase. The concept is loaded, but Phase-1
+    # data cannot fire it honestly: there is no segment/tier model and no temporal
+    # (prior-balance) dimension in the SLGD — accounts carry only current balanceUSD.
+    # A genuine "segment shift" is a CROSSING OVER TIME, which requires the behavioral/
+    # velocity data (atlas-part-2:Session) the session-intelligence phase introduces.
+    # The earlier "aggregate volume > $250k" framing was NOT a tier crossing — it was a
+    # volume threshold mislabelled as a shift, and is removed. Re-enabling requires real
+    # temporal segment data, not a relabel. See 05_wealth_signals.ipynb for the full
+    # integrity rationale (derive-don't-insert: a signal the data can't support is not
+    # fabricated).
+    enabled: false

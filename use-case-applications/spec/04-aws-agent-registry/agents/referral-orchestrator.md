@@ -29,7 +29,7 @@ Once a Consumer Banker has reviewed and approved a referral (including the human
 
 ## Where the novice meets this
 
-Notebook `05_wholesale_ui.ipynb` walks through a complete routing flow. The novice triggers it through the UI's *Route to advisor* capability.
+Notebook `06_wholesale_ui.ipynb` walks through a complete routing flow. The novice triggers it through the UI's *Route to advisor* capability.
 
 ## Dependencies
 

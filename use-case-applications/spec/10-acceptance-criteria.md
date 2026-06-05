@@ -1,6 +1,6 @@
 # 10 — Acceptance Criteria
 
-Phase 1 acceptance assertions. Every assertion in this document is verified by `06_phase_1_acceptance.ipynb`. If all pass, Phase 1 is complete and ready for customer handoff. If any fail, the failure must be resolved before extending to Phase 2.
+Phase 1 acceptance assertions. Every assertion in this document is verified by `07_phase_1_acceptance.ipynb`. If all pass, Phase 1 is complete and ready for customer handoff. If any fail, the failure must be resolved before extending to Phase 2.
 
 ## Category 1 — Registry completeness
 

@@ -114,7 +114,7 @@ This is also the place where the ontology becomes a contract that crosses team b
 
 **What just changed:** Workshop 2 now has a FIBO-shaped API. The next notebook puts a UI on top of it.
 
-### `05_wholesale_ui.ipynb` — Wiring the Wholesale UI
+### `06_wholesale_ui.ipynb` — Wiring the Wholesale UI
 
 **Question:** How does a React app consume registered agents and a FIBO-shaped API together?
 
@@ -128,7 +128,7 @@ This is the place where the four-layer permission model (IAM Identity Center →
 
 **What just changed:** Workshop 2 has a working application. The substrate from Workshop 1 is now serving a real banking use case end to end. Phase 1 is complete.
 
-### `06_phase_1_acceptance.ipynb` — Did everything land?
+### `07_phase_1_acceptance.ipynb` — Did everything land?
 
 **Question:** Before I move to Phase 2, how do I know Phase 1 is actually complete?
 

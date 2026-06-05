@@ -30,7 +30,7 @@ Phase 1 builds a Wholesale UI for Consumer Banker referrals. Phase 2 builds a We
 
 **The deeper reason.** The two-UI design proves the substrate is reusable. One UI proves nothing. Two UIs proves the FIBO-shaped GraphQL schema can serve structurally different applications. Five UIs would prove the same thing with redundant effort. Two is the minimum demonstration of the thesis.
 
-**Where the novice meets this.** Notebook `05_wholesale_ui.ipynb` in Phase 1, then `03_wealth_ui.ipynb` in Phase 2. The teaching moment is when the novice sees the same `fibo:Party.advisoryRelationship` GraphQL fragment render differently in the two UIs because the resolver respects the persona's data scope.
+**Where the novice meets this.** Notebook `06_wholesale_ui.ipynb` in Phase 1, then `03_wealth_ui.ipynb` in Phase 2. The teaching moment is when the novice sees the same `fibo:Party.advisoryRelationship` GraphQL fragment render differently in the two UIs because the resolver respects the persona's data scope.
 
 ### Thesis 3 — LLM at the edges, never in the middle
 
@@ -61,7 +61,7 @@ The four layers compose. A Consumer Banker sees consumer accounts only (Data lay
 
 **The deeper reason.** Defense in depth. Each layer assumes the others might fail. This is how regulated systems are built in every industry that takes audit seriously — banking, healthcare, defense. It's also how ATLAS justifies its compliance posture to the regulator: not because any one mechanism is perfect, but because no single failure exposes data.
 
-**Where the novice meets this.** Notebook `05_wholesale_ui.ipynb` — the novice signs in as a Consumer Banker, observes one capability palette, then signs in as a BSA Analyst and observes a different one. The substrate is identical; the four layers compose to produce different views.
+**Where the novice meets this.** Notebook `06_wholesale_ui.ipynb` — the novice signs in as a Consumer Banker, observes one capability palette, then signs in as a BSA Analyst and observes a different one. The substrate is identical; the four layers compose to produce different views.
 
 ## How the pieces fit together
 
@@ -128,7 +128,7 @@ The four theses are taught in this order across Phase 1:
 | `02_mcp_servers` | Setup for Thesis 1 (registry-first) — the capabilities being registered |
 | `03_agent_registry` | Thesis 1 (registry-first) — discovery and governance |
 | `04_graphql_federation` | Thesis 2 (two UIs, one backbone) — the schema that serves both |
-| `05_wholesale_ui` | Thesis 4 (four-layer permissions) — visible in the rendered UI |
-| `06_phase_1_acceptance` | Integration of all four theses into a working end-to-end flow |
+| `06_wholesale_ui` | Thesis 4 (four-layer permissions) — visible in the rendered UI |
+| `07_phase_1_acceptance` | Integration of all four theses into a working end-to-end flow |
 
 A novice who completes Phase 1 should leave able to articulate the four theses, explain why each was chosen, and identify which Phase 1 artifact embodies each one. If they cannot do this, the workshop has built artifacts without teaching architecture — which is the failure mode this document exists to prevent.

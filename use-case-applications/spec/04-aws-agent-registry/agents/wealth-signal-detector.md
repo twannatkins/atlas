@@ -4,7 +4,7 @@ Detects wealth-readiness signals in customer behavior by running SPARQL CONSTRUC
 
 ## Purpose
 
-A wealth signal is a structured assertion that a customer or household has exhibited behavior consistent with wealth readiness — a large inbound wire, a segment shift, an absence of advisor coverage despite eligibility. The signal is not a recommendation; it is *evidence* a banker uses to decide whether to route a referral.
+A wealth signal is a structured assertion that a customer or household has exhibited behavior consistent with wealth readiness — for example a large inbound deposit, or an absence of advisor coverage despite eligibility. The signal is not a recommendation; it is *evidence* a banker uses to decide whether to route a referral.
 
 `wealth-signal-detector` runs the SPARQL CONSTRUCT queries that produce these signals. The queries are stored alongside the agent and are versioned with the same change-management process as code.
 
@@ -29,17 +29,17 @@ A wealth signal is a structured assertion that a customer or household has exhib
 
 ## Where the novice meets this
 
-Notebook `01_why_agents.ipynb` introduces the pattern. The agent is fully exercised in Phase 1's end-to-end walkthrough in `06_phase_1_acceptance.ipynb`.
+Notebook `01_why_agents.ipynb` introduces the pattern. The agent is fully exercised in Phase 1's end-to-end walkthrough in `07_phase_1_acceptance.ipynb`.
 
 ## Signals it detects (Phase 1)
 
-| Signal type | What it detects |
-|---|---|
-| `atlas-part-2:LargeInboundWireSignal` | Wire transfer above threshold within window |
-| `atlas-part-2:SegmentShiftSignal` | Transaction velocity crossing segment tier boundary |
-| `atlas-part-2:NoAdvisorCoverageSignal` | Wealth-eligible customer without active `atlas:AdvisoryRelationship` |
+| Signal type | What it detects | Status |
+|---|---|---|
+| `atlas:LargeDepositPattern` | Deposit ≥ threshold in window, no active coverage (Workshop 1 derivation) | Live (Phase 1) |
+| `atlas-part-2:NoAdvisorCoverageSignal` | Wealth-eligible (already-signalled) customer without active `atlas:AdvisoryRelationship` | Live (Phase 1) |
+| `atlas-part-2:SegmentShiftSignal` | Transaction velocity crossing a segment tier boundary | Deferred — needs the segment/tier model + temporal data of the session-intelligence phase; not derivable from Phase-1 data |
 
-Phase 2 adds two more signals (`EngagementDecaySignal`, `NetworkInfluenceSignal`) detected by `behavioral-signal-agent`.
+Phase 2 adds two more signals (`EngagementDecaySignal`, `NetworkInfluenceSignal`) detected by `behavioral-signal-agent`. See `notebooks/phase-1-referral/05_wealth_signals.ipynb` for how the live signals are derived and why Segment Shift is honestly deferred rather than faked.
 
 ## Dependencies
 

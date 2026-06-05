@@ -42,13 +42,13 @@ suite is organized into 36 assertions across seven categories. Read cell 1
 Categories 1–4 and 6–7 run locally. Category 5 requires a live Neptune cluster
 and is deferred if the cluster is not reachable.
 
-The notebook is `notebooks/phase-1-referral/06_phase_1_acceptance.ipynb`.
+The notebook is `notebooks/phase-1-referral/07_phase_1_acceptance.ipynb`.
 
 ## Steps
 
 ### Step 1 — Open the notebook and select the kernel
 
-Open `notebooks/phase-1-referral/06_phase_1_acceptance.ipynb` in SageMaker
+Open `notebooks/phase-1-referral/07_phase_1_acceptance.ipynb` in SageMaker
 Studio. Select the **ATLAS Workshop 2 (Python 3.12)** kernel.
 
 ### Step 2 — Read the concept section (cell 1)

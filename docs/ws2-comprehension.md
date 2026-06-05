@@ -24,8 +24,9 @@ the main stack, and deploy-relevant specs. Written before first deployment.
 | 3 | `02_mcp_servers.ipynb` |
 | 4 | `03_agent_registry.ipynb` |
 | 5 | `04_graphql_federation.ipynb` |
-| 6 | `05_wholesale_ui.ipynb` |
-| 7 | `06_phase_1_acceptance.ipynb` |
+| 6 | `05_wealth_signals.ipynb` |
+| 7 | `06_wholesale_ui.ipynb` |
+| 8 | `07_phase_1_acceptance.ipynb` |
 
 **Phase 2 — Wealth Advisor Spine** (`notebooks/phase-2-advisor/`) — listed, NOT read this pass:
 
@@ -140,7 +141,7 @@ Constructs:
 - **GATE:** IN-MEMORY — no AWS calls. Would pass even if WS2 not deployed.
 - **WS2 resource needed:** None — local schema file.
 
-### 05_wholesale_ui.ipynb
+### 06_wholesale_ui.ipynb
 
 - **TEACHES:** Two-driver UI architecture: GraphQL provides data, Agent Registry provides capabilities — neither hardcoded. Compliance banner enforces 31 U.S.C. §5318(g)(2) tipping-off prohibition. Human-in-the-loop: `referral-orchestrator` requires `approved_rationale`.
 - **USER RUNS:** 8 cells — setup, simulate Entity 360 for Patel household, render compliance banner (Consumer Banker vs BSA Analyst), populate capability palettes from descriptors, simulate Route to advisor workflow, verify palette persona-scoping, verify banner tipping-off compliance, verify human-in-loop.
@@ -150,7 +151,7 @@ Constructs:
 - **GATE:** IN-MEMORY — no AWS calls. Regulatory compliance checks on local simulation.
 - **WS2 resource needed:** None — local descriptors only.
 
-### 06_phase_1_acceptance.ipynb
+### 07_phase_1_acceptance.ipynb
 
 - **TEACHES:** The formal Phase 1 acceptance suite — 36 assertions across 7 categories. Every passing assertion is a contract honored.
 - **USER RUNS:** 9 cells — setup (defines `check()` and `defer()`), then one cell per category: Cat 1 Registry (6 assertions, local), Cat 2 Posture (7 assertions, local), Cat 3 Permissions (2 local + 2 deferred), Cat 4 Regulatory (4 assertions, local), Cat 5 E2E Rachel Kim (7 DEFERRED), Cat 6 Schema (4 assertions, local), Cat 7 WS1 Integrity (4 assertions, local + file-read), summary.
@@ -204,11 +205,11 @@ Registry registration output, discovery function demonstration, and palette veri
 
 Schema inspection, three resolver pattern demonstrations, and persona scoping verification all align. Cell IDs correct.
 
-### 06-wholesale-ui ↔ 05_wholesale_ui.ipynb: ALIGNED
+### 06-wholesale-ui ↔ 06_wholesale_ui.ipynb: ALIGNED
 
 Entity 360 simulation, compliance banner rendering, capability palettes, and human-in-loop assertion all match the notebook code.
 
-### 07-phase-1-acceptance ↔ 06_phase_1_acceptance.ipynb: ALIGNED
+### 07-phase-1-acceptance ↔ 07_phase_1_acceptance.ipynb: ALIGNED
 
 All 36 assertion IDs and categories are correctly documented. Deferred assertion behavior (DEFERRED vs PASS vs FAIL) is accurately described. The two expected output blocks (with and without live Neptune) match the actual summary print logic. One structural gap noted: Category 5 `defer()` calls are unconditional — see Section 6.
 
@@ -258,7 +259,7 @@ All 11 CDK constructs and the main stack were read in full. Findings below are i
 | R12 | LakeFormation construct creates LF-Tags but applies no tag associations — comment says "configured manually" | `lake-formation.ts:744-748` | **MEDIUM** | Tags `atlas:persona` and `atlas:sensitivity` are created but not associated with any Iceberg table or column. Lake Formation row/column scoping will not work until tag associations are applied. This is acknowledged in a comment but not documented in any workshop step. |
 | R13 | `WholesaleUiUrl` CFN output exists but React build artifacts are never deployed by CDK | `cloudfront.ts`, `atlas-workshop-2-stack.ts:118` | **MEDIUM** | CloudFront distribution and S3 bucket are created; the React app must be separately built (`npm run build`) and synced to S3. CDK does not do this. Workshop pages describe clicking through the UI but it won't render with an empty S3 bucket. |
 | R14 | `BEDROCK_TEXT_MODEL_ID: "us.anthropic.claude-sonnet-4-6"` hardcoded in two runtimes | `agentcore-runtimes.ts:324,369` | LOW | Works in us-east-1 where the inference profile is ACTIVE. Non-US deployers will get model-not-found. Portability item, not a deploy blocker. |
-| R15 | nb06 Category 5 `defer()` calls are unconditional — will never auto-run after deploy | `06_phase_1_acceptance.ipynb:cell-07-cat5-e2e` | **MEDIUM** | The `defer()` function is called unconditionally regardless of whether Neptune is available. Re-running the notebook after deploy does NOT flip these to live checks; the code would need to be changed to replace `defer()` with `check()`. This means 5.1–5.7 will permanently show as DEFERRED. |
+| R15 | nb06 Category 5 `defer()` calls are unconditional — will never auto-run after deploy | `07_phase_1_acceptance.ipynb:cell-07-cat5-e2e` | **MEDIUM** | The `defer()` function is called unconditionally regardless of whether Neptune is available. Re-running the notebook after deploy does NOT flip these to live checks; the code would need to be changed to replace `defer()` with `check()`. This means 5.1–5.7 will permanently show as DEFERRED. |
 
 ---
 
@@ -804,11 +805,24 @@ One code change to `atlas_sparql_mcp.py`: `_handle_query()` currently ignores `O
 
 ---
 
-## NoAdvisorCoverageSignal — proposed WS1 addition (descoped 2026-05-31)
+## NoAdvisorCoverageSignal — RESOLVED (derived WS2-side, no WS1 change)
+
+> **STATUS UPDATE (supersedes the descoped note below):** NoAdvisorCoverage is now
+> **live and derived entirely Workshop-2-side**, with no Workshop 1 change. The original
+> conclusion below — that this required a WS1 derivation pass — turned out to be wrong:
+> WS2 can attach `atlas-part-2:` signals to WS1 customer URIs via `atlas:producesSignal`
+> using the SLGD `update` path, exactly as it loads its own ontology concepts.
+> Implementation: `use-case-applications/scripts/derive-no-advisor-coverage.py` (gate-C
+> CONSTRUCT + `validate_signals()` pyshacl gate + `insert_query()`), with the concept
+> loaded by `scripts/load-ws2-ontology-concepts.py`. 40 signals derived and validated
+> (incl. demo customer c6b6e4ad). The gate is "already wealth-signalled AND uncovered"
+> (not a census of all uncovered), and the absence signal honestly omits evidencedBy/
+> signalDate. Taught in `notebooks/phase-1-referral/05_wealth_signals.ipynb`. The
+> historical descope analysis is retained below for the record.
 
 **What it is:** A coverage-gap signal: a customer has investable assets but no active wealth advisor. Semantically distinct from `atlas:LargeDepositPattern` (a deposit event) and `atlas:HouseholdAggregationSignal` (a household aggregate). It would be the most actionable signal for a consumer banker — the referral target is unambiguous.
 
-**Why it was descoped:** WS1 never derives this type. `wealth-signal-detector` referenced `atlas-part-2:NoAdvisorCoverageSignal` but WS1 produces only `atlas:LargeDepositPattern` and `atlas:HouseholdAggregationSignal`. Enabling the type in WS2 before the WS1 derivation exists would require WS2 to INSERT a signal the substrate doesn't produce — violating the "signals are derived, never hand-inserted" principle.
+**Why it was originally descoped (2026-05-31, since superseded):** the analysis held that WS1 never derives this type and that enabling it WS2-side would require inserting a signal the substrate doesn't produce. The gap in that reasoning: deriving (via CONSTRUCT) and *validating* a signal WS2-side, then writing it with full provenance, is *not* hand-insertion — it is the same derive-don't-insert discipline WS1 uses, just owned by WS2. That is what `derive-no-advisor-coverage.py` does.
 
 **How to implement (future WS1 pass):**
 

@@ -26,7 +26,7 @@ atlas-part-2:SegmentShiftSignal a skos:Concept ;
     skos:inScheme atlas:WealthSignalTypeScheme ;
     skos:prefLabel "Segment Shift Signal" ;
     skos:definition "Fired when a customer's transaction velocity crosses a segment tier boundary, indicating movement from mass-market to mass-affluent or from mass-affluent to high-net-worth." ;
-    rdfs:comment "Detected by wealth-signal-detector via SPARQL CONSTRUCT over transaction velocity patterns. Strength: moderate." .
+    rdfs:comment "DEFERRED to the session-intelligence phase: requires a customer-segment/tier model and a temporal (prior-balance/velocity) dimension that Phase-1 data does not contain. Not derived today (enabled: false in wealth-signals.yaml). The concept is defined so the scheme is complete; the derivation awaits real temporal segment data. See notebooks/phase-1-referral/05_wealth_signals.ipynb." .
 
 atlas-part-2:NoAdvisorCoverageSignal a skos:Concept ;
     skos:inScheme atlas:WealthSignalTypeScheme ;

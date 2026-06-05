@@ -39,7 +39,7 @@ The human-in-the-loop pattern is what makes the agent compliant. Without it, the
 
 ## Where the novice meets this
 
-Notebook `01_why_agents.ipynb` introduces the pattern. The agent is exercised in Phase 1's UI walkthrough in `05_wholesale_ui.ipynb`, where the novice sees the drafted rationale appear in the UI with the *Edit and approve* control.
+Notebook `01_why_agents.ipynb` introduces the pattern. The agent is exercised in Phase 1's UI walkthrough in `06_wholesale_ui.ipynb`, where the novice sees the drafted rationale appear in the UI with the *Edit and approve* control.
 
 ## Dependencies
 

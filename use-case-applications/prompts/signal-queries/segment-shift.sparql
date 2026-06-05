@@ -1,8 +1,19 @@
 # Segment Shift Signal — SPARQL CONSTRUCT query
 #
-# Fired by wealth-signal-detector when a customer's transaction velocity
-# crosses a segment tier boundary (mass-market → mass-affluent, or
-# mass-affluent → high-net-worth).
+# STATUS: DEFERRED to the session-intelligence phase. NOT enabled in
+# wealth-signals.yaml (enabled: false). Phase-1 data cannot fire this honestly:
+# the SLGD has no customer-segment/tier model and no temporal (prior-balance)
+# dimension — accounts carry only a current balanceUSD, so there is no "crossing
+# over time" to detect. A genuine segment shift needs the behavioural/velocity
+# data (atlas-part-2:Session) the session-intelligence phase introduces.
+# The body below is a SKETCH of the intended rule; it also uses atlas:inAccount,
+# which is NOT in the ontology. Do NOT enable this until real temporal segment
+# data exists and the query is reconciled to real predicates (atlas:producesSignal,
+# etc.). See notebooks/phase-1-referral/05_wealth_signals.ipynb for the rationale.
+#
+# Fired (in the intended future state) by wealth-signal-detector when a customer's
+# transaction velocity crosses a segment tier boundary (mass-market → mass-affluent,
+# or mass-affluent → high-net-worth).
 #
 # Parameters:
 #   {target_uri} — the atlas:Customer URI to check

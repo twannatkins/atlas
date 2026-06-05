@@ -32,6 +32,9 @@ interface SignalCardProps {
  */
 const SIGNAL_LABELS: Record<string, string> = {
   LargeInboundWireSignal: "Large inbound wire",
+  // SegmentShiftSignal: deferred to the session-intelligence phase — not derived from
+  // Phase-1 data (no segment/tier model or temporal dimension), so it does not render
+  // today. Label kept so it displays correctly once that phase derives it honestly.
   SegmentShiftSignal: "Segment shift",
   NoAdvisorCoverageSignal: "No advisor coverage",
   EngagementDecaySignal: "Engagement decay",

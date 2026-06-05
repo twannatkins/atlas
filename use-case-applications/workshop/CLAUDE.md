@@ -25,8 +25,8 @@ Do not combine notebooks.
 | `03-mcp-servers/` | `phase-1-referral/02_mcp_servers.ipynb` |
 | `04-agent-registry/` | `phase-1-referral/03_agent_registry.ipynb` |
 | `05-graphql-federation/` | `phase-1-referral/04_graphql_federation.ipynb` |
-| `06-wholesale-ui/` | `phase-1-referral/05_wholesale_ui.ipynb` |
-| `07-phase-1-acceptance/` | `phase-1-referral/06_phase_1_acceptance.ipynb` |
+| `06-wholesale-ui/` | `phase-1-referral/06_wholesale_ui.ipynb` |
+| `07-phase-1-acceptance/` | `phase-1-referral/07_phase_1_acceptance.ipynb` |
 | `08-phase-2-agents/` | `phase-2-advisor/01_phase_2_agents.ipynb` |
 | `09-agentcore-memory/` | `phase-2-advisor/02_agentcore_memory.ipynb` |
 | `10-wealth-ui/` | `phase-2-advisor/03_wealth_ui.ipynb` |

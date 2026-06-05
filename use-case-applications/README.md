@@ -38,8 +38,9 @@ The notebooks run as local simulations of the deployed services, so you can work
 | 3 | `02_mcp_servers` | The MCP server contract, and why production runtimes are AgentCore Runtimes behind a stable interface |
 | 4 | `03_agent_registry` | Registry-governed discovery and persona-scoped capability palettes (Thesis 1) |
 | 5 | `04_graphql_federation` | The FIBO-shaped GraphQL schema and its three resolver patterns |
-| 6 | `05_wholesale_ui` | The two-driver architecture, and the tipping-off prohibition (31 U.S.C. §5318(g)(2)) that governs the compliance banner |
-| 7 | `06_phase_1_acceptance` | The Phase 1 acceptance suite — 36 assertions across seven categories |
+| 6 | `05_wealth_signals` | How wealth signals are derived (not inserted): the Large Deposit Pattern and No Advisor Coverage derivations, validate-before-write, and why an unsupported third signal is honestly refused |
+| 7 | `06_wholesale_ui` | The two-driver architecture, and the tipping-off prohibition (31 U.S.C. §5318(g)(2)) that governs the compliance banner |
+| 8 | `07_phase_1_acceptance` | The Phase 1 acceptance suite — 36 assertions across seven categories |
 
 ### Phase 2 — Wealth Advisor Spine
 
@@ -95,7 +96,7 @@ use-case-applications/
 ├── cdk/                         # CDK TypeScript stack
 │   └── lib/constructs/          # AgentCore, AppSync, Cognito, CloudFront, Lake Formation, Ontop, Step Functions
 ├── notebooks/                   # Thirteen teaching notebooks
-│   ├── phase-1-referral/        # 00_preflight through 06_phase_1_acceptance
+│   ├── phase-1-referral/        # 00_preflight through 07_phase_1_acceptance
 │   └── phase-2-advisor/         # 01_phase_2_agents through 06_phase_2_acceptance
 ├── ontology-extensions/         # atlas-part-2: namespace TTL files
 │   ├── behavioral.ttl           # EngagementDecay, NetworkInfluence signal classes
