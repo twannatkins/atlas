@@ -34,10 +34,11 @@ from neptune_client import sparql_query
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-SHAPES_S3_URI = os.environ.get(
-    "SHAPES_S3_URI",
-    "s3://atlas-ontology-staging-981814817046/ontology/atlas-shapes.ttl",
-)
+# SHAPES_S3_URI is set by the CDK stack from the runner's own ontology staging bucket
+# (ontologyStagingBucket context -> SHAPES_S3_URI env). There is intentionally NO
+# account-specific default: a bare default would silently point a clean deployment at
+# someone else's bucket. If the env var is unset we fail clearly at load time instead.
+SHAPES_S3_URI = os.environ.get("SHAPES_S3_URI", "")
 
 _shapes_graph: Graph | None = None
 
@@ -47,6 +48,13 @@ def _load_shapes() -> Graph:
     global _shapes_graph
     if _shapes_graph is not None:
         return _shapes_graph
+
+    if not SHAPES_S3_URI:
+        raise RuntimeError(
+            "SHAPES_S3_URI is not set. The CDK stack must set it from the runner's "
+            "ontologyStagingBucket (s3://<bucket>/ontology/atlas-shapes.ttl). There is "
+            "no account-specific default by design."
+        )
 
     s3 = boto3.client("s3")
     # Parse s3://bucket/key

@@ -197,6 +197,70 @@ The pre-flight notebook is designed to fail loudly and helpfully. If any check f
 
 Do not bypass the pre-flight. Workshop 2's design assumes the contracts in `03-data-contracts.md` hold. Building on top of a partial Workshop 1 environment produces code that appears to work in development and fails opaquely in production — exactly the failure mode Workshop 2 was built to prevent.
 
+## Set these once — the parameterization step
+
+Workshop 2 deploys into *your* account. Nothing in this repository is wired to a
+specific account: every account-specific value is supplied once, here, and flows from
+there. There are three places values are set, and one two-pass step for the UI login.
+
+### 1. CDK deploy context (`use-case-applications/cdk/cdk.json`)
+
+The pre-flight notebook's WS1→WS2 bridge cell writes most of these automatically by
+reading your Workshop 1 CloudFormation outputs. They are listed so you understand what
+is set and can supply them by hand (or via `-c key=value`) if you deploy outside the
+notebook:
+
+| Context key | Source | Set by |
+|---|---|---|
+| `neptuneClusterEndpoint` | WS1 stack output `SLGDEndpoint` | pre-flight bridge |
+| `neptuneLgdEndpoint` | WS1 stack output `LGDEndpoint` | pre-flight bridge |
+| `ontologyStagingBucket` | WS1 stack output `OntologyStagingBucketName` | pre-flight bridge |
+| `vpcId` | derived from the Neptune security group | pre-flight bridge |
+| `privateSubnetIds` | derived from the VPC (AgentCore-supported AZs only) | pre-flight bridge |
+| `runtimeArtifactsS3Prefix` | the prefix you upload runtime ZIPs under (Option C — see the pre-flight) | you, at deploy time: `-c runtimeArtifactsS3Prefix=runtimes` |
+| `uiCallbackUrls` | your two CloudFront `/callback` URLs + localhost (see the two-pass step below) | you, after the first deploy |
+| `cognitoDomainPrefix` | optional; defaults to `atlas-ws2-<account-id>` (globally unique per account) | auto-derived |
+
+The committed `cdk.json` ships with **empty** values — that is correct. Do not commit
+your account's values back into it.
+
+### 2. UI environment (`apps/wholesale-ui/.env.local`, `apps/wealth-ui/.env.local`)
+
+These files are git-ignored (they hold your account's endpoints), so a clean checkout
+has none. Copy the template and fill it from your deployed stack's outputs:
+
+```
+cp apps/wholesale-ui/.env.example apps/wholesale-ui/.env.local
+cp apps/wealth-ui/.env.example   apps/wealth-ui/.env.local
+```
+
+The keys (`.env.example` documents each and where it comes from):
+
+| Var | Source (stack output) |
+|---|---|
+| `NEXT_PUBLIC_APPSYNC_ENDPOINT` | `AppSyncEndpoint` |
+| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | `CognitoUserPoolWebClientId` |
+| `NEXT_PUBLIC_COGNITO_DOMAIN` | `CognitoHostedUiDomain` |
+
+Because Next.js `output: "export"` inlines `NEXT_PUBLIC_*` at build time, you must set
+these *before* `next build`, and rebuild if they change.
+
+### 3. The two-pass callback-URL step (login)
+
+The Cognito hosted-UI OAuth flow rejects any `redirect_uri` not pre-registered on the
+app client, but your CloudFront URLs are not known until the distributions exist. So
+deploy in two passes:
+
+1. **First deploy** (no `uiCallbackUrls`): creates the CloudFront distributions. Read
+   their domains from the stack outputs (`WholesaleUiUrl`, `WealthUiUrl`).
+2. **Redeploy** registering those callbacks:
+   `npx cdk deploy -c uiCallbackUrls=https://<wholesale>/callback,https://<wealth>/callback,http://localhost:3000/callback`
+
+Then build the UIs (step 2 above) with `NEXT_PUBLIC_COGNITO_DOMAIN` set, and sync
+`out/` to the CloudFront buckets. The CDK stack does not have a hardcoded callback
+default tied to any account; if you skip the `-c uiCallbackUrls=` override the client
+registers only a placeholder and login will not complete until you supply your URLs.
+
 ## The teaching emphasis
 
 Each prerequisite in this document is paired with a teaching moment from the notebooks. This is intentional. Workshop 2 does not draw a line between "setup" and "learning" — the setup *is* part of the learning. Understanding why Ontop is deployed by Workshop 2 rather than Workshop 1 teaches the boundary between design artifacts and runtime infrastructure. Understanding why IDC groups must exist before the workshop starts teaches the four-layer permission model in advance of seeing it work.

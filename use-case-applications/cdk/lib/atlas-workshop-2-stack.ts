@@ -69,15 +69,21 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       // https://<prefix>.auth.us-east-1.amazoncognito.com.
       hostedUiDomainPrefix:
         this.node.tryGetContext("cognitoDomainPrefix") ?? `atlas-ws2-${this.account}`,
-      // Register every origin the UIs are served from — both CloudFront distributions
-      // and localhost dev. The code flow rejects any redirect_uri not in this list.
-      // Overridable via -c uiCallbackUrls=url1,url2,... (comma-joined).
+      // OAuth callback URLs registered on the Cognito app client. These must be the
+      // origins the UIs are served from, but a CloudFront distribution's domain is not
+      // known until the FIRST deploy creates it — a chicken-and-egg. So the two-pass
+      // flow (see spec/02-prerequisites.md "Set these once"):
+      //   1. First deploy with no override -> only localhost is registered (the
+      //      distributions are created in this same deploy; their URLs are now in the
+      //      WholesaleUiUrl / WealthUiUrl stack outputs).
+      //   2. Redeploy with -c uiCallbackUrls=https://<wholesale>/callback,
+      //      https://<wealth>/callback,http://localhost:3000/callback
+      // There is intentionally NO hardcoded CloudFront default — a baked-in domain
+      // would register THIS author's distributions on a clean account's pool.
       callbackUrls: (
         this.node.tryGetContext("uiCallbackUrls") as string | undefined
       )?.split(",") ?? [
-        "https://d2u767clefsqd0.cloudfront.net/callback", // wholesale UI
-        "https://d1n2v02lda72pi.cloudfront.net/callback", // wealth UI
-        "http://localhost:3000/callback",                  // local dev
+        "http://localhost:3000/callback", // local dev only until you supply -c uiCallbackUrls=
       ],
     });
 
