@@ -14,12 +14,19 @@ WHY THIS EXISTS
   the WS1-boundary rule (never edit agentic-semantic-layer/).
 
 WHAT IT DOES
-  Parses signal-types.ttl -> N-Triples -> a single INSERT DATA, executed against the
-  SLGD. Idempotent: the concepts have fixed URIs, so re-running re-inserts identical
-  triples (RDF set semantics) and the graph is unchanged.
+  Parses signal-types.ttl and CONVERGES the SLGD's atlas-part-2: concepts to it:
+  build_reload() returns [DELETE the part2# namespace, INSERT the file's triples].
+  Running both in order makes the SLGD match the file exactly, every time.
 
-  The INSERT carries the atlas: and prov: PREFIX declarations the atlas-sparql-mcp
-  update op requires, even though N-Triples use full IRIs.
+  Why not a bare INSERT: a bare INSERT is idempotent only for UNCHANGED triples (RDF
+  set semantics dedupes identical ones). After a literal edit — e.g. changing a
+  concept's rdfs:comment — re-loading would leave BOTH the old and the new value
+  (they are distinct triples). Clearing the namespace first guarantees convergence.
+
+  Both statements carry the atlas: and prov: PREFIX declarations the atlas-sparql-mcp
+  update op requires, even though N-Triples use full IRIs. The DELETE is scoped to the
+  part2# subject namespace (proven safe — no WS1 triple is under it); it is never
+  scoped by skos:inScheme, which would clip WS1's five concepts.
 
 TRANSPORT
   This reference implementation prints the INSERT DATA query; execute it against the
@@ -58,7 +65,8 @@ _PREAMBLE = (
 )
 
 
-def build_insert() -> str:
+def _insert_body() -> str:
+    """The current file's triples as an INSERT DATA body (with prefixes)."""
     g = Graph()
     g.parse(str(TTL), format="turtle")
     lines = [
@@ -69,8 +77,47 @@ def build_insert() -> str:
     return _PREAMBLE + "INSERT DATA {\n" + "\n".join(lines) + "\n}"
 
 
+def build_delete_namespace() -> str:
+    """DELETE every triple whose SUBJECT is under the atlas-part-2: namespace.
+
+    This is the proven-safe teardown scope (Pass 2a): WS1 concepts use the atlas:
+    namespace, never part2:, so no Workshop 1 triple matches. It is NOT scoped by
+    skos:inScheme — that would also match WS1's five concepts (which are inScheme the
+    same WealthSignalTypeScheme) and clip them. Namespace prefix only.
+    """
+    return _PREAMBLE + (
+        "DELETE { ?s ?p ?o }\n"
+        "WHERE { ?s ?p ?o . "
+        'FILTER(STRSTARTS(STR(?s), "https://github.com/your-org/atlas/ontology/part2#")) }'
+    )
+
+
+def build_reload() -> list[str]:
+    """The idempotent load: clear the part2# namespace, then insert the file's triples.
+
+    Returned as an ordered [DELETE, INSERT] pair for the caller to execute in sequence.
+    A bare INSERT is NOT idempotent after a literal edit — re-loading after changing,
+    say, a concept's rdfs:comment leaves BOTH the old and new value (RDF set semantics
+    dedupes only identical triples). Clearing the namespace first makes the load
+    CONVERGE to exactly what the file says, every run.
+    """
+    return [build_delete_namespace(), _insert_body()]
+
+
+def build_insert() -> str:
+    """Backwards-compatible: the INSERT body only. Prefer build_reload() for an
+    idempotent, converge-to-file load."""
+    return _insert_body()
+
+
 if __name__ == "__main__":
-    query = build_insert()
-    n = query.count("\n") - _PREAMBLE.count("\n") - 1
-    sys.stderr.write(f"[load-ws2-concepts] {n} triples from {TTL.name}\n")
-    print(query)  # caller pipes this to the signed SLGD update path
+    # Emit the converge-to-file reload: DELETE the namespace, then INSERT the file.
+    statements = build_reload()
+    n = statements[1].count("\n") - _PREAMBLE.count("\n") - 1
+    sys.stderr.write(
+        f"[load-ws2-concepts] reload = DELETE part2# namespace, then INSERT {n} "
+        f"triples from {TTL.name}\n"
+    )
+    for stmt in statements:
+        print(stmt)
+        print("---")  # statement separator for the caller
