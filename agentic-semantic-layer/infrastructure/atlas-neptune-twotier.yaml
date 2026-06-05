@@ -175,6 +175,7 @@ Resources:
             Action:
               - neptune-db:ReadDataViaQuery
               - neptune-db:WriteDataViaQuery
+              - neptune-db:DeleteDataViaQuery
               - neptune-db:GetQueryStatus
               - neptune-db:CancelQuery
             Resource:
