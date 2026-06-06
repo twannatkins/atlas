@@ -188,6 +188,11 @@ select-advisor → validate-routing → write-routing-decision → notify-adviso
 
 **Synthesis and deployment commands:**
 
+The pre-flight notebook (`00_preflight`) writes the Workshop 1 endpoints into
+`cdk/cdk.json` for you, so in practice the context flags below are already populated;
+they are shown explicitly here for reference. The runnable, ordered runbook a clean
+account follows is `notebooks/phase-1-referral/08_deploy.ipynb`.
+
 ```bash
 cd use-case-applications/cdk
 npm install
@@ -195,7 +200,13 @@ npx cdk synth --context neptuneClusterEndpoint=<endpoint> \
               --context neptuneClusterArn=<arn> \
               --context vpcId=<vpc-id> \
               --context privateSubnetIds=<subnet-1,subnet-2>
-npx cdk deploy
+
+# Deploy ALWAYS with -c runtimeArtifactsS3Prefix=runtimes. The 12 AgentCore runtimes
+# source their dependencies from the portable ZIPs that scripts/build-runtimes.sh
+# uploaded to the staging bucket (Option C). Omitting this flag ships runtimes with NO
+# dependencies — they provision green and then crash on first invocation. Run
+# `scripts/build-runtimes.sh build` BEFORE this deploy. No Docker is required at synth.
+npx cdk deploy -c runtimeArtifactsS3Prefix=runtimes
 ```
 
 **Deployment ordering.** The deploy completes in two phases automatically:

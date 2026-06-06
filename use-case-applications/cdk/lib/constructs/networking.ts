@@ -39,8 +39,9 @@ export class NetworkingConstruct extends Construct {
     // AgentCore VPC mode constraint: only subnets in supported AZs can be used.
     // In us-east-1, AgentCore supports use1-az1 (us-east-1c), use1-az2 (us-east-1d),
     // and use1-az4 (us-east-1a). It does NOT support use1-az6 (us-east-1b).
-    // The privateSubnetIds context value must exclude any subnet in an unsupported AZ.
-    // In this account: subnet-028d75e13e01a02ef (us-east-1b/use1-az6) is excluded.
+    // The privateSubnetIds context value must exclude any subnet in an unsupported AZ —
+    // i.e. drop any subnet that lives in us-east-1b (use1-az6) before passing the list.
+    // The pre-flight bridge derives privateSubnetIds from your VPC and applies this rule.
     this.privateSubnets = props.privateSubnetIds.map((id) =>
       ec2.Subnet.fromSubnetId(this, `PrivateSubnet-${id}`, id),
     );
