@@ -1,4 +1,9 @@
-boto3>=1.43.0
+# Deployed-Lambda dependencies for the referral-orchestrator step Lambdas.
+# Only validate-routing imports third-party packages (rdflib + pyshacl, for inline
+# SHACL validation); these are 100% py3-none-any wheels, so the CDK local bundler
+# installs them with no Docker. boto3/botocore are provided by the Lambda Python 3.12
+# runtime, so they are intentionally NOT listed here (the four other step Lambdas need
+# nothing beyond stdlib + the in-runtime boto3). bedrock-agentcore was previously listed
+# but is imported by none of the step Lambdas — removed.
 rdflib==7.0.0
-bedrock-agentcore==1.11.0
 pyshacl==0.25.0
