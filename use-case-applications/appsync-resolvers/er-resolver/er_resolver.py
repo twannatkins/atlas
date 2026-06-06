@@ -18,23 +18,55 @@ from typing import Any, Dict
 import urllib.parse
 import urllib.request
 
+import boto3  # used by the staged SigV4 transport (_invoke_agentcore_sigv4)
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ER_MCP_ARN = os.environ.get("ER_MCP_ARN", "")
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 
+# ── AgentCore invoke transport ───────────────────────────────────────────────
+# MCP_AUTH_MODE selects transport (see sparql_resolver for the full rationale):
+#   "bearer" (DEFAULT, live): forward the user's JWT as Bearer over a urllib POST.
+#   "sigv4" (Option-A Pass 2, staged): boto3 invoke_agent_runtime, signed by the Lambda
+#     role. Flip ONLY in lockstep with the authorizer Cognito->IAM change. This resolver
+#     reaches BOTH ER_MCP and SPARQL_MCP, so the Pass-2 grant must cover both ARNs.
+MCP_AUTH_MODE = os.environ.get("MCP_AUTH_MODE", "bearer")
+
+
 def _agentcore_endpoint(runtime_arn: str) -> str:
     encoded = urllib.parse.quote(runtime_arn, safe="")
     return f"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/{encoded}/invocations"
 
-def _invoke_agentcore(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+
+def _invoke_agentcore_bearer(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+    """LIVE path: POST with the user's JWT as Bearer."""
     body = json.dumps(payload).encode()
     req = urllib.request.Request(_agentcore_endpoint(runtime_arn), data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", f"Bearer {bearer_token}")
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read())
+
+
+def _invoke_agentcore_sigv4(runtime_arn: str, payload: Dict) -> Dict:
+    """Pass-2 path (staged): boto3 SDK, SigV4-signed by the Lambda role. Mirrors the
+    agents' proven-correct call (nl_to_sparql_agent.py:206-222)."""
+    client = boto3.client("bedrock-agentcore")
+    response = client.invoke_agent_runtime(
+        agentRuntimeArn=runtime_arn,
+        payload=json.dumps(payload).encode(),
+        contentType="application/json",
+    )
+    return json.loads(response["response"].read())
+
+
+def _invoke_agentcore(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+    """Transport dispatch; default 'bearer' keeps the live path unchanged."""
+    if MCP_AUTH_MODE == "sigv4":
+        return _invoke_agentcore_sigv4(runtime_arn, payload)
+    return _invoke_agentcore_bearer(runtime_arn, payload, bearer_token)
 
 _current_bearer_token: str = ""
 

@@ -32,27 +32,71 @@ from atlas_sparql import prefixed, safe_uri, safe_int
 import urllib.parse
 import urllib.request
 
+import boto3  # used by the staged SigV4 transport (_invoke_agentcore_sigv4)
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 
-# AgentCore HTTP endpoint for a runtime ARN.
-# Runtimes use customJWTAuthorizer (Cognito) — caller passes the user's access token
-# as Bearer. The AppSync event carries the raw Authorization header at
-# event["request"]["headers"]["authorization"].
+# ── AgentCore invoke transport ───────────────────────────────────────────────
+# Two transports exist; MCP_AUTH_MODE selects which is live:
+#
+#   "bearer" (DEFAULT — the live path): the runtimes use a Cognito customJWTAuthorizer,
+#     so the caller forwards the user's access token as Bearer in a plain HTTPS POST.
+#     boto3's invoke_agent_runtime uses SigV4 and cannot inject a custom Authorization
+#     header, so we POST with urllib. This is the path the live card reads through.
+#
+#   "sigv4" (Option-A Pass 2 — NOT live until the coordinated cutover): the runtimes'
+#     authorizer is flipped Cognito->IAM, and this resolver invokes via the boto3 SDK
+#     (SigV4-signed by the Lambda execution role). This MUST be flipped in lockstep with
+#     the authorizer (a runtime has ONE authorizer) — setting MCP_AUTH_MODE=sigv4 while
+#     the authorizer is still Cognito would break the read path. Pass 2 sets the env var,
+#     flips the authorizer, and grants bedrock-agentcore:InvokeAgentRuntime together.
+#
+# The SigV4 helper mirrors the agents' canonical, in-repo call
+# (agents/nl-to-sparql-agent/nl_to_sparql_agent.py:206-222): same ARN, same payload
+# dict, same response unwrap (response["response"].read()).
+MCP_AUTH_MODE = os.environ.get("MCP_AUTH_MODE", "bearer")
+
+
 def _agentcore_endpoint(runtime_arn: str) -> str:
     encoded = urllib.parse.quote(runtime_arn, safe="")
     return f"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/{encoded}/invocations"
 
-def _invoke_agentcore(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
-    """POST to an AgentCore runtime endpoint with the user's JWT as Bearer."""
+
+def _invoke_agentcore_bearer(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+    """LIVE path: POST to an AgentCore runtime with the user's JWT as Bearer."""
     body = json.dumps(payload).encode()
     req = urllib.request.Request(_agentcore_endpoint(runtime_arn), data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", f"Bearer {bearer_token}")
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read())
+
+
+def _invoke_agentcore_sigv4(runtime_arn: str, payload: Dict) -> Dict:
+    """Pass-2 path (staged, not live until MCP_AUTH_MODE=sigv4 + authorizer=IAM).
+
+    Mirrors the agents' proven-correct SDK call. The Lambda execution role's IAM
+    identity signs the request (SigV4); no user token is forwarded.
+    """
+    client = boto3.client("bedrock-agentcore")
+    response = client.invoke_agent_runtime(
+        agentRuntimeArn=runtime_arn,
+        payload=json.dumps(payload).encode(),
+        contentType="application/json",
+    )
+    return json.loads(response["response"].read())
+
+
+def _invoke_agentcore(runtime_arn: str, payload: Dict, bearer_token: str) -> Dict:
+    """Transport dispatch. Default 'bearer' keeps the live read path unchanged; Pass 2
+    sets MCP_AUTH_MODE=sigv4 in lockstep with the authorizer flip. The bearer_token arg
+    is retained for call-site compatibility and ignored in sigv4 mode."""
+    if MCP_AUTH_MODE == "sigv4":
+        return _invoke_agentcore_sigv4(runtime_arn, payload)
+    return _invoke_agentcore_bearer(runtime_arn, payload, bearer_token)
 
 # Bearer token extracted from the AppSync request headers — threaded through all resolvers.
 _current_bearer_token: str = ""

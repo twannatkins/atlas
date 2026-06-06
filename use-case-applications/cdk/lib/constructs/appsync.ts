@@ -116,15 +116,35 @@ export class AppSyncConstruct extends Construct {
 
     const resolverBase = path.join(__dirname, "..", "..", "..", "appsync-resolvers");
 
+    // ── Option-A MCP auth mode (Pass 1 staged; Pass 2 flips it) ────────────────
+    // DEFAULT (mcpAuthMode unset) = "bearer": the live path. Resolvers forward the
+    // user's Cognito JWT (matches the runtimes' Cognito authorizer); IAM grant is
+    // InvokeAgentRuntimeForUser. This keeps the live read path (the card) unchanged.
+    //
+    // Pass 2 (-c mcpAuthMode=sigv4) is the ATOMIC cutover, set in lockstep with the
+    // runtime authorizer flip Cognito->IAM (agentcore-runtimes.ts). It (a) sets
+    // MCP_AUTH_MODE=sigv4 so resolvers invoke via the boto3 SDK (SigV4), and (b) grants
+    // InvokeAgentRuntime instead of ...ForUser. Setting this while the authorizer is
+    // still Cognito would break the read path — the two MUST move together.
+    const mcpAuthMode = this.node.tryGetContext("mcpAuthMode") === "sigv4" ? "sigv4" : "bearer";
+    const mcpInvokeAction =
+      mcpAuthMode === "sigv4"
+        ? "bedrock-agentcore:InvokeAgentRuntime"
+        : "bedrock-agentcore:InvokeAgentRuntimeForUser";
+    // Only inject MCP_AUTH_MODE when sigv4, so the default deploy's Lambda env is
+    // byte-identical to the pre-Pass-1 template (no spurious resource diff).
+    const mcpAuthEnv: Record<string, string> =
+      mcpAuthMode === "sigv4" ? { MCP_AUTH_MODE: "sigv4" } : {};
+
     const sparqlProxyFn = new lambda.Function(this, "SparqlProxy", {
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: "sparql_resolver.handler",
       code: lambda.Code.fromAsset(path.join(resolverBase, "sparql-resolver")),
       timeout: cdk.Duration.seconds(30),
-      environment: { SPARQL_MCP_ARN: props.sparqlMcpArn },
+      environment: { SPARQL_MCP_ARN: props.sparqlMcpArn, ...mcpAuthEnv },
     });
     sparqlProxyFn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ["bedrock-agentcore:InvokeAgentRuntimeForUser"],
+      actions: [mcpInvokeAction],
       resources: [`${props.sparqlMcpArn}*`],
     }));
 
@@ -137,10 +157,11 @@ export class AppSyncConstruct extends Construct {
         REGISTRY_MCP_ARN: props.registryMcpArn,
         // routeReferral starts this state machine directly (the proven path).
         STATE_MACHINE_ARN: props.stateMachineArn,
+        ...mcpAuthEnv,
       },
     });
     registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ["bedrock-agentcore:InvokeAgentRuntimeForUser"],
+      actions: [mcpInvokeAction],
       resources: [`${props.registryMcpArn}*`],
     }));
     // routeReferral → Step Functions StartExecution on the referral orchestrator.
@@ -158,10 +179,11 @@ export class AppSyncConstruct extends Construct {
       environment: {
         ER_MCP_ARN: props.erMcpArn,
         SPARQL_MCP_ARN: props.sparqlMcpArn,
+        ...mcpAuthEnv,
       },
     });
     erProxyFn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ["bedrock-agentcore:InvokeAgentRuntimeForUser"],
+      actions: [mcpInvokeAction],
       resources: [`${props.erMcpArn}*`, `${props.sparqlMcpArn}*`],
     }));
 
