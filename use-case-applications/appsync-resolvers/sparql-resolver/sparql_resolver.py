@@ -114,9 +114,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     start_time = time.time()
 
     global _current_bearer_token
-    field_name = event.get("info", {}).get("fieldName", "")
+    info = event.get("info", {})
+    field_name = info.get("fieldName", "")
+    parent_type = info.get("parentTypeName", "")
     arguments = event.get("arguments", {})
     identity = event.get("identity", {})
+    # AppSync forwards the parent object on a nested-field resolver (default direct-Lambda
+    # mapping sends the full $context). For Customer.wealthSignals the parent Customer is
+    # in event["source"]; we scope the signal query to its uri.
+    source = event.get("source") or {}
     # Extract the Cognito access token forwarded by AppSync — required for AgentCore auth.
     _current_bearer_token = (event.get("request") or {}).get("headers", {}).get("authorization", "")
 
@@ -124,6 +130,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     persona_claim = _extract_persona(identity)
 
     try:
+        # Nested field resolvers (dispatch on the PARENT type, not just the field name —
+        # `wealthSignals` exists on both Query (flat, arg customerUri) and Customer
+        # (nested, parent uri)). The nested path reuses the SAME _resolve_wealth_signals
+        # producesSignal logic, scoped to the parent customer's uri — one source of truth,
+        # no duplicated SPARQL. Returns [] (not null) for customers with no signals, which
+        # satisfies the non-nullable [WealthSignal!]! and lets the dashboard list render.
+        if parent_type == "Customer" and field_name == "wealthSignals":
+            return _resolve_wealth_signals({"customerUri": source.get("uri", "")}, persona_claim)
+
         if field_name == "customer":
             return _resolve_customer(arguments, persona_claim)
         elif field_name == "household":

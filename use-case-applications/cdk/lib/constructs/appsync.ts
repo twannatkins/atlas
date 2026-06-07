@@ -199,6 +199,12 @@ export class AppSyncConstruct extends Construct {
     sparqlDs.createResolver("HouseholdResolver", { typeName: "Query", fieldName: "household" });
     sparqlDs.createResolver("SearchCustomersResolver", { typeName: "Query", fieldName: "searchCustomers" });
     sparqlDs.createResolver("WealthSignalsResolver", { typeName: "Query", fieldName: "wealthSignals" });
+    // Nested Customer.wealthSignals — the schema declares it [WealthSignal!]! but it had
+    // no resolver, so it returned null and nulled the whole parent (DASHBOARD_QUERY,
+    // CUSTOMER_360_QUERY, CLIENT_360_QUERY). This resolver reuses the same sparql_resolver
+    // Lambda; it dispatches on parentTypeName=="Customer" and scopes _resolve_wealth_signals
+    // to the parent customer's uri (event.source.uri). Returns [] for no-signal customers.
+    sparqlDs.createResolver("CustomerWealthSignalsResolver", { typeName: "Customer", fieldName: "wealthSignals" });
     sparqlDs.createResolver("AdvisoryRelationshipsResolver", { typeName: "Query", fieldName: "advisoryRelationships" });
     sparqlDs.createResolver("ReferralsResolver", { typeName: "Query", fieldName: "referrals" });
     sparqlDs.createResolver("AuditTrailResolver", { typeName: "Query", fieldName: "auditTrail" });
