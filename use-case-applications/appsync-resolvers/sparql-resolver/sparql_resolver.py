@@ -138,6 +138,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # satisfies the non-nullable [WealthSignal!]! and lets the dashboard list render.
         if parent_type == "Customer" and field_name == "wealthSignals":
             return _resolve_wealth_signals({"customerUri": source.get("uri", "")}, persona_claim)
+        # Customer.advisoryRelationships (nested) — the blocker: CLIENT_360_QUERY selects
+        # this non-nullable [AdvisoryRelationship!]! field, but it had no resolver, so it
+        # returned null and nulled the whole customer ("Client not found"). Same Pass-2c
+        # fix as wealthSignals: reuse the flat _resolve_advisory_relationships scoped to the
+        # parent customer's uri. Returns [] (not null) for a customer with no coverage,
+        # which satisfies the non-nullable list.
+        if parent_type == "Customer" and field_name == "advisoryRelationships":
+            return _resolve_advisory_relationships({"customerUri": source.get("uri", "")}, persona_claim)
+        # Customer.household (nested) — nullable, so it did not null the customer, but it
+        # had no resolver so it always returned null. Resolve the customer's household via
+        # the atlas:memberOf link, then reuse the flat household logic. null when the
+        # customer is not in a household (the schema allows it).
+        if parent_type == "Customer" and field_name == "household":
+            return _resolve_customer_household(source.get("uri", ""), persona_claim)
 
         if field_name == "customer":
             return _resolve_customer(arguments, persona_claim)
@@ -228,6 +242,22 @@ def _resolve_household(args: Dict, persona: str) -> Dict[str, Any]:
         "members": members,
         "memberCount": len(members),
     }
+
+
+def _resolve_customer_household(customer_uri: str, persona: str) -> Dict[str, Any]:
+    """Resolve the household a customer belongs to (the nested Customer.household field).
+
+    The flat _resolve_household takes a HOUSEHOLD uri; here the parent is a CUSTOMER, so we
+    first follow the customer's atlas:memberOf link to its household, then reuse the flat
+    logic for the household's members. Returns null when the customer is not in a household
+    (Customer.household is nullable in the schema)."""
+    uri = safe_uri(customer_uri)
+    rows = _query_sparql(prefixed(f"""
+        SELECT ?hh WHERE {{ <{uri}> atlas:memberOf ?hh . ?hh a atlas:Household . }} LIMIT 1
+    """), persona)
+    if not rows or not rows[0].get("hh"):
+        return None
+    return _resolve_household({"uri": rows[0]["hh"]}, persona)
 
 
 def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
