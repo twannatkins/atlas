@@ -181,6 +181,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       // Action-side agents (#2 askGraph, #3 draftRationale) — invoked directly by ARN.
       nlToSparqlArn: runtimes.nlToSparqlAgent.agentRuntimeArn,
       drafterArn: runtimes.referralRationaleDrafter.agentRuntimeArn,
+      conversationalArn: runtimes.conversationalContextManager.agentRuntimeArn,
       groundTruthS3Uri: `s3://${ontologyStagingBucket}/prompts/ground-truth.yaml`,
       // routeReferral starts this state machine directly (proven path).
       stateMachineArn: stepFunctions.stateMachineArn,

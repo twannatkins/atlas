@@ -15,7 +15,6 @@ import { CLIENT_360_QUERY } from "../../../graphql/queries";
 import { useAuth } from "../../../../../shared/auth/use-auth";
 import { CapabilityPalette } from "../../../components/capability-palette";
 import { CoverageStrip } from "../../../components/coverage-strip";
-import { ThemeCard } from "../../../components/theme-card";
 import { ConversationPanel } from "../../../components/conversation-panel";
 
 export default function ClientPage() {
@@ -51,14 +50,16 @@ export default function ClientPage() {
           <CoverageStrip relationships={client.advisoryRelationships || []} />
         </section>
 
-        {/* Themes */}
+        {/* Themes — no per-client themes are derived yet (the theme corpus is empty: see
+            ontology-extensions/themes.ttl). Rather than invent ESG/rate/tech themes with
+            fabricated relevance scores, show the honest empty state. The /themes page runs
+            the real (currently empty) themes query; this client view will surface real
+            client-linked themes once the corpus is populated. */}
         <section>
           <h2 className="text-lg font-semibold mb-3">Market themes</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            <ThemeCard theme="ESG Transition" relevance={0.82} />
-            <ThemeCard theme="Rate Sensitivity" relevance={0.71} />
-            <ThemeCard theme="Tech Concentration" relevance={0.65} />
-          </div>
+          <p className="text-sm text-neutral-400">
+            No themes tracked for this client yet.
+          </p>
         </section>
 
         {/* Conversational surface */}

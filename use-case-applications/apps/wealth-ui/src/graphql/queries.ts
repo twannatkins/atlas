@@ -8,6 +8,33 @@
 
 import { gql } from "@apollo/client";
 
+/**
+ * #5 conversation — a single natural-language turn via conversational-context-manager.
+ * Single-turn: priorTurns is always 0 (AgentCore Memory is not wired). Returns real rows
+ * for a matched template, or status "no_template_match" (the UI then shows suggestions).
+ */
+export const CONVERSE_MUTATION = gql`
+  mutation Converse($question: String!, $sessionId: String!) {
+    converse(question: $question, sessionId: $sessionId) {
+      status
+      sparql
+      result
+      priorTurns
+    }
+  }
+`;
+
+/**
+ * The questions the conversation can actually answer — read live from the same
+ * ground-truth.yaml the agent matches against (zero drift; the field is shared with the
+ * Wholesale UI). Rendered as suggestions + the no-match state.
+ */
+export const SUGGESTED_QUESTIONS_QUERY = gql`
+  query SuggestedQuestions {
+    suggestedQuestions
+  }
+`;
+
 export const ADVISOR_DASHBOARD_QUERY = gql`
   query AdvisorDashboard($limit: Int) {
     searchCustomers(query: "", limit: $limit) {

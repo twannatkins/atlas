@@ -39,6 +39,9 @@ STATE_MACHINE_ARN = os.environ.get("STATE_MACHINE_ARN", "")
 # registry-mcp invoke_capability, which is the broken invoke_agent(agentName=…) path.
 NL_TO_SPARQL_ARN = os.environ.get("NL_TO_SPARQL_ARN", "")
 DRAFTER_ARN = os.environ.get("DRAFTER_ARN", "")
+# conversational-context-manager — the #5 wealth conversation. Single-turn: it wraps
+# nl-to-sparql-agent and its Memory calls no-op, so each turn is independent.
+CONVERSATIONAL_ARN = os.environ.get("CONVERSATIONAL_ARN", "")
 # ground-truth.yaml is the SAME template source nl-to-sparql-agent matches against;
 # suggestedQuestions reads its question: lines so the UI's suggestions never drift from
 # what the agent can actually answer. WS1-owned file — READ only, never written here.
@@ -114,6 +117,8 @@ def handler(event: Dict[str, Any], context: Any) -> Any:
             return _resolve_draft_rationale(arguments, persona_claim)
         elif field_name == "suggestedQuestions":
             return _resolve_suggested_questions()
+        elif field_name == "converse":
+            return _resolve_converse(arguments, persona_claim)
         else:
             raise ValueError(f"Unknown field: {field_name}")
     except Exception as exc:
@@ -278,6 +283,32 @@ def _resolve_ask_graph(args: Dict, persona: str) -> Dict:
         "result": r.get("result", []),
         "templateId": prov.get("template_id") or None,
         "executionTimeMs": prov.get("execution_time_ms"),
+    }
+
+
+def _resolve_converse(args: Dict, persona: str) -> Dict:
+    """#5 wealth conversation — invoke conversational-context-manager DIRECTLY by ARN.
+    It wraps nl-to-sparql-agent (same templates as askGraph) and is single-turn (its
+    Memory no-ops), so context_used.prior_turns is always 0 — surfaced as priorTurns.
+    Honest pass-through: no_template_match / errors are returned as-is, never fabricated."""
+    question = args.get("question", "")
+    session_id = args.get("sessionId", "")
+    if not CONVERSATIONAL_ARN:
+        return {"status": "query_error", "sparql": None, "result": [], "priorTurns": 0}
+    try:
+        r = _invoke_agentcore(CONVERSATIONAL_ARN,
+                              {"question": question, "session_id": session_id,
+                               "persona_claim": persona},
+                              _current_bearer_token)
+    except Exception as exc:
+        logger.error(json.dumps({"event": "converse_failed", "error": str(exc)}))
+        return {"status": "query_error", "sparql": None, "result": [], "priorTurns": 0}
+    ctx = r.get("context_used", {}) or {}
+    return {
+        "status": r.get("status", "query_error"),
+        "sparql": r.get("sparql") or None,
+        "result": r.get("result", []),
+        "priorTurns": ctx.get("prior_turns", 0),
     }
 
 

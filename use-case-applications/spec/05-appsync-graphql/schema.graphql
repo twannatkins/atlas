@@ -303,6 +303,23 @@ type DraftResult {
   generatedBy: String
 }
 
+"""
+Result of a single conversational turn (the Wealth UI's Ask-the-graph). converse routes
+through conversational-context-manager, which wraps nl-to-sparql-agent (the same
+template-bounded NL->SPARQL as askGraph). It is honestly SINGLE-TURN: priorTurns is
+always 0 because AgentCore Memory is not wired (get_memory/put_memory are not real ops),
+so each question is answered independently — surfaced in the data, not just the copy.
+"""
+type ConverseResult {
+  status: String!
+  """The validated SPARQL that ran (null when no template matched)."""
+  sparql: String
+  """The result rows as JSON — heterogeneous across templates (opaque AWSJSON array)."""
+  result: AWSJSON
+  """Prior conversation turns applied. Always 0 — the conversation is single-turn today."""
+  priorTurns: Int!
+}
+
 type Query {
   """Fetch a customer by URI. Resolver: SPARQL via Ontop."""
   customer(uri: ID!): Customer
@@ -382,6 +399,14 @@ type Mutation {
   (the deterministic, human-gated path) performs the actual routing.
   """
   draftRationale(householdUri: ID!, signalUris: [ID!]!): DraftResult!
+
+  """
+  Ask a single natural-language question in the Wealth UI conversation. Resolver invokes
+  conversational-context-manager (which wraps nl-to-sparql-agent). Single-turn: sessionId
+  is carried for the agent contract but no prior-turn memory is applied (priorTurns is
+  always 0). Returns real rows for a matched template, or status "no_template_match".
+  """
+  converse(question: String!, sessionId: String!): ConverseResult!
 }
 
 # ─────────────────────────────────────────────────────────────────────

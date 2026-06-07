@@ -33,6 +33,8 @@ export interface AppSyncProps {
   nlToSparqlArn: string;
   /** AgentCore Runtime ARN for referral-rationale-drafter (#3 draftRationale). */
   drafterArn: string;
+  /** AgentCore Runtime ARN for conversational-context-manager (#5 converse — single-turn). */
+  conversationalArn: string;
   /** s3://<bucket>/prompts/ground-truth.yaml — the agent's template source, read by
    *  suggestedQuestions so the UI's suggestions never drift from what the agent answers. */
   groundTruthS3Uri: string;
@@ -166,9 +168,10 @@ export class AppSyncConstruct extends Construct {
         REGISTRY_MCP_ARN: props.registryMcpArn,
         // routeReferral starts this state machine directly (the proven path).
         STATE_MACHINE_ARN: props.stateMachineArn,
-        // Action-side agents invoked DIRECTLY by ARN (askGraph / draftRationale).
+        // Action-side agents invoked DIRECTLY by ARN (askGraph / draftRationale / converse).
         NL_TO_SPARQL_ARN: props.nlToSparqlArn,
         DRAFTER_ARN: props.drafterArn,
+        CONVERSATIONAL_ARN: props.conversationalArn,
         GROUND_TRUTH_S3_URI: props.groundTruthS3Uri,
         ...mcpAuthEnv,
       },
@@ -184,7 +187,7 @@ export class AppSyncConstruct extends Construct {
     // InvokeAgentRuntimeForUser, matching the resolver's bearer transport.)
     registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
       actions: [mcpInvokeAction],
-      resources: [`${props.nlToSparqlArn}*`, `${props.drafterArn}*`],
+      resources: [`${props.nlToSparqlArn}*`, `${props.drafterArn}*`, `${props.conversationalArn}*`],
     }));
     // suggestedQuestions reads ground-truth.yaml from the staging bucket (read-only).
     registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
@@ -246,6 +249,7 @@ export class AppSyncConstruct extends Construct {
     registryDs.createResolver("RouteReferralResolver", { typeName: "Mutation", fieldName: "routeReferral" });
     registryDs.createResolver("DetectSignalsResolver", { typeName: "Mutation", fieldName: "detectSignals" });
     registryDs.createResolver("DraftRationaleResolver", { typeName: "Mutation", fieldName: "draftRationale" });
+    registryDs.createResolver("ConverseResolver", { typeName: "Mutation", fieldName: "converse" });
 
     this.apiUrl = api.graphqlUrl;
   }

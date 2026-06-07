@@ -1,8 +1,10 @@
 /**
- * Conversations page — multi-turn conversational surface.
+ * Conversations page — single-turn natural-language query surface.
  *
- * Uses the conversational-context-manager agent with AgentCore Memory.
- * Session-scoped: memory clears when the session ends.
+ * Routes through the conversational-context-manager agent (which wraps nl-to-sparql-agent,
+ * so it is template-bounded). It is single-turn today: AgentCore Memory is not wired
+ * (the agent's get_memory/put_memory calls no-op), so each question is answered
+ * independently. Real multi-turn memory is a separate Phase-2 item.
  */
 
 "use client";
@@ -19,7 +21,7 @@ export default function ConversationsPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">Ask the graph</h1>
         <p className="text-sm text-neutral-400">
-          Multi-turn conversation · session-scoped memory · powered by conversational-context-manager
+          Single-turn natural-language queries · powered by conversational-context-manager
         </p>
       </header>
 

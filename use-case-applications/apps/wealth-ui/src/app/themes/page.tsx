@@ -37,7 +37,6 @@ export default function ThemesPage() {
           <ThemeCard
             key={theme.uri}
             theme={theme.themeLabel}
-            relevance={0.75}
             summary={theme.summary}
           />
         ))}
