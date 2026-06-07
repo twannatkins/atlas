@@ -1,9 +1,10 @@
 /**
  * Client 360 page — the Wealth Advisor's view of a client.
  *
- * Shows coverage status, behavioral signals, themes, and the
- * conversational surface. Same Customer type from the GraphQL schema
- * but different fragments than the Wholesale UI.
+ * Shows advisory coverage, the client's wealth signals (with provenance), household
+ * relationships, themes, and the single-turn conversational surface. Binds to the data
+ * CLIENT_360_QUERY already fetches (coverage + nested wealthSignals + household). Same
+ * Customer type as the Wholesale UI, surfaced for the advisor's read.
  */
 
 "use client";
@@ -16,6 +17,8 @@ import { useAuth } from "../../../../../shared/auth/use-auth";
 import { CapabilityPalette } from "../../../components/capability-palette";
 import { CoverageStrip } from "../../../components/coverage-strip";
 import { ConversationPanel } from "../../../components/conversation-panel";
+import { SignalCard } from "../../../components/signal-card";
+import { HouseholdStrip } from "../../../components/household-strip";
 
 export default function ClientPage() {
   const params = useParams();
@@ -49,6 +52,49 @@ export default function ClientPage() {
           <h2 className="text-lg font-semibold mb-3">Advisory coverage</h2>
           <CoverageStrip relationships={client.advisoryRelationships || []} />
         </section>
+
+        {/* Wealth signals — already fetched by CLIENT_360_QUERY (nested
+            Customer.wealthSignals, resolved via the Pass-2c resolver), now surfaced here.
+            Real signals for a signalled client, honest empty state otherwise. No strength
+            badge — there is no derived strength in the data. */}
+        <section>
+          <h2 className="text-lg font-semibold mb-3">Wealth signals</h2>
+          {client.wealthSignals && client.wealthSignals.length > 0 ? (
+            <div className="space-y-3">
+              {client.wealthSignals.map((sig: any) => (
+                <SignalCard
+                  key={sig.uri}
+                  signalType={sig.signalType}
+                  signalDate={sig.signalDate}
+                  provenance={sig.provenance}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-400">No signals derived for this client yet.</p>
+          )}
+        </section>
+
+        {/* Household — the real members from CLIENT_360_QUERY's household selection,
+            clickable to navigate. Only rendered when the client belongs to a household. */}
+        {client.household && (
+          <section>
+            <h2 className="text-lg font-semibold mb-3">Household</h2>
+            <HouseholdStrip
+              nodes={
+                client.household.members?.map((m: any) => ({
+                  uri: m.uri,
+                  type: "atlas:Customer",
+                  label: m.label,
+                  relationship: "atlas:memberOf",
+                })) ?? []
+              }
+              onNodeClick={(nodeUri) =>
+                (window.location.href = `/clients/${encodeURIComponent(nodeUri)}`)
+              }
+            />
+          </section>
+        )}
 
         {/* Themes — no per-client themes are derived yet (the theme corpus is empty: see
             ontology-extensions/themes.ttl). Rather than invent ESG/rate/tech themes with
