@@ -116,23 +116,25 @@ export class AppSyncConstruct extends Construct {
 
     const resolverBase = path.join(__dirname, "..", "..", "..", "appsync-resolvers");
 
-    // ── Option-A MCP auth mode (Pass 1 staged; Pass 2 flips it) ────────────────
-    // DEFAULT (mcpAuthMode unset) = "bearer": the live path. Resolvers forward the
-    // user's Cognito JWT (matches the runtimes' Cognito authorizer); IAM grant is
-    // InvokeAgentRuntimeForUser. This keeps the live read path (the card) unchanged.
+    // ── Option-A MCP auth mode (cut over to SigV4/IAM in Pass 2d) ──────────────
+    // DEFAULT = "sigv4": the live, committed state after the Option-A cutover. Resolvers
+    // invoke MCP via the boto3 SDK (SigV4, signed by the Lambda role), the runtime
+    // authorizer is IAM (agentcore-runtimes.ts), and the IAM grant is InvokeAgentRuntime.
+    // Verified live: the card reads the 2 signals via SigV4; dashboard non-null.
     //
-    // Pass 2 (-c mcpAuthMode=sigv4) is the ATOMIC cutover, set in lockstep with the
-    // runtime authorizer flip Cognito->IAM (agentcore-runtimes.ts). It (a) sets
-    // MCP_AUTH_MODE=sigv4 so resolvers invoke via the boto3 SDK (SigV4), and (b) grants
-    // InvokeAgentRuntime instead of ...ForUser. Setting this while the authorizer is
-    // still Cognito would break the read path — the two MUST move together.
-    const mcpAuthMode = this.node.tryGetContext("mcpAuthMode") === "sigv4" ? "sigv4" : "bearer";
+    // Rollback to the pre-cutover behavior is `-c mcpAuthMode=bearer` (forward the user's
+    // Cognito JWT + InvokeAgentRuntimeForUser, runtime authorizer Cognito). bearer and the
+    // authorizer in agentcore-runtimes.ts read the SAME flag, so they always move together
+    // — a redeploy with the flag is the provably-safe revert (Pass 1 proved bearer synth is
+    // byte-identical to the pre-cutover live template).
+    const mcpAuthMode = this.node.tryGetContext("mcpAuthMode") === "bearer" ? "bearer" : "sigv4";
     const mcpInvokeAction =
       mcpAuthMode === "sigv4"
         ? "bedrock-agentcore:InvokeAgentRuntime"
         : "bedrock-agentcore:InvokeAgentRuntimeForUser";
-    // Only inject MCP_AUTH_MODE when sigv4, so the default deploy's Lambda env is
-    // byte-identical to the pre-Pass-1 template (no spurious resource diff).
+    // Inject MCP_AUTH_MODE=sigv4 (the default) into the resolver Lambdas; on a
+    // `-c mcpAuthMode=bearer` rollback the env is omitted so the resolver code falls back
+    // to its bearer default (sparql_resolver.MCP_AUTH_MODE defaults to "bearer").
     const mcpAuthEnv: Record<string, string> =
       mcpAuthMode === "sigv4" ? { MCP_AUTH_MODE: "sigv4" } : {};
 

@@ -242,10 +242,24 @@ export class AgentCoreRuntimesConstruct extends Construct {
       vpcSubnets: { subnets: props.privateSubnets },
     });
 
-    const authConfig = agentcore.RuntimeAuthorizerConfiguration.usingCognito(
-      props.userPool,
-      [props.userPoolClient],
-    );
+    // Option-A: the runtime authorizer is IAM/SigV4 (cut over in Pass 2d, verified live).
+    // It moves in lockstep with the resolvers' MCP_AUTH_MODE (appsync.ts) — both read the
+    // SAME flag, so they can never diverge.
+    //   sigv4 (DEFAULT, live): runtimes authorize via IAM; callers (resolvers + the 7
+    //          invoking agents) sign with SigV4 and hold bedrock-agentcore:InvokeAgentRuntime
+    //          on the target ARNs.
+    //   bearer (`-c mcpAuthMode=bearer`, the rollback): runtimes validate the user's Cognito
+    //          JWT; resolvers forward it; the agent->MCP grants are omitted. This redeploy is
+    //          byte-identical to the pre-cutover live template (Pass 1), so it is a safe revert.
+    const mcpAuthMode =
+      this.node.tryGetContext("mcpAuthMode") === "bearer" ? "bearer" : "sigv4";
+    const authConfig =
+      mcpAuthMode === "sigv4"
+        ? agentcore.RuntimeAuthorizerConfiguration.usingIAM()
+        : agentcore.RuntimeAuthorizerConfiguration.usingCognito(
+            props.userPool,
+            [props.userPoolClient],
+          );
 
     // ── MCP Servers ──────────────────────────────────────────────────────────
     // atlasShaclMcp first: it has no peer dependencies, and atlasSparqlMcp
@@ -475,6 +489,41 @@ export class AgentCoreRuntimesConstruct extends Construct {
     ];
     for (const runtime of allRuntimes) {
       runtime.role.addManagedPolicy(neptunePolicy);
+    }
+
+    // Option-A cutover (c): when the authorizer is IAM, the agents that call another
+    // runtime (atlas-sparql-mcp or nl-to-sparql-agent) must be able to SigV4-invoke it.
+    // Today there are ZERO such grants (the agent->MCP hop is dormant). This is gated on
+    // the same mcpAuthMode flag so the default (bearer) deploy is byte-identical to live.
+    // Scope: each agent role gets InvokeAgentRuntime on exactly the ARN(s) its code
+    // invokes (see agents/*/[name].py) — sparql-mcp for the query-running agents,
+    // nl-to-sparql-agent for the conversational manager.
+    if (mcpAuthMode === "sigv4") {
+      const sparqlMcpInvokers = [
+        this.nlToSparqlAgent,        // nl_to_sparql_agent.py -> SPARQL_MCP_ARN
+        this.wealthSignalDetector,   // -> SPARQL_MCP_ARN
+        this.householdTraverser,     // -> SPARQL_MCP_ARN
+        this.referralRationaleDrafter, // -> SPARQL_MCP_ARN
+        this.behavioralSignalAgent,  // -> SPARQL_MCP_ARN
+        this.themeSummarizer,        // -> SPARQL_MCP_ARN
+      ];
+      for (const agent of sparqlMcpInvokers) {
+        agent.role.addToPrincipalPolicy(new iam.PolicyStatement({
+          actions: ["bedrock-agentcore:InvokeAgentRuntime"],
+          resources: [
+            this.atlasSparqlMcp.agentRuntimeArn,
+            `${this.atlasSparqlMcp.agentRuntimeArn}/*`,
+          ],
+        }));
+      }
+      // conversational-context-manager invokes nl-to-sparql-agent (not the MCP directly).
+      this.conversationalContextManager.role.addToPrincipalPolicy(new iam.PolicyStatement({
+        actions: ["bedrock-agentcore:InvokeAgentRuntime"],
+        resources: [
+          this.nlToSparqlAgent.agentRuntimeArn,
+          `${this.nlToSparqlAgent.agentRuntimeArn}/*`,
+        ],
+      }));
     }
   }
 }
