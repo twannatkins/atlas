@@ -96,32 +96,3 @@ class TestRouteReferralResolver:
 
         assert result["uri"] == "atlas:routing/abc123"
         assert result["routingDecision"]["selectedRoute"] == "route_to_advisor"
-
-
-class TestDetectSignalsResolver:
-
-    @patch("registry_resolver.boto3")
-    def test_returns_minted_signals(self, mock_boto3):
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-
-        registry_response = json.dumps({
-            "status": "success",
-            "result": {
-                "signals_minted": [
-                    {"signal_uri": "atlas:signal/new1", "signal_type": "LargeInboundWireSignal", "strength": "strong"},
-                ],
-            },
-        }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=registry_response))}
-
-        event = {
-            "info": {"fieldName": "detectSignals"},
-            "arguments": {"targetUri": "atlas:cust/9c2a1e"},
-            "identity": {"claims": {"custom:persona": "atlas-consumer-banker"}},
-        }
-
-        result = handler(event, None)
-
-        assert len(result) == 1
-        assert result[0]["signalType"] == "LargeInboundWireSignal"

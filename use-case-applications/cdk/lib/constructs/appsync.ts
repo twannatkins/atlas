@@ -247,7 +247,6 @@ export class AppSyncConstruct extends Construct {
     // ── Mutation resolvers ───────────────────────────────────────────────────
 
     registryDs.createResolver("RouteReferralResolver", { typeName: "Mutation", fieldName: "routeReferral" });
-    registryDs.createResolver("DetectSignalsResolver", { typeName: "Mutation", fieldName: "detectSignals" });
     registryDs.createResolver("DraftRationaleResolver", { typeName: "Mutation", fieldName: "draftRationale" });
     registryDs.createResolver("ConverseResolver", { typeName: "Mutation", fieldName: "converse" });
 

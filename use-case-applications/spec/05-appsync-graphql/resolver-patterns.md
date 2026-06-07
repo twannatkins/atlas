@@ -95,7 +95,7 @@ This is how the UI populates its capability palette without hardcoding agent nam
 
 ## Pattern 5 — Agent invocation (mutations)
 
-Used for: `routeReferral`, `detectSignals`
+Used for: `routeReferral`, `draftRationale`, `converse`
 
 ```
 Resolver calls atlas-registry-mcp.invoke_capability(capability_uri, input_payload, persona_claim)

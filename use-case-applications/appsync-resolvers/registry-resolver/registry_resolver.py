@@ -5,7 +5,8 @@ Translates GraphQL capabilities query and mutations into atlas-registry-mcp
 calls. Passes persona claim from Cognito JWT through to the registry for
 persona-scoped discovery.
 
-Handles: capabilities, routeReferral, detectSignals.
+Handles: capabilities, routeReferral, askGraph, draftRationale, suggestedQuestions,
+converse.
 """
 
 from __future__ import annotations
@@ -49,12 +50,13 @@ GROUND_TRUTH_S3_URI = os.environ.get("GROUND_TRUTH_S3_URI", "")
 
 # ── AgentCore invoke transport ───────────────────────────────────────────────
 # MCP_AUTH_MODE selects transport (see sparql_resolver for the full rationale):
-#   "bearer" (DEFAULT, live): forward the user's JWT as Bearer over a urllib POST —
-#     the Cognito-authorizer path the live capabilities palette + detectSignals use.
-#   "sigv4" (Option-A Pass 2, staged): boto3 invoke_agent_runtime, signed by the Lambda
-#     role. Flip ONLY in lockstep with the authorizer Cognito->IAM change.
-# NOTE: routeReferral does NOT use this helper — it calls stepfunctions.start_execution
-# (already SigV4). Only capabilities + detectSignals (-> registry-mcp) use _invoke_agentcore.
+#   "sigv4" (DEFAULT, live post Option-A): boto3 invoke_agent_runtime, signed by the
+#     Lambda role (the runtime authorizer is IAM).
+#   "bearer" (rollback): forward the user's JWT as Bearer over a urllib POST (Cognito
+#     authorizer). Moves in lockstep with the authorizer in agentcore-runtimes.ts.
+# NOTE: routeReferral does NOT use this helper — it calls stepfunctions.start_execution.
+# _invoke_agentcore is used by capabilities (-> registry-mcp) and the action-side fields
+# askGraph/draftRationale/converse (-> their agents directly by ARN).
 MCP_AUTH_MODE = os.environ.get("MCP_AUTH_MODE", "bearer")
 
 
@@ -109,8 +111,6 @@ def handler(event: Dict[str, Any], context: Any) -> Any:
             return _resolve_capabilities(arguments, persona_claim)
         elif field_name == "routeReferral":
             return _resolve_route_referral(arguments, persona_claim, identity)
-        elif field_name == "detectSignals":
-            return _resolve_detect_signals(arguments, persona_claim)
         elif field_name == "askGraph":
             return _resolve_ask_graph(arguments, persona_claim)
         elif field_name == "draftRationale":
@@ -224,38 +224,6 @@ def _resolve_route_referral(args: Dict, persona: str, identity: Dict) -> Dict:
             "generatedAtTime": None,
         },
     }
-
-
-def _resolve_detect_signals(args: Dict, persona: str) -> list:
-    """Invoke wealth-signal-detector through the registry."""
-    payload = {
-        "target_uri": args["targetUri"],
-        "signal_types": args.get("signalTypes"),
-        "persona_claim": persona,
-    }
-
-    result = _invoke_registry("invoke_capability", {
-        "capability_uri": "wealth-signal-detector",
-        "input_payload": payload,
-        "persona_claim": persona,
-    })
-
-    inner = result.get("result", result)
-    signals = inner.get("signals_minted", [])
-    return [
-        {
-            "uri": s.get("signal_uri", ""),
-            "signalType": s.get("signal_type", ""),
-            "strength": s.get("strength", ""),
-            "signalDate": None,
-            "provenance": {
-                "validatedBy": "atlas:WealthSignalTypeShape",
-                "derivedFrom": "wealth-signal-detector",
-                "generatedBy": "wealth-signal-detector",
-            },
-        }
-        for s in signals
-    ]
 
 
 def _resolve_ask_graph(args: Dict, persona: str) -> Dict:

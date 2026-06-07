@@ -384,15 +384,6 @@ type Mutation {
   ): Referral
 
   """
-  Invoke the wealth-signal-detector for a target.
-  Returns newly minted signals.
-  """
-  detectSignals(
-    targetUri: ID!
-    signalTypes: [String!]
-  ): [WealthSignal!]!
-
-  """
   Draft a referral rationale from a household's real signals. Resolver invokes
   referral-rationale-drafter (Bedrock). The draft is probabilistic and REQUIRES human
   review — it is not a routing action. The banker reviews/edits it, then routeReferral

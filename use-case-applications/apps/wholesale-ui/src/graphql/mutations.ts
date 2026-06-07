@@ -41,27 +41,6 @@ export const ROUTE_REFERRAL_MUTATION = gql`
   }
 `;
 
-/**
- * Detect wealth signals for a target customer or household.
- *
- * This is a deterministic operation — same input produces same signals.
- * No human-in-the-loop required because the output is evidence, not a decision.
- */
-export const DETECT_SIGNALS_MUTATION = gql`
-  mutation DetectSignals($targetUri: ID!, $signalTypes: [String!]) {
-    detectSignals(targetUri: $targetUri, signalTypes: $signalTypes) {
-      uri
-      signalType
-      strength
-      signalDate
-      provenance {
-        validatedBy
-        derivedFrom
-        generatedBy
-      }
-    }
-  }
-`;
 
 /**
  * Draft a referral rationale from a household's REAL signals (#3).
