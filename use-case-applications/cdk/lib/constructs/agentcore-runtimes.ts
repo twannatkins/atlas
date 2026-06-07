@@ -36,6 +36,7 @@
  */
 
 import * as path from "path";
+import * as cdk from "aws-cdk-lib";
 import * as agentcore from "aws-cdk-lib/aws-bedrockagentcore";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
@@ -523,6 +524,36 @@ export class AgentCoreRuntimesConstruct extends Construct {
           this.nlToSparqlAgent.agentRuntimeArn,
           `${this.nlToSparqlAgent.agentRuntimeArn}/*`,
         ],
+      }));
+    }
+
+    // Bedrock model access (bedrock:InvokeModel) — the agents configure model IDs (the
+    // BEDROCK_*_MODEL_ID env vars above) but had NO grant to call them, so every agent
+    // that invokes a model returned AccessDeniedException (nl-to-sparql-agent on
+    // titan-embed, the drafter/theme-summarizer on Claude). This is the foundation-model
+    // grant the action-side needs to actually return answers — independent of the auth
+    // mode (a model call is always SigV4 to the Bedrock service). Scoped per agent to the
+    // exact model(s) it uses; the inference-profile (us.*) Claude id also needs the
+    // underlying foundation-model + the region inference-profile ARN.
+    const region = cdk.Stack.of(this).region;
+    const account = cdk.Stack.of(this).account;
+    const titanEmbed = `arn:aws:bedrock:${region}::foundation-model/amazon.titan-embed-text-v2:0`;
+    // Claude Sonnet via the cross-region inference profile (us.anthropic.claude-sonnet-4-6):
+    // calling it requires InvokeModel on BOTH the inference-profile ARN and the regional
+    // foundation-model ARNs the profile routes to.
+    const claudeProfile = `arn:aws:bedrock:${region}:${account}:inference-profile/us.anthropic.claude-sonnet-4-6`;
+    const claudeFoundation = `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6*`;
+
+    // nl-to-sparql-agent: Titan embeddings (the #2/#5 path).
+    this.nlToSparqlAgent.role.addToPrincipalPolicy(new iam.PolicyStatement({
+      actions: ["bedrock:InvokeModel"],
+      resources: [titanEmbed],
+    }));
+    // referral-rationale-drafter (#3) + theme-summarizer: Claude text generation.
+    for (const agent of [this.referralRationaleDrafter, this.themeSummarizer]) {
+      agent.role.addToPrincipalPolicy(new iam.PolicyStatement({
+        actions: ["bedrock:InvokeModel"],
+        resources: [claudeProfile, claudeFoundation],
       }));
     }
   }

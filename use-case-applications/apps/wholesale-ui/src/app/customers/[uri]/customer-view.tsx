@@ -54,10 +54,12 @@ export default function CustomerPage() {
         />
       }
     >
-      {/* Compliance banner — respects tipping-off prohibition */}
+      {/* Compliance banner — respects tipping-off prohibition. Illustrative: per-entity
+          compliance state is not yet wired to a real field (marked Example). */}
       <ComplianceBanner
-        hasComplianceReview={true} // In production: from GraphQL query
+        hasComplianceReview={true}
         personaClaim={personaClaim}
+        illustrative={true}
       />
 
       {/* Wealth signals with provenance */}

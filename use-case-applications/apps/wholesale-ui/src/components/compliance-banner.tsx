@@ -13,11 +13,19 @@ import React from "react";
 interface ComplianceBannerProps {
   hasComplianceReview: boolean;
   personaClaim: string;
+  /**
+   * When true, the banner is shown to demonstrate the non-tipping-off copy pattern even
+   * though the per-entity compliance state is not yet wired to a real GraphQL field. It
+   * renders a visible "Example" marker so it is NOT mistaken for a real review state.
+   * Wiring a real hasComplianceReview field is a separate item.
+   */
+  illustrative?: boolean;
 }
 
 export function ComplianceBanner({
   hasComplianceReview,
   personaClaim,
+  illustrative = false,
 }: ComplianceBannerProps) {
   if (!hasComplianceReview) return null;
 
@@ -41,6 +49,11 @@ export function ComplianceBanner({
     >
       <span aria-hidden="true" className="text-lg">⚠️</span>
       <span className="text-sm font-medium">{message}</span>
+      {illustrative && (
+        <span className="ml-auto rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-600">
+          Example
+        </span>
+      )}
     </div>
   );
 }

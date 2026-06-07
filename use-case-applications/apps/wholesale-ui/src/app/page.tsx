@@ -14,6 +14,7 @@ import { useQuery } from "@apollo/client";
 import { DASHBOARD_QUERY } from "../graphql/queries";
 import { SignalCard } from "../components/signal-card";
 import { CapabilityPalette } from "../components/capability-palette";
+import { AskGraphPanel } from "../components/ask-graph-panel";
 import { useAuth } from "../../../shared/auth/use-auth";
 
 export default function DashboardPage() {
@@ -47,6 +48,12 @@ export default function DashboardPage() {
             {displayName} · {personaClaim} · {customers.length} clients
           </p>
         </header>
+
+        {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
+        <section className="mb-6">
+          <h2 className="mb-2 text-lg font-semibold">Ask the graph</h2>
+          <AskGraphPanel />
+        </section>
 
         {loading && <p className="text-neutral-400">Loading...</p>}
 

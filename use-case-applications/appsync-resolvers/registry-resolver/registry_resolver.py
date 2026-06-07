@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sys
 import time
 import uuid
@@ -32,6 +33,16 @@ REGISTRY_MCP_ARN = os.environ.get("REGISTRY_MCP_ARN", "")
 # registry-mcp invoke_capability → invoke_agent(agentName=…) used a boto3 method
 # that does not exist on the bedrock-agentcore client and always raised.
 STATE_MACHINE_ARN = os.environ.get("STATE_MACHINE_ARN", "")
+
+# Agent runtime ARNs for the action-side fields (askGraph / draftRationale). These are
+# invoked DIRECTLY by ARN via _invoke_agentcore (SigV4 post-Option-A) — NOT through
+# registry-mcp invoke_capability, which is the broken invoke_agent(agentName=…) path.
+NL_TO_SPARQL_ARN = os.environ.get("NL_TO_SPARQL_ARN", "")
+DRAFTER_ARN = os.environ.get("DRAFTER_ARN", "")
+# ground-truth.yaml is the SAME template source nl-to-sparql-agent matches against;
+# suggestedQuestions reads its question: lines so the UI's suggestions never drift from
+# what the agent can actually answer. WS1-owned file — READ only, never written here.
+GROUND_TRUTH_S3_URI = os.environ.get("GROUND_TRUTH_S3_URI", "")
 
 # ── AgentCore invoke transport ───────────────────────────────────────────────
 # MCP_AUTH_MODE selects transport (see sparql_resolver for the full rationale):
@@ -97,6 +108,12 @@ def handler(event: Dict[str, Any], context: Any) -> Any:
             return _resolve_route_referral(arguments, persona_claim, identity)
         elif field_name == "detectSignals":
             return _resolve_detect_signals(arguments, persona_claim)
+        elif field_name == "askGraph":
+            return _resolve_ask_graph(arguments, persona_claim)
+        elif field_name == "draftRationale":
+            return _resolve_draft_rationale(arguments, persona_claim)
+        elif field_name == "suggestedQuestions":
+            return _resolve_suggested_questions()
         else:
             raise ValueError(f"Unknown field: {field_name}")
     except Exception as exc:
@@ -234,6 +251,81 @@ def _resolve_detect_signals(args: Dict, persona: str) -> list:
         }
         for s in signals
     ]
+
+
+def _resolve_ask_graph(args: Dict, persona: str) -> Dict:
+    """#2 Ask-the-graph — invoke nl-to-sparql-agent DIRECTLY by ARN (template-bounded
+    NL->SPARQL). Maps the agent's {status, sparql, result, provenance} to NlQueryResult.
+    Honest pass-through: no_template_match / execution_error are surfaced as-is with empty
+    rows — never a fabricated answer."""
+    question = args.get("question", "")
+    if not NL_TO_SPARQL_ARN:
+        return {"status": "execution_error", "sparql": None, "result": [],
+                "templateId": None, "executionTimeMs": None}
+    try:
+        r = _invoke_agentcore(NL_TO_SPARQL_ARN,
+                              {"question": question, "persona_claim": persona},
+                              _current_bearer_token)
+    except Exception as exc:
+        logger.error(json.dumps({"event": "ask_graph_failed", "error": str(exc)}))
+        return {"status": "execution_error", "sparql": None, "result": [],
+                "templateId": None, "executionTimeMs": None}
+    prov = r.get("provenance", {}) or {}
+    return {
+        "status": r.get("status", "execution_error"),
+        "sparql": r.get("sparql") or None,
+        # AWSJSON: AppSync serializes a JSON-typed field from a Python list/dict directly.
+        "result": r.get("result", []),
+        "templateId": prov.get("template_id") or None,
+        "executionTimeMs": prov.get("execution_time_ms"),
+    }
+
+
+def _resolve_draft_rationale(args: Dict, persona: str) -> Dict:
+    """#3 Draft-rationale — invoke referral-rationale-drafter DIRECTLY by ARN. The draft is
+    grounded in the household's REAL signals (signal_uris); always probabilistic +
+    requires-review. Maps {status, draft_narrative, ...} to DraftResult."""
+    household_uri = args.get("householdUri", "")
+    signal_uris = args.get("signalUris", []) or []
+    if not DRAFTER_ARN:
+        return {"status": "generation_failed", "draftNarrative": None,
+                "isProbabilistic": True, "requiresHumanReview": True, "generatedBy": None}
+    try:
+        r = _invoke_agentcore(DRAFTER_ARN,
+                              {"household_uri": household_uri, "signal_uris": signal_uris,
+                               "persona_claim": persona},
+                              _current_bearer_token)
+    except Exception as exc:
+        logger.error(json.dumps({"event": "draft_rationale_failed", "error": str(exc)}))
+        return {"status": "generation_failed", "draftNarrative": None,
+                "isProbabilistic": True, "requiresHumanReview": True, "generatedBy": None}
+    prov = r.get("provenance", {}) or {}
+    return {
+        "status": r.get("status", "generation_failed"),
+        "draftNarrative": r.get("draft_narrative") or None,
+        # The agent hardcodes these true; preserve them (never auto-route).
+        "isProbabilistic": bool(r.get("is_probabilistic", True)),
+        "requiresHumanReview": bool(r.get("requires_human_review", True)),
+        "generatedBy": prov.get("model_id") or None,
+    }
+
+
+def _resolve_suggested_questions() -> list:
+    """The questions Ask-the-graph can answer — read live from the SAME ground-truth.yaml
+    the agent matches against (zero drift). Parses the `question:` lines with the stdlib
+    (no PyYAML dependency in the resolver bundle). READ only — never edits the WS1 file."""
+    if not GROUND_TRUTH_S3_URI:
+        return []
+    try:
+        without_scheme = GROUND_TRUTH_S3_URI[len("s3://"):]
+        bucket, _, key = without_scheme.partition("/")
+        body = boto3.client("s3").get_object(Bucket=bucket, Key=key)["Body"].read().decode("utf-8")
+    except Exception as exc:
+        logger.error(json.dumps({"event": "suggested_questions_failed", "error": str(exc)}))
+        return []
+    # Each template is a `  - question: "..."` line. Extract the quoted text in order.
+    questions = re.findall(r'^\s*-\s*question:\s*"(.+?)"\s*$', body, flags=re.MULTILINE)
+    return questions
 
 
 def _invoke_registry(operation: str, payload: Dict) -> Dict:

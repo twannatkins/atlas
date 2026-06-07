@@ -21,7 +21,7 @@ import time
 import uuid
 from typing import Any, Dict
 
-from atlas_sparql import validate, AtlasSPARQLError
+from atlas_sparql import validate, AtlasSPARQLError, prefixed
 
 import boto3
 
@@ -132,13 +132,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def _get_household_context(household_uri: str, persona_claim: str) -> str:
     """Query SLGD for household composition and relevant context."""
-    sparql = f"""
+    # prefixed() prepends the standard ATLAS PREFIX block — the atlas-sparql-mcp REJECTS
+    # any query missing the required PREFIX declarations (it does not auto-add them), so a
+    # raw query returned an error and left the draft ungrounded.
+    sparql = prefixed(f"""
     SELECT ?member ?memberType ?label WHERE {{
         <{household_uri}> ?rel ?member .
         ?member a ?memberType .
         OPTIONAL {{ ?member rdfs:label ?label }}
     }}
-    """
+    """)
     rows = _invoke_sparql_mcp(sparql, persona_claim)
     if not rows:
         return "No household context available."
@@ -154,17 +157,30 @@ def _get_signals_summary(signal_uris: list, persona_claim: str) -> str:
 
     summaries = []
     for uri in signal_uris[:5]:  # Cap at 5 to avoid prompt bloat
-        sparql = f"""
-        SELECT ?signalType ?strength WHERE {{
+        # signalStrength does NOT exist in the synthetic data (same reason the signal card
+        # omits the strength badge), so requiring it returned zero rows and left the draft
+        # ungrounded. Make it OPTIONAL and join the SKOS prefLabel for a human-readable
+        # signal type (WS1 types are loaded), falling back to the type URI.
+        sparql = prefixed(f"""
+        SELECT ?signalType ?signalLabel ?strength ?signalDate WHERE {{
             <{uri}> a atlas:WealthSignal ;
-                atlas:hasSignalType ?signalType ;
-                atlas:signalStrength ?strength .
+                atlas:hasSignalType ?signalType .
+            OPTIONAL {{ ?signalType skos:prefLabel ?signalLabel }}
+            OPTIONAL {{ <{uri}> atlas:signalStrength ?strength }}
+            OPTIONAL {{ <{uri}> atlas:signalDate ?signalDate }}
         }}
-        """
+        """)
         try:
             rows = _invoke_sparql_mcp(sparql, persona_claim)
             if rows:
-                summaries.append(f"{rows[0].get('signalType', 'Unknown')} (strength: {rows[0].get('strength', 'unknown')})")
+                r = rows[0]
+                label = r.get("signalLabel") or r.get("signalType", "Unknown")
+                extra = []
+                if r.get("strength"):
+                    extra.append(f"strength: {r['strength']}")
+                if r.get("signalDate"):
+                    extra.append(f"observed: {r['signalDate']}")
+                summaries.append(f"{label} ({', '.join(extra)})" if extra else label)
             else:
                 summaries.append(f"{uri} (details unavailable)")
         except Exception:

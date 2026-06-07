@@ -12,7 +12,7 @@ import React, { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "@apollo/client";
 import { REFERRAL_DETAIL_QUERY } from "../../../graphql/queries";
-import { ROUTE_REFERRAL_MUTATION } from "../../../graphql/mutations";
+import { ROUTE_REFERRAL_MUTATION, DRAFT_RATIONALE_MUTATION } from "../../../graphql/mutations";
 import { useAuth } from "../../../../../shared/auth/use-auth";
 import { SignalCard } from "../../../components/signal-card";
 import { ComplianceBanner } from "../../../components/compliance-banner";
@@ -30,24 +30,39 @@ export default function ReferralDetailPage() {
   });
 
   const [routeReferral] = useMutation(ROUTE_REFERRAL_MUTATION);
+  const [draftRationale] = useMutation(DRAFT_RATIONALE_MUTATION);
   const [draftText, setDraftText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [draftError, setDraftError] = useState("");
 
   const handleGenerateDraft = useCallback(async () => {
     setIsGenerating(true);
-    // In production: invoke referral-rationale-drafter via registry
-    // Simulated for workshop
-    setTimeout(() => {
-      setDraftText(
-        "The Patel household shows strong wealth-readiness signals. " +
-        "A large inbound wire of $750,000 was received on March 15, " +
-        "and the household currently has no active advisory coverage. " +
-        "These signals suggest the household may benefit from a " +
-        "conversation with a Wealth Advisor about their financial goals.",
+    setDraftError("");
+    // Invoke referral-rationale-drafter (Bedrock) for real, grounded in THIS household's
+    // actual signals (signalUris from the live query) — not a canned string. The draft is
+    // probabilistic + requires review (badges in RationaleEditor); the human gates routing.
+    const signalUris = (data?.wealthSignals ?? []).map((s: any) => s.uri);
+    try {
+      const { data: res } = await draftRationale({
+        variables: { householdUri, signalUris },
+      });
+      const draft = res?.draftRationale;
+      if (draft?.status === "success" && draft.draftNarrative) {
+        setDraftText(draft.draftNarrative);
+      } else {
+        setDraftError(
+          "The drafter couldn't generate a rationale just now. You can write one directly below.",
+        );
+      }
+    } catch (err) {
+      console.error("Draft generation failed:", err);
+      setDraftError(
+        "The drafter couldn't generate a rationale just now. You can write one directly below.",
       );
+    } finally {
       setIsGenerating(false);
-    }, 2000);
-  }, []);
+    }
+  }, [data, householdUri, draftRationale]);
 
   const handleApprove = useCallback(
     async (approvedText: string) => {
@@ -86,10 +101,12 @@ export default function ReferralDetailPage() {
           </h1>
         </header>
 
-        {/* Compliance banner */}
+        {/* Compliance banner — illustrative: the non-tipping-off copy pattern is shown,
+            but per-entity compliance state is not yet wired to a real field (marked Example). */}
         <ComplianceBanner
           hasComplianceReview={true}
           personaClaim={personaClaim}
+          illustrative={true}
         />
 
         {/* Household context */}
@@ -128,6 +145,9 @@ export default function ReferralDetailPage() {
         {/* Rationale editor — the human-in-the-loop control */}
         <section>
           <h2 className="text-lg font-semibold mb-2">Rationale</h2>
+          {draftError && (
+            <p className="mb-2 text-sm text-amber-700" role="alert">{draftError}</p>
+          )}
           <RationaleEditor
             initialDraft={draftText}
             isGenerating={isGenerating}

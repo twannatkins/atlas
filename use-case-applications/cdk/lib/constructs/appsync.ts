@@ -29,6 +29,13 @@ export interface AppSyncProps {
   registryMcpArn: string;
   /** AgentCore Runtime ARN for atlas-er-mcp. */
   erMcpArn: string;
+  /** AgentCore Runtime ARN for nl-to-sparql-agent (#2 askGraph — direct-ARN invoke). */
+  nlToSparqlArn: string;
+  /** AgentCore Runtime ARN for referral-rationale-drafter (#3 draftRationale). */
+  drafterArn: string;
+  /** s3://<bucket>/prompts/ground-truth.yaml — the agent's template source, read by
+   *  suggestedQuestions so the UI's suggestions never drift from what the agent answers. */
+  groundTruthS3Uri: string;
   /**
    * ARN of the referral-orchestrator Step Functions state machine.
    * routeReferral starts an execution here directly — the proven path. (The prior
@@ -159,12 +166,30 @@ export class AppSyncConstruct extends Construct {
         REGISTRY_MCP_ARN: props.registryMcpArn,
         // routeReferral starts this state machine directly (the proven path).
         STATE_MACHINE_ARN: props.stateMachineArn,
+        // Action-side agents invoked DIRECTLY by ARN (askGraph / draftRationale).
+        NL_TO_SPARQL_ARN: props.nlToSparqlArn,
+        DRAFTER_ARN: props.drafterArn,
+        GROUND_TRUTH_S3_URI: props.groundTruthS3Uri,
         ...mcpAuthEnv,
       },
     });
     registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
       actions: [mcpInvokeAction],
       resources: [`${props.registryMcpArn}*`],
+    }));
+    // Option-A granted agent->MCP, but NOT this resolver->agent hop. askGraph/draftRationale
+    // invoke nl-to-sparql-agent + referral-rationale-drafter DIRECTLY (the invoke_capability
+    // indirection is broken — InvokeAgent is not a real op), so the registry-resolver role
+    // needs InvokeAgentRuntime on those two agent ARNs. (When bearer, mcpInvokeAction is
+    // InvokeAgentRuntimeForUser, matching the resolver's bearer transport.)
+    registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [mcpInvokeAction],
+      resources: [`${props.nlToSparqlArn}*`, `${props.drafterArn}*`],
+    }));
+    // suggestedQuestions reads ground-truth.yaml from the staging bucket (read-only).
+    registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ["s3:GetObject"],
+      resources: [`arn:aws:s3:::${props.groundTruthS3Uri.replace("s3://", "").split("/")[0]}/*`],
     }));
     // routeReferral → Step Functions StartExecution on the referral orchestrator.
     registryProxyFn.addToRolePolicy(new iam.PolicyStatement({
@@ -212,12 +237,15 @@ export class AppSyncConstruct extends Construct {
     sparqlDs.createResolver("AuditTrailResolver", { typeName: "Query", fieldName: "auditTrail" });
     sparqlDs.createResolver("ThemesResolver", { typeName: "Query", fieldName: "themes" });
     registryDs.createResolver("CapabilitiesResolver", { typeName: "Query", fieldName: "capabilities" });
+    registryDs.createResolver("AskGraphResolver", { typeName: "Query", fieldName: "askGraph" });
+    registryDs.createResolver("SuggestedQuestionsResolver", { typeName: "Query", fieldName: "suggestedQuestions" });
     erDs.createResolver("ResolveEntityResolver", { typeName: "Query", fieldName: "resolveEntity" });
 
     // ── Mutation resolvers ───────────────────────────────────────────────────
 
     registryDs.createResolver("RouteReferralResolver", { typeName: "Mutation", fieldName: "routeReferral" });
     registryDs.createResolver("DetectSignalsResolver", { typeName: "Mutation", fieldName: "detectSignals" });
+    registryDs.createResolver("DraftRationaleResolver", { typeName: "Mutation", fieldName: "draftRationale" });
 
     this.apiUrl = api.graphqlUrl;
   }

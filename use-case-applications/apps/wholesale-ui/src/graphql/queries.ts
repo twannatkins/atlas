@@ -87,6 +87,34 @@ export const REFERRAL_DETAIL_QUERY = gql`
   }
 `;
 
+/**
+ * Ask the graph (#2) — natural-language query via nl-to-sparql-agent.
+ * Template-bounded: returns real rows for a matched template, or status
+ * "no_template_match" (the UI then shows SUGGESTED_QUESTIONS — never a fabricated answer).
+ */
+export const ASK_GRAPH_QUERY = gql`
+  query AskGraph($question: String!) {
+    askGraph(question: $question) {
+      status
+      sparql
+      result
+      templateId
+      executionTimeMs
+    }
+  }
+`;
+
+/**
+ * The questions Ask-the-graph can actually answer — read live from the same
+ * ground-truth.yaml the agent matches against (zero drift). Rendered as suggestions
+ * and as the no-match state, so the input is never a bare "ask anything" box.
+ */
+export const SUGGESTED_QUESTIONS_QUERY = gql`
+  query SuggestedQuestions {
+    suggestedQuestions
+  }
+`;
+
 /** Capability palette — persona-scoped agent discovery */
 export const CAPABILITIES_QUERY = gql`
   query Capabilities($personaClaim: String!) {

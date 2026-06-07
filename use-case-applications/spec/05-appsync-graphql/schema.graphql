@@ -270,6 +270,39 @@ type Capability {
 # Queries
 # ─────────────────────────────────────────────────────────────────────
 
+"""
+Result of a natural-language query (Ask the graph). nl-to-sparql-agent embeds the
+question, matches it against a fixed set of validated SPARQL templates (ground-truth.yaml,
+cosine >= 0.75), and runs the matched template — it NEVER free-generates SPARQL. So the
+answer is bounded by the template set; an unmatched question returns status
+"no_template_match" with empty rows (the UI then shows the answerable questions).
+"""
+type NlQueryResult {
+  """ "success" | "no_template_match" | "execution_error" — render honestly, never fabricate. """
+  status: String!
+  """The validated SPARQL that ran (null when no template matched)."""
+  sparql: String
+  """The result rows as JSON — heterogeneous across templates, so an opaque AWSJSON array."""
+  result: AWSJSON
+  """Which template matched (provenance)."""
+  templateId: String
+  executionTimeMs: Int
+}
+
+"""
+A probabilistic, human-in-the-loop draft from referral-rationale-drafter (Bedrock),
+grounded in the household's REAL signals. Always carries isProbabilistic +
+requiresHumanReview true — it is never auto-routed; a banker must review and approve.
+"""
+type DraftResult {
+  status: String!
+  draftNarrative: String
+  isProbabilistic: Boolean!
+  requiresHumanReview: Boolean!
+  """The model that produced the draft (provenance)."""
+  generatedBy: String
+}
+
 type Query {
   """Fetch a customer by URI. Resolver: SPARQL via Ontop."""
   customer(uri: ID!): Customer
@@ -300,6 +333,20 @@ type Query {
 
   """Fetch themes for the Wealth UI (Phase 2). Resolver: Direct Neptune SPARQL."""
   themes(limit: Int = 10): [ThemeAssertion!]!
+
+  """
+  Ask the graph in natural language. Resolver invokes nl-to-sparql-agent (template-bounded
+  NL->SPARQL; free generation is forbidden). Returns real rows for a matched template, or
+  status "no_template_match" — the UI then offers suggestedQuestions.
+  """
+  askGraph(question: String!): NlQueryResult!
+
+  """
+  The questions Ask-the-graph can actually answer — read live from the SAME ground-truth.yaml
+  the agent matches against (zero drift). The UI renders these as suggestions / the no-match
+  state, so the input is never a bare "ask anything" box.
+  """
+  suggestedQuestions: [String!]!
 }
 
 # ─────────────────────────────────────────────────────────────────────
@@ -327,6 +374,14 @@ type Mutation {
     targetUri: ID!
     signalTypes: [String!]
   ): [WealthSignal!]!
+
+  """
+  Draft a referral rationale from a household's real signals. Resolver invokes
+  referral-rationale-drafter (Bedrock). The draft is probabilistic and REQUIRES human
+  review — it is not a routing action. The banker reviews/edits it, then routeReferral
+  (the deterministic, human-gated path) performs the actual routing.
+  """
+  draftRationale(householdUri: ID!, signalUris: [ID!]!): DraftResult!
 }
 
 # ─────────────────────────────────────────────────────────────────────

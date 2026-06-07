@@ -62,3 +62,22 @@ export const DETECT_SIGNALS_MUTATION = gql`
     }
   }
 `;
+
+/**
+ * Draft a referral rationale from a household's REAL signals (#3).
+ *
+ * Invokes referral-rationale-drafter (Bedrock). The draft is probabilistic and
+ * requires human review — it is NOT a routing action. The banker reviews/edits it,
+ * then ROUTE_REFERRAL_MUTATION (the deterministic, human-gated path) does the routing.
+ */
+export const DRAFT_RATIONALE_MUTATION = gql`
+  mutation DraftRationale($householdUri: ID!, $signalUris: [ID!]!) {
+    draftRationale(householdUri: $householdUri, signalUris: $signalUris) {
+      status
+      draftNarrative
+      isProbabilistic
+      requiresHumanReview
+      generatedBy
+    }
+  }
+`;
