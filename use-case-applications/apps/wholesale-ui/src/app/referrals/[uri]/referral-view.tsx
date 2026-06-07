@@ -101,8 +101,10 @@ export default function ReferralDetailPage() {
           </h1>
         </header>
 
-        {/* Compliance banner — illustrative: the non-tipping-off copy pattern is shown,
-            but per-entity compliance state is not yet wired to a real field (marked Example). */}
+        {/* Compliance banner — illustrative (marked "Example"): the non-tipping-off copy
+            pattern is shown, but no per-entity compliance state exists to drive it
+            (hasComplianceHold is undefined + never persisted; see ComplianceBanner's
+            illustrative prop doc + 04a). Do NOT wire to a fabricated field. */}
         <ComplianceBanner
           hasComplianceReview={true}
           personaClaim={personaClaim}

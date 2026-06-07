@@ -14,10 +14,17 @@ interface ComplianceBannerProps {
   hasComplianceReview: boolean;
   personaClaim: string;
   /**
-   * When true, the banner is shown to demonstrate the non-tipping-off copy pattern even
-   * though the per-entity compliance state is not yet wired to a real GraphQL field. It
-   * renders a visible "Example" marker so it is NOT mistaken for a real review state.
-   * Wiring a real hasComplianceReview field is a separate item.
+   * When true, the banner demonstrates the non-tipping-off copy pattern and renders a
+   * visible "Example" marker so it is NOT mistaken for a real review state.
+   *
+   * Why this is illustrative and not wired to real data: there is no per-entity
+   * compliance state in the graph to drive it. atlas:hasComplianceHold is an undefined
+   * predicate (declared in no ontology, zero triples); validate-routing ASK-checks it
+   * transiently during the routing workflow (always false today) but never persists a
+   * queryable per-entity fact, and there is no compliance field in the read schema. A
+   * real banner is therefore deferred until that data exists — do NOT wire this to a
+   * fabricated/backfilled field (a manufactured compliance status, on a regulatory
+   * subject, would be a worse defect than the honest "Example"). See 04a forward-pointers.
    */
   illustrative?: boolean;
 }

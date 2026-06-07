@@ -54,8 +54,10 @@ export default function CustomerPage() {
         />
       }
     >
-      {/* Compliance banner — respects tipping-off prohibition. Illustrative: per-entity
-          compliance state is not yet wired to a real field (marked Example). */}
+      {/* Compliance banner — respects tipping-off prohibition. Illustrative (marked
+          "Example"): no per-entity compliance state exists to drive it (hasComplianceHold
+          is undefined + never persisted; see ComplianceBanner's illustrative prop doc +
+          04a). Do NOT wire to a fabricated field. */}
       <ComplianceBanner
         hasComplianceReview={true}
         personaClaim={personaClaim}
