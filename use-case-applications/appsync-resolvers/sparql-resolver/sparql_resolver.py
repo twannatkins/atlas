@@ -360,6 +360,15 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
     # SPARQL control-char escaping ambiguity across engines.
     sep = "@@SIG@@"  # record separator between signals
     fsep = "|||"     # field separator within a signal
+    # Persona-aware ordering: the wealth advisor's book leads with COVERED clients (their
+    # actual book); everyone else (consumer banker) leads with SIGNALLED customers (the
+    # referral candidates — who are precisely the UNcovered ones). Both keys are real
+    # COUNTs of graph facts, not fabricated scores. Secondary key keeps the other dimension
+    # surfaced so neither dashboard is a wall of empties.
+    if persona == "atlas-wealth-advisor":
+        order_by = "DESC(?ncov) DESC(?nsig)"
+    else:
+        order_by = "DESC(?nsig) DESC(?ncov)"
     # CRITICAL: the customer LIMIT is applied in an INNER subquery FIRST, then signals are
     # joined only for that page. A flat GROUP_CONCAT with the LIMIT on the outside makes
     # Neptune materialize signals for ALL 200 customers before truncating — which times out
@@ -380,14 +389,17 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
                 # Order signalled customers first via a COUNT of producesSignal — standard
                 # SPARQL aggregation (Neptune does NOT support EXISTS{{}} projected in a
                 # sub-SELECT, which silently yields empty/unordered results).
-                SELECT ?uri ?customerId ?label (COUNT(?sigCount) AS ?nsig) WHERE {{
+                SELECT ?uri ?customerId ?label
+                       (COUNT(DISTINCT ?sigCount) AS ?nsig)
+                       (COUNT(DISTINCT ?covCount) AS ?ncov) WHERE {{
                     ?uri a atlas:Customer ;
                         atlas:customerId ?customerId .
                     OPTIONAL {{ ?uri rdfs:label ?label }}
                     OPTIONAL {{ ?uri atlas:producesSignal ?sigCount }}
+                    OPTIONAL {{ ?uri atlas:hasAdvisor ?covCount }}
                 }}
                 GROUP BY ?uri ?customerId ?label
-                ORDER BY DESC(?nsig) ?customerId
+                ORDER BY {order_by} ?customerId
                 LIMIT {limit}
             }}
             OPTIONAL {{
@@ -485,8 +497,10 @@ def _unpack_coverage(packed: str) -> List[Dict]:
         out.append({
             "uri": rel_uri,
             "advisor": {"uri": "", "label": advisor_label},
-            "coverageStartDate": start or "",
-            "coverageEndDate": end or None,
+            # coverageStartDate/EndDate are AWSDateTime in the schema but stored as bare
+            # xsd:date — normalize or AppSync fails to serialize and nulls the parent.
+            "coverageStartDate": _as_datetime(start) if start else None,
+            "coverageEndDate": _as_datetime(end) if end else None,
             "relationshipType": "Primary",
             "isActive": not end,
         })
@@ -613,8 +627,9 @@ def _resolve_advisory_relationships(args: Dict, persona: str) -> List[Dict]:
         {
             "uri": r["uri"],
             "advisor": {"uri": r.get("advisorUri", ""), "label": r.get("advisorLabel", "")},
-            "coverageStartDate": r.get("startDate", ""),
-            "coverageEndDate": r.get("endDate"),
+            # AWSDateTime fields stored as bare xsd:date — normalize (see _as_datetime).
+            "coverageStartDate": _as_datetime(r.get("startDate")) if r.get("startDate") else None,
+            "coverageEndDate": _as_datetime(r.get("endDate")) if r.get("endDate") else None,
             "relationshipType": r.get("relType", "Primary"),
             "isActive": r.get("endDate") is None,
         }
@@ -712,7 +727,8 @@ def _resolve_referrals(args: Dict, persona: str) -> List[Dict]:
         {
             "uri": r["uri"],
             "approvedRationale": r.get("rationale", ""),
-            "referralDate": r.get("referralDate", ""),
+            # referralDate is AWSDateTime — normalize a bare xsd:date so AppSync serializes it.
+            "referralDate": _as_datetime(r.get("referralDate")),
             "originatedBy": r.get("originatedBy", ""),
             "routingDecision": {
                 "uri": r.get("routeUri", ""),
