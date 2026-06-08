@@ -43,7 +43,7 @@ export const ADVISOR_DASHBOARD_QUERY = gql`
       label
       advisoryRelationships {
         uri
-        advisor { label }
+        advisor { uri label }
         isActive
         coverageStartDate
       }

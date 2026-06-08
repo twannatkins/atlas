@@ -40,6 +40,7 @@ export const DASHBOARD_QUERY = gql`
         uri
         isActive
         advisor {
+          uri
           label
         }
       }

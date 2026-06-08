@@ -424,7 +424,8 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
                 BIND(CONCAT(STR(?rel), "{fsep}",
                             STR(COALESCE(?advLabel, ?advUri)), "{fsep}",
                             STR(COALESCE(?covStart, "")), "{fsep}",
-                            STR(COALESCE(?covEnd, ""))) AS ?covpack)
+                            STR(COALESCE(?covEnd, "")), "{fsep}",
+                            STR(?advUri)) AS ?covpack)
             }}
         }}
         GROUP BY ?uri ?customerId ?label
@@ -496,9 +497,13 @@ def _unpack_coverage(packed: str) -> List[Dict]:
         rel_uri, advisor_label = parts[0], parts[1]
         start = parts[2] if len(parts) > 2 else ""
         end = parts[3] if len(parts) > 3 else ""
+        # advisor URI is REQUIRED — Apollo normalizes Advisor by keyFields:["uri"]; an empty
+        # uri makes the client cache throw "Missing field uri" and nulls the whole query
+        # (the 0-customers / 0-clients bug). Fall back to the rel uri so it is never empty.
+        advisor_uri = parts[4] if len(parts) > 4 and parts[4] else rel_uri + "#advisor"
         out.append({
             "uri": rel_uri,
-            "advisor": {"uri": "", "label": advisor_label},
+            "advisor": {"uri": advisor_uri, "label": advisor_label},
             # coverageStartDate/EndDate are AWSDateTime in the schema but stored as bare
             # xsd:date — normalize or AppSync fails to serialize and nulls the parent.
             "coverageStartDate": _as_datetime(start) if start else None,
