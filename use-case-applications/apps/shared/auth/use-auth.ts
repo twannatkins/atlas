@@ -119,6 +119,10 @@ export function useAuth(): AuthState {
   }, []);
 
   const signOut = useCallback(() => {
+    // Clear EVERY auth key. The OAuth callback stores the bearer at "atlas_access_token"
+    // (the key the Apollo auth link reads first — providers.tsx), so removing only
+    // "atlas_token" left the app still authenticated. Clear both, plus the session attrs.
+    localStorage.removeItem("atlas_access_token");
     localStorage.removeItem("atlas_persona");
     localStorage.removeItem("atlas_user_id");
     localStorage.removeItem("atlas_display_name");
@@ -130,10 +134,13 @@ export function useAuth(): AuthState {
     setIsAuthenticated(false);
 
     if (!IS_LOCAL_DEV) {
-      // Production: redirect to Cognito logout endpoint
+      // Production: redirect to the Cognito hosted-UI logout endpoint to end the hosted
+      // session too. logout_uri MUST exactly match a registered LogoutURL — the pool
+      // registers the origin WITH a trailing slash (".../"), but window.location.origin
+      // has NO trailing slash, so the bare origin was rejected on exact-match. Append "/".
       const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
       const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-      const logoutUri = encodeURIComponent(window.location.origin);
+      const logoutUri = encodeURIComponent(window.location.origin + "/");
       window.location.href =
         `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${logoutUri}`;
     }
