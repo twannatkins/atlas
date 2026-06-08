@@ -11,7 +11,6 @@
 import React from "react";
 import { useQuery } from "@apollo/client";
 import { ADVISOR_DASHBOARD_QUERY } from "../graphql/queries";
-import { CapabilityPalette } from "../components/capability-palette";
 import { AppShell, SignInGate } from "../../../shared/ui/chrome";
 import { useAuth } from "../../../shared/auth/use-auth";
 
@@ -22,7 +21,7 @@ const NAV = [
 ];
 
 export default function AdvisorDashboard() {
-  const { personaClaim, isAuthenticated, signIn } = useAuth();
+  const { isAuthenticated, signIn } = useAuth();
   const { data, loading } = useQuery(ADVISOR_DASHBOARD_QUERY, {
     variables: { limit: 30 },
     skip: !isAuthenticated,
@@ -44,43 +43,34 @@ export default function AdvisorDashboard() {
 
   return (
     <AppShell brandSuffix="Wealth" navLinks={NAV}>
-      <div className="shell">
-        <div className="shell-main">
-          <div className="page-head">
-            <h1>My clients</h1>
-            <p className="sub">{clients.length} clients · coverage and signals from the graph</p>
-          </div>
+      <div className="page-head">
+        <h1>My clients</h1>
+        <p className="sub">{clients.length} clients · coverage and signals from the graph</p>
+      </div>
 
-          {loading && <p className="loading-line">Loading your clients…</p>}
+      {loading && <p className="loading-line">Loading your clients…</p>}
 
-          <div className="entity-grid">
-            {clients.map((client: any) => {
-              const covered = client.advisoryRelationships?.length > 0;
-              return (
-                <a
-                  key={client.uri}
-                  href={`/clients/${encodeURIComponent(client.uri)}`}
-                  className="entity-card"
-                >
-                  <div className="en">{client.label}</div>
-                  <p className="eid">{client.customerId}</p>
-                  <div className="etags">
-                    {covered ? (
-                      <span className="mini-sig">Active coverage</span>
-                    ) : (
-                      <span className="mini-gap">Coverage gap</span>
-                    )}
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-
-        <CapabilityPalette
-          personaClaim={personaClaim}
-          onInvoke={(name) => console.log("Invoke:", name)}
-        />
+      <div className="entity-grid">
+        {clients.map((client: any) => {
+          const covered = client.advisoryRelationships?.length > 0;
+          return (
+            <a
+              key={client.uri}
+              href={`/clients/${encodeURIComponent(client.uri)}`}
+              className="entity-card"
+            >
+              <div className="en">{client.label}</div>
+              <p className="eid">{client.customerId}</p>
+              <div className="etags">
+                {covered ? (
+                  <span className="mini-sig">Active coverage</span>
+                ) : (
+                  <span className="mini-gap">Coverage gap</span>
+                )}
+              </div>
+            </a>
+          );
+        })}
       </div>
     </AppShell>
   );

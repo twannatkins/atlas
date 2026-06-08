@@ -18,8 +18,6 @@ interface Entity360Props {
   classChip?: string;
   /** Main content area (signals, accounts, household strip) */
   children: React.ReactNode;
-  /** Sidebar content (capability palette) */
-  sidebar?: React.ReactNode;
 }
 
 /** First two initials, for the entity avatar. */
@@ -35,30 +33,27 @@ export function Entity360({
   customerId,
   classChip = "fibo:Party",
   children,
-  sidebar,
 }: Entity360Props) {
+  // No right sidebar — the design templates render capabilities as an inline card in the
+  // content flow (the outer paper .shell is provided by AppShell). This component now just
+  // renders the serif identity header card, then the page's content cards.
   return (
-    <div className="shell">
-      <div className="shell-main">
-        {/* identity header */}
-        <div className="card">
-          <div className="head">
-            <div className="av">{initials(customerLabel)}</div>
-            <div className="grow">
-              <div className="title-row">
-                <span className="name">{customerLabel}</span>
-                <span className="chip">{classChip}</span>
-                {customerId && <span className="chip">{customerId}</span>}
-              </div>
-              <p className="sub">Full entity view · data and provenance from the graph</p>
+    <>
+      <div className="card">
+        <div className="head">
+          <div className="av">{initials(customerLabel)}</div>
+          <div className="grow">
+            <div className="title-row">
+              <span className="name">{customerLabel}</span>
+              <span className="chip">{classChip}</span>
+              {customerId && <span className="chip">{customerId}</span>}
             </div>
+            <p className="sub">Full entity view · data and provenance from the graph</p>
           </div>
         </div>
-
-        {children}
       </div>
 
-      {sidebar && <div>{sidebar}</div>}
-    </div>
+      {children}
+    </>
   );
 }

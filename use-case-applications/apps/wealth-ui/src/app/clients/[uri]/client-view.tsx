@@ -16,7 +16,6 @@ import { useQuery } from "@apollo/client";
 import { CLIENT_360_QUERY } from "../../../graphql/queries";
 import { useAuth } from "../../../../../shared/auth/use-auth";
 import { AppShell } from "../../../../../shared/ui/chrome";
-import { CapabilityPalette } from "../../../components/capability-palette";
 import { CoverageStrip } from "../../../components/coverage-strip";
 import { ConversationPanel } from "../../../components/conversation-panel";
 import { SignalCard } from "../../../components/signal-card";
@@ -69,113 +68,111 @@ export default function ClientPage() {
 
   return (
     <AppShell brandSuffix="Wealth" navLinks={NAV}>
-      <div className="shell">
-        <div className="shell-main">
-          {/* client header */}
-          <div className="card">
-            <div className="head">
-              <div className="av">{initials(client.label)}</div>
-              <div className="grow">
-                <div className="title-row">
-                  <span className="name">{client.label}</span>
-                  <span className="chip">fibo:Party</span>
-                  {client.customerId && <span className="chip">{client.customerId}</span>}
-                </div>
-                <p className="sub">Advisory coverage and signals from the graph</p>
-              </div>
+      {/* client header */}
+      <div className="card">
+        <div className="head">
+          <div className="av">{initials(client.label)}</div>
+          <div className="grow">
+            <div className="title-row">
+              <span className="name">{client.label}</span>
+              <span className="chip">fibo:Party</span>
+              {client.customerId && <span className="chip">{client.customerId}</span>}
             </div>
+            <p className="sub">Advisory coverage and signals from the graph</p>
           </div>
+        </div>
+      </div>
 
-          {/* two columns: coverage + signals (both real) */}
-          <div className="two">
-            <div className="card">
-              <div className="card-h">
-                <span className="t">Advisory coverage</span>
-                <span className="meta">
-                  <span className="lab-live">live</span> advisoryRelationships
-                </span>
-              </div>
-              <CoverageStrip relationships={client.advisoryRelationships || []} />
-            </div>
-
-            {/* Wealth signals — already fetched by CLIENT_360_QUERY (nested
-                Customer.wealthSignals, resolved via the Pass-2c resolver), now surfaced here.
-                Real signals for a signalled client, honest empty state otherwise. No strength
-                badge — there is no derived strength in the data. */}
-            <div className="card">
-              <div className="card-h">
-                <span className="t">Wealth-readiness signals</span>
-                <span className="meta">
-                  <span className="lab-live">live</span> derived · SHACL
-                </span>
-              </div>
-              {signals.length > 0 ? (
-                <>
-                  {signals.map((sig: any) => (
-                    <SignalCard
-                      key={sig.uri}
-                      signalType={sig.signalType}
-                      signalDate={sig.signalDate}
-                      provenance={sig.provenance}
-                    />
-                  ))}
-                  <p className="card-note">
-                    Already selected by the client-360 query — surfaced here to enrich the
-                    screen with real graph data.
-                  </p>
-                </>
-              ) : (
-                <p className="empty">No signals derived for this client yet.</p>
-              )}
-            </div>
+      {/* two columns: coverage + signals (both real) */}
+      <div className="two">
+        <div className="card">
+          <div className="card-h">
+            <span className="t">Advisory coverage</span>
+            <span className="meta">
+              <span className="lab-live">live</span> advisoryRelationships
+            </span>
           </div>
+          <CoverageStrip relationships={client.advisoryRelationships || []} />
+        </div>
 
-          {/* Household — the real members from CLIENT_360_QUERY's household selection */}
-          {client.household && (
-            <div className="card">
-              <div className="card-h">
-                <span className="t">Household</span>
-                <span className="meta">
-                  <span className="lab-live">live</span> memberOf
-                </span>
-              </div>
-              <HouseholdStrip
-                nodes={
-                  client.household.members?.map((m: any) => ({
-                    uri: m.uri,
-                    type: "atlas:Customer",
-                    label: m.label,
-                    relationship: "atlas:memberOf",
-                  })) ?? []
-                }
-                onNodeClick={(nodeUri) =>
-                  (window.location.href = `/clients/${encodeURIComponent(nodeUri)}`)
-                }
-              />
-            </div>
+        {/* Wealth signals — already fetched by CLIENT_360_QUERY (nested
+            Customer.wealthSignals, resolved via the Pass-2c resolver), now surfaced here.
+            Real signals for a signalled client, honest empty state otherwise. No strength
+            badge — there is no derived strength in the data. */}
+        <div className="card">
+          <div className="card-h">
+            <span className="t">Wealth-readiness signals</span>
+            <span className="meta">
+              <span className="lab-live">live</span> derived · SHACL
+            </span>
+          </div>
+          {signals.length > 0 ? (
+            <>
+              {signals.map((sig: any) => (
+                <SignalCard
+                  key={sig.uri}
+                  signalType={sig.signalType}
+                  signalDate={sig.signalDate}
+                  provenance={sig.provenance}
+                />
+              ))}
+              <p className="card-note">
+                Already selected by the client-360 query — surfaced here to enrich the
+                screen with real graph data.
+              </p>
+            </>
+          ) : (
+            <p className="empty">No signals derived for this client yet.</p>
           )}
+        </div>
+      </div>
 
-          {/* Themes — no per-client themes are derived yet (the theme corpus is empty: see
-              ontology-extensions/themes.ttl). Rather than invent ESG/rate/tech themes with
-              fabricated relevance scores, show the honest empty state. */}
-          <div className="card">
-            <div className="card-h">
-              <span className="t">Market themes</span>
-              <span className="meta">
-                <span className="lab-live">live</span> themes · SKOS
-              </span>
-            </div>
-            <p className="empty">
-              No themes tracked for this client yet — the theme corpus is empty; nothing is
-              invented to fill it.
-            </p>
+      {/* Household — the real members from CLIENT_360_QUERY's household selection */}
+      {client.household && (
+        <div className="card">
+          <div className="card-h">
+            <span className="t">Household</span>
+            <span className="meta">
+              <span className="lab-live">live</span> memberOf
+            </span>
           </div>
+          <HouseholdStrip
+            nodes={
+              client.household.members?.map((m: any) => ({
+                uri: m.uri,
+                type: "atlas:Customer",
+                label: m.label,
+                relationship: "atlas:memberOf",
+              })) ?? []
+            }
+            onNodeClick={(nodeUri) =>
+              (window.location.href = `/clients/${encodeURIComponent(nodeUri)}`)
+            }
+          />
+        </div>
+      )}
 
-          {/* Conversational surface */}
-          <ConversationPanel clientUri={uri} personaClaim={personaClaim} />
+      {/* Themes — no per-client themes are derived yet (the theme corpus is empty: see
+          ontology-extensions/themes.ttl). Rather than invent ESG/rate/tech themes with
+          fabricated relevance scores, show the honest empty state. */}
+      <div className="card">
+        <div className="card-h">
+          <span className="t">Market themes</span>
+          <span className="meta">
+            <span className="lab-live">live</span> themes · SKOS
+          </span>
+        </div>
+        <p className="empty">
+          No themes tracked for this client yet — the theme corpus is empty; nothing is
+          invented to fill it.
+        </p>
+      </div>
 
-          {/* Roadmap — explicitly NOT live */}
-          <div className="future-band">
+      {/* Conversational surface */}
+      <ConversationPanel clientUri={uri} personaClaim={personaClaim} />
+
+      {/* Roadmap — explicitly NOT live */}
+      <div className="future-band">
             <div className="future-h">
               <svg className="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--future)" strokeWidth="1.7">
                 <path d="M5 12h14M13 6l6 6-6 6" />
@@ -222,13 +219,6 @@ export default function ClientPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        <CapabilityPalette
-          personaClaim={personaClaim}
-          onInvoke={(name) => console.log("Invoke:", name)}
-        />
-      </div>
     </AppShell>
   );
 }

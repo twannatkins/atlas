@@ -137,6 +137,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # no duplicated SPARQL. Returns [] (not null) for customers with no signals, which
         # satisfies the non-nullable [WealthSignal!]! and lets the dashboard list render.
         if parent_type == "Customer" and field_name == "wealthSignals":
+            # PERFORMANCE short-circuit: the dashboard's searchCustomers already fetched each
+            # customer's signals in ONE batched SPARQL and attached them to the parent object.
+            # When AppSync resolves the nested field it forwards that parent as `source`, so we
+            # return the pre-fetched array WITHOUT another AgentCore round-trip (the N+1 killer).
+            # Only the single-customer pages, whose parent has no pre-fetched signals, fall
+            # through to the per-customer query.
+            if "wealthSignals" in source:
+                return source["wealthSignals"]
             return _resolve_wealth_signals({"customerUri": source.get("uri", "")}, persona_claim)
         # Customer.advisoryRelationships (nested) — the blocker: CLIENT_360_QUERY selects
         # this non-nullable [AdvisoryRelationship!]! field, but it had no resolver, so it
@@ -304,29 +312,97 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
     (EXISTS producesSignal), not a fabricated score.
     """
     limit = safe_int(args.get("limit", 20), max_val=100)
-    # BIND(EXISTS{...}) computes the has-signal fact WITHOUT joining the signal rows, so
-    # each customer stays a SINGLE row. A prior OPTIONAL producesSignal join multiplied a
-    # customer into one row per signal (c6b6e4ad appeared twice). EXISTS is the correct
-    # one-row-per-customer form; we still ORDER BY it so signalled customers sort first.
+    # PERFORMANCE — this query fetches each customer's wealth signals IN THE SAME SPARQL
+    # via GROUP_CONCAT, so the dashboard is ONE resolver→MCP→Neptune round-trip instead of
+    # 1 + N (the old shape: list 50 customers, then a separate nested wealthSignals call per
+    # customer = 51 AgentCore invocations, each carrying a ~3.5s invoke_agent_runtime floor
+    # → ~24s). Each AgentCore invocation is the dominant cost (the Neptune SELECT itself is
+    # ~200ms), so collapsing 51→1 is the fix. The nested Customer.wealthSignals resolver
+    # short-circuits when the parent object already carries `wealthSignals` (see handler),
+    # so no per-customer calls fire for the dashboard.
+    #
+    # Signals are packed as "sigUri|||type|||date|||evidence" rows joined by a multi-char
+    # ASCII record token that cannot occur in a URI/label, then GROUP_CONCAT per customer.
+    # One row per customer (GROUP BY), still signalled-first. Plain ASCII tokens avoid any
+    # SPARQL control-char escaping ambiguity across engines.
+    sep = "@@SIG@@"  # record separator between signals
+    fsep = "|||"     # field separator within a signal
+    # CRITICAL: the customer LIMIT is applied in an INNER subquery FIRST, then signals are
+    # joined only for that page. A flat GROUP_CONCAT with the LIMIT on the outside makes
+    # Neptune materialize signals for ALL 200 customers before truncating — which times out
+    # (>35s). With the inner LIMIT the outer join touches only `limit` customers; measured
+    # ~5s for limit=50 (essentially the AgentCore invoke floor — the query work is ~0).
+    # The inner EXISTS computes signalled-first ordering without joining signal rows.
     sparql = prefixed(f"""
-        SELECT ?uri ?customerId ?label ?hasSignal WHERE {{
-            ?uri a atlas:Customer ;
-                atlas:customerId ?customerId .
-            OPTIONAL {{ ?uri rdfs:label ?label }}
-            BIND(EXISTS {{ ?uri atlas:producesSignal ?s }} AS ?hasSignal)
+        SELECT ?uri ?customerId ?label
+               (GROUP_CONCAT(DISTINCT ?sigpack ; SEPARATOR="{sep}") AS ?sigs) WHERE {{
+            {{
+                SELECT ?uri ?customerId ?label
+                       (EXISTS {{ ?uri atlas:producesSignal ?x }} AS ?hasSignal) WHERE {{
+                    ?uri a atlas:Customer ;
+                        atlas:customerId ?customerId .
+                    OPTIONAL {{ ?uri rdfs:label ?label }}
+                }}
+                ORDER BY DESC(?hasSignal) ?customerId
+                LIMIT {limit}
+            }}
+            OPTIONAL {{
+                ?uri atlas:producesSignal ?uri_sig .
+                ?uri_sig atlas:hasSignalType ?sigType .
+                OPTIONAL {{ ?sigType skos:prefLabel ?sigLabel }}
+                OPTIONAL {{ ?uri_sig atlas:signalDate ?sigDate }}
+                OPTIONAL {{ ?uri_sig atlas:evidencedBy ?sigEvidence }}
+                BIND(CONCAT(STR(?uri_sig), "{fsep}",
+                            STR(COALESCE(?sigLabel, ?sigType)), "{fsep}",
+                            STR(COALESCE(?sigDate, "")), "{fsep}",
+                            STR(COALESCE(?sigEvidence, ""))) AS ?sigpack)
+            }}
         }}
-        ORDER BY DESC(?hasSignal) ?customerId
-        LIMIT {limit}
+        GROUP BY ?uri ?customerId ?label
     """)
     rows = _query_sparql(sparql, persona)
-    return [
-        {
+    out: List[Dict] = []
+    for r in rows:
+        out.append({
             "uri": r["uri"],
             "customerId": r.get("customerId", ""),
             "label": _display_label(r.get("label", ""), r.get("customerId", ""), r["uri"]),
-        }
-        for r in rows
-    ]
+            # Attach the signals parsed from the packed GROUP_CONCAT. AppSync's nested
+            # Customer.wealthSignals resolver finds these already on `source` and returns
+            # them WITHOUT a per-customer round-trip (see handler short-circuit).
+            "wealthSignals": _unpack_signals(r.get("sigs", "")),
+        })
+    return out
+
+
+def _unpack_signals(packed: str) -> List[Dict]:
+    """Parse the GROUP_CONCAT signal blob from _resolve_search_customers into signal objects.
+
+    Format: "<sigUri>|||<type>|||<date>|||<evidence>" rows joined by U+241E. Empty blob
+    (a customer with no signals) → []. Provenance is built the same truthful way as the
+    standalone wealthSignals resolver (validatedBy = the universal shape; derivedFrom = the
+    real evidencedBy txn when present).
+    """
+    if not packed:
+        return []
+    out: List[Dict] = []
+    for rec in packed.split("@@SIG@@"):
+        if not rec:
+            continue
+        parts = rec.split("|||")
+        if len(parts) < 2 or not parts[0]:
+            continue
+        sig_uri, sig_type = parts[0], parts[1]
+        sig_date = parts[2] if len(parts) > 2 else ""
+        evidence = parts[3] if len(parts) > 3 else ""
+        out.append({
+            "uri": sig_uri,
+            "signalType": sig_type,
+            "strength": "",
+            "signalDate": _as_datetime(sig_date) if sig_date else None,
+            "provenance": _signal_provenance(sig_type, evidence),
+        })
+    return out
 
 
 def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:

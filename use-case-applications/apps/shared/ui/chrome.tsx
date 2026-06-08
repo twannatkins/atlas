@@ -55,10 +55,11 @@ export function AppShell({ brandSuffix, navLinks, children }: AppShellProps) {
 
   return (
     <div className="atlas-wrap">
-      {/* live / roadmap legend — honest reading key, on every screen */}
+      {/* live / roadmap legend — honest reading key, on every screen (matches the
+          "true-UI preview" header in the design templates) */}
       <div className="preview-tag">
         <span className="dot" />
-        <b>ATLAS · {brandSuffix}</b> built on the agentic semantic layer
+        <b>ATLAS · {brandSuffix}</b> built on the agentic semantic layer — live graph data
         <span className="legend">
           <span>
             <span className="swatch live" /> live now
@@ -69,34 +70,38 @@ export function AppShell({ brandSuffix, navLinks, children }: AppShellProps) {
         </span>
       </div>
 
-      <div className="appbar">
-        <a className="brand" href="/">
-          <span className="mk">A</span> ATLAS · {brandSuffix}
-        </a>
-        <span className="crumb">{pathname}</span>
-        {isAuthenticated && (
-          <nav className="navlinks" aria-label="Sections">
-            {navLinks.map((l) => (
-              <a key={l.href} href={l.href}>
-                {l.label}
-              </a>
-            ))}
-          </nav>
-        )}
-        {isAuthenticated && (
-          <div className="who">
-            <span className="av">{initials(displayName || personaClaim)}</span>
-            <span>
-              {displayName || "—"} · {personaLabel(personaClaim)}
-            </span>
-            <button className="signout" onClick={signOut}>
-              Sign out
-            </button>
-          </div>
-        )}
-      </div>
+      {/* The outer paper shell — matches the templates: appbar + all cards live inside a
+          single --panel-2 container. */}
+      <div className="shell">
+        <div className="appbar">
+          <a className="brand" href="/">
+            <span className="mk">A</span> ATLAS · {brandSuffix}
+          </a>
+          <span className="crumb">{pathname}</span>
+          {isAuthenticated && (
+            <nav className="navlinks" aria-label="Sections">
+              {navLinks.map((l) => (
+                <a key={l.href} href={l.href}>
+                  {l.label}
+                </a>
+              ))}
+            </nav>
+          )}
+          {isAuthenticated && (
+            <div className="who">
+              <span className="av">{initials(displayName || personaClaim)}</span>
+              <span>
+                {displayName || "—"} · {personaLabel(personaClaim)}
+              </span>
+              <button className="signout" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
 
-      {children}
+        {children}
+      </div>
     </div>
   );
 }

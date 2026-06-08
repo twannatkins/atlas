@@ -18,7 +18,7 @@ import { AppShell } from "../../../../../shared/ui/chrome";
 import { Entity360 } from "../../../components/entity-360";
 import { SignalCard } from "../../../components/signal-card";
 import { HouseholdStrip } from "../../../components/household-strip";
-import { CapabilityPalette } from "../../../components/capability-palette";
+import { CapabilityCards } from "../../../components/capability-cards";
 import { ComplianceBanner } from "../../../components/compliance-banner";
 
 const NAV = [{ href: "/", label: "My book" }];
@@ -48,12 +48,6 @@ export default function CustomerPage() {
     );
   }
 
-  // Determine if capabilities should be disabled based on entity state
-  const hasAdvisor = customer.advisoryRelationships?.some((r: any) => r.isActive);
-  const disabledCaps = hasAdvisor
-    ? ["referral-orchestrator", "referral-rationale-drafter"]
-    : [];
-
   const relationships = customer.advisoryRelationships ?? [];
 
   return (
@@ -61,41 +55,38 @@ export default function CustomerPage() {
       <Entity360
         customerLabel={customer.label || "Unknown"}
         customerId={customer.customerId}
-        sidebar={
-          <CapabilityPalette
-            personaClaim={personaClaim}
-            onInvoke={(name) => console.log("Invoke:", name)}
-            disabledCapabilities={disabledCaps}
-          />
-        }
       >
         {/* Compliance banner — illustrative (marked "Example"): no per-entity compliance
             state exists to drive it (hasComplianceHold undefined + never persisted; see
             ComplianceBanner's illustrative prop doc + 04a). Do NOT wire to a fabricated field. */}
         <ComplianceBanner hasComplianceReview={true} personaClaim={personaClaim} illustrative={true} />
 
-        {/* Wealth signals with provenance */}
-        <div className="card">
-          <div className="card-h">
-            <span className="t">Wealth signals</span>
-            <span className="meta">
-              <span className="lab-live">live</span> derived · SHACL
-            </span>
+        {/* Two columns: signals + capabilities (matches the template) */}
+        <div className="two">
+          <div className="card">
+            <div className="card-h">
+              <span className="t">Wealth-readiness signals</span>
+              <span className="meta">
+                <span className="lab-live">live</span> derived · SHACL
+              </span>
+            </div>
+            {signalsLoading ? (
+              <p className="loading-line">Loading signals…</p>
+            ) : signals.length === 0 ? (
+              <p className="empty">No signals detected.</p>
+            ) : (
+              signals.map((sig: any) => (
+                <SignalCard
+                  key={sig.uri}
+                  signalType={sig.signalType}
+                  signalDate={sig.signalDate}
+                  provenance={sig.provenance}
+                />
+              ))
+            )}
           </div>
-          {signalsLoading ? (
-            <p className="loading-line">Loading signals…</p>
-          ) : signals.length === 0 ? (
-            <p className="empty">No signals detected.</p>
-          ) : (
-            signals.map((sig: any) => (
-              <SignalCard
-                key={sig.uri}
-                signalType={sig.signalType}
-                signalDate={sig.signalDate}
-                provenance={sig.provenance}
-              />
-            ))
-          )}
+
+          <CapabilityCards personaClaim={personaClaim} />
         </div>
 
         {/* Household relationship strip */}

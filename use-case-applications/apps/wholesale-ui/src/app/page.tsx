@@ -12,7 +12,6 @@
 import React from "react";
 import { useQuery } from "@apollo/client";
 import { DASHBOARD_QUERY } from "../graphql/queries";
-import { CapabilityPalette } from "../components/capability-palette";
 import { AskGraphPanel } from "../components/ask-graph-panel";
 import { AppShell, SignInGate } from "../../../shared/ui/chrome";
 import { useAuth } from "../../../shared/auth/use-auth";
@@ -22,7 +21,7 @@ const NAV = [
 ];
 
 export default function DashboardPage() {
-  const { personaClaim, isAuthenticated, signIn } = useAuth();
+  const { isAuthenticated, signIn } = useAuth();
   const { data, loading } = useQuery(DASHBOARD_QUERY, {
     variables: { limit: 50 },
     skip: !isAuthenticated,
@@ -44,46 +43,37 @@ export default function DashboardPage() {
 
   return (
     <AppShell brandSuffix="Wholesale" navLinks={NAV}>
-      <div className="shell">
-        <div className="shell-main">
-          <div className="page-head">
-            <h1>My book</h1>
-            <p className="sub">{customers.length} customers · scoped by Lake Formation to your persona</p>
-          </div>
+      <div className="page-head">
+        <h1>My book</h1>
+        <p className="sub">{customers.length} customers · scoped by Lake Formation to your persona</p>
+      </div>
 
-          {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
-          <AskGraphPanel />
+      {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
+      <AskGraphPanel />
 
-          {loading && <p className="loading-line">Loading your book…</p>}
+      {loading && <p className="loading-line">Loading your book…</p>}
 
-          <div className="entity-grid">
-            {customers.map((customer: any) => {
-              const sigs = customer.wealthSignals ?? [];
-              return (
-                <a
-                  key={customer.uri}
-                  href={`/customers/${encodeURIComponent(customer.uri)}`}
-                  className="entity-card"
-                >
-                  <div className="en">{customer.label}</div>
-                  <p className="eid">{customer.customerId}</p>
-                  {sigs.length > 0 && (
-                    <div className="etags">
-                      <span className="mini-sig">
-                        {sigs.length} signal{sigs.length === 1 ? "" : "s"}
-                      </span>
-                    </div>
-                  )}
-                </a>
-              );
-            })}
-          </div>
-        </div>
-
-        <CapabilityPalette
-          personaClaim={personaClaim}
-          onInvoke={(name) => console.log("Invoke:", name)}
-        />
+      <div className="entity-grid">
+        {customers.map((customer: any) => {
+          const sigs = customer.wealthSignals ?? [];
+          return (
+            <a
+              key={customer.uri}
+              href={`/customers/${encodeURIComponent(customer.uri)}`}
+              className="entity-card"
+            >
+              <div className="en">{customer.label}</div>
+              <p className="eid">{customer.customerId}</p>
+              {sigs.length > 0 && (
+                <div className="etags">
+                  <span className="mini-sig">
+                    {sigs.length} signal{sigs.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
+            </a>
+          );
+        })}
       </div>
     </AppShell>
   );

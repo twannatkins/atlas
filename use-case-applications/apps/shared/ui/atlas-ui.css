@@ -228,19 +228,17 @@ body.atlas {
 }
 
 /* ── layout shell ─────────────────────────────────────────────────────── */
+/* The outer paper container (matches the design templates): a --panel-2 box that holds
+   the appbar and every card. NOT a sidebar grid — the templates have no right rail;
+   capabilities is an inline card in the .two grid. */
 .shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 264px;
-  gap: 12px;
-  align-items: start;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
 }
 .shell-main {
   min-width: 0;
-}
-@media (max-width: 880px) {
-  .shell {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .page-head {
