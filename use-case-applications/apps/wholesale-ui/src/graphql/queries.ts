@@ -15,15 +15,26 @@ import {
   REFERRAL_FIELDS,
 } from "./fragments";
 
-/** Dashboard query — the banker's assigned book sorted by signal strength */
+/**
+ * Dashboard query — the banker's book, signalled-first.
+ *
+ * Deliberately LEAN: only the fields the cards render (label, id, signals, coverage).
+ * It does NOT select `household { memberCount }` — that nested field triggers a per-
+ * customer household resolver call (an N+1: ~50 extra round-trips, ~6s). wealthSignals
+ * and advisoryRelationships are BATCHED inside searchCustomers (one round-trip), so this
+ * whole query is a single resolver call. Household detail loads on the customer-360 page,
+ * where it's one customer, not fifty.
+ */
 export const DASHBOARD_QUERY = gql`
-  ${CUSTOMER_FIELDS}
-  ${WEALTH_SIGNAL_FIELDS}
   query Dashboard($limit: Int) {
     searchCustomers(query: "", limit: $limit) {
-      ...CustomerFields
+      uri
+      customerId
+      label
       wealthSignals {
-        ...WealthSignalFields
+        uri
+        signalType
+        signalDate
       }
       advisoryRelationships {
         uri

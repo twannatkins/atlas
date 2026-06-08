@@ -165,6 +165,9 @@ export class AppSyncConstruct extends Construct {
       handler: "sparql_resolver.handler",
       code: lambda.Code.fromAsset(path.join(resolverBase, "sparql-resolver")),
       timeout: cdk.Duration.seconds(30),
+      // 512 MB (not the 128 default): CPU scales with memory, so this cuts the VPC
+      // cold-start init that otherwise left the dashboard's first paint empty.
+      memorySize: 512,
       // In the VPC so it can reach Neptune directly (the perf fix). Same private subnets +
       // SG the step Lambdas use.
       vpc: props.vpc,
@@ -195,6 +198,7 @@ export class AppSyncConstruct extends Construct {
       handler: "registry_resolver.handler",
       code: lambda.Code.fromAsset(path.join(resolverBase, "registry-resolver")),
       timeout: cdk.Duration.seconds(30),
+      memorySize: 512,  // faster cold start (CPU scales with memory)
       environment: {
         REGISTRY_MCP_ARN: props.registryMcpArn,
         // routeReferral starts this state machine directly (the proven path).

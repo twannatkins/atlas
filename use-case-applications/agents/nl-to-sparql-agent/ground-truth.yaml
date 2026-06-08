@@ -1,0 +1,143 @@
+# ATLAS NL-to-SPARQL Ground-Truth Pairs
+#
+# Each pair maps a natural-language question to a VALIDATED SPARQL template. The
+# nl-to-sparql-agent embeds the user's question and matches it (cosine similarity) to one
+# of these; it NEVER free-generates SPARQL. This is the SR 11-7 posture: the LLM is the
+# interface, the graph is the reasoner.
+#
+# Every template is verified to return rows against the promoted SLGD and to project
+# human-readable names (?customerName / ?advisorName) alongside any URI, so the UI shows
+# "Avery Anderson", not a raw instance URI.
+#
+# The ten questions tell ONE coherent story — the Rachel Kim referral journey — each
+# leading into the next. Questions 1–8 return rows immediately. Questions 9–10 (routing +
+# audit trail) are EMPTY until a referral is routed, then populate — which is the point:
+# the audit trail exists only because a governed, human-approved action happened. Run the
+# demo's "Route referral" (Beat 4), then ask 9 and 10 to see them fill in.
+
+pairs:
+  # 1 — THE OPPORTUNITY. Who in the book has a derived wealth signal, and which type.
+  - question: "Which customers have generated a wealth signal in the last 90 days?"
+    note: "Story 1 — find the opportunity"
+    sparql: >
+      SELECT ?customerName ?signalType WHERE {
+          ?customer a atlas:Customer ; atlas:producesSignal ?sig .
+          ?sig atlas:hasSignalType ?type .
+          OPTIONAL { ?customer rdfs:label ?customerName }
+          OPTIONAL { ?type skos:prefLabel ?signalType }
+      }
+      ORDER BY ?customerName
+
+  # 2 — THE EVIDENCE. The actual transactions that surfaced a signalled customer (provenance).
+  - question: "What specific transactions were used to surface this customer?"
+    note: "Story 2 — the evidence behind the signal"
+    sparql: >
+      SELECT ?customerName ?signalType ?txnDate ?amount WHERE {
+          ?customer a atlas:Customer ; atlas:producesSignal ?signal .
+          ?signal atlas:evidencedBy ?txn ; atlas:hasSignalType ?type .
+          ?txn atlas:transactionDate ?txnDate ; atlas:amountUSD ?amount .
+          OPTIONAL { ?customer rdfs:label ?customerName }
+          OPTIONAL { ?type skos:prefLabel ?signalType }
+      }
+      ORDER BY DESC(?amount)
+
+  # 3 — THE BREAKDOWN. How the signals distribute across the book (which plays are biggest).
+  - question: "What kinds of wealth signals are most common across the book?"
+    note: "Story 3 — size the opportunity by signal type"
+    sparql: >
+      SELECT ?signalType (COUNT(?sig) AS ?count) WHERE {
+          ?sig a atlas:WealthSignal ; atlas:hasSignalType ?type .
+          OPTIONAL { ?type skos:prefLabel ?signalType }
+      }
+      GROUP BY ?signalType
+      ORDER BY DESC(?count)
+
+  # 4 — WHO IS ACTIONABLE. Customers with NO active wealth advisor — the referral candidates.
+  - question: "Which customers have no wealth advisor assigned?"
+    note: "Story 4 — who is actionable (uncovered)"
+    sparql: >
+      SELECT ?customerName ?balance WHERE {
+          ?customer a atlas:Customer ; atlas:hasAccount ?acct .
+          ?acct atlas:balanceUSD ?balance .
+          OPTIONAL { ?customer rdfs:label ?customerName }
+          FILTER NOT EXISTS {
+              ?customer atlas:hasAdvisor ?rel .
+              FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
+          }
+      }
+      ORDER BY DESC(?balance)
+
+  # 5 — HOUSEHOLD OPPORTUNITY. Households where some members are covered, some are not.
+  - question: "Which households have mixed wealth coverage?"
+    note: "Story 5 — household-level opportunity"
+    sparql: >
+      SELECT DISTINCT ?household WHERE {
+          ?covered a atlas:Customer ; atlas:memberOf ?household ; atlas:hasAdvisor ?rel .
+          FILTER NOT EXISTS { ?rel atlas:coverageEndDate ?end }
+          ?uncovered a atlas:Customer ; atlas:memberOf ?household .
+          FILTER NOT EXISTS {
+              ?uncovered atlas:hasAdvisor ?rel2 .
+              FILTER NOT EXISTS { ?rel2 atlas:coverageEndDate ?end2 }
+          }
+          FILTER (?covered != ?uncovered)
+      }
+
+  # 6 — MAP THE HOUSEHOLD. The members of a customer's household.
+  - question: "Which household relationships does this customer have?"
+    note: "Story 6 — map the household"
+    sparql: >
+      SELECT ?customerName ?household WHERE {
+          ?customer a atlas:Customer ; atlas:memberOf ?household .
+          OPTIONAL { ?customer rdfs:label ?customerName }
+      }
+      ORDER BY ?household
+
+  # 7 — THE ACCOUNTS. A customer's accounts and balances (why they qualify for wealth).
+  - question: "What accounts and balances does this customer hold?"
+    note: "Story 7 — the financial picture"
+    sparql: >
+      SELECT ?customerName ?accountType ?balance WHERE {
+          ?customer a atlas:Customer ; atlas:hasAccount ?acct .
+          ?acct atlas:accountType ?accountType ; atlas:balanceUSD ?balance .
+          OPTIONAL { ?customer rdfs:label ?customerName }
+      }
+      ORDER BY DESC(?balance)
+
+  # 8 — TEMPORAL / HISTORY. Advisory coverage with start/end — "who covered whom, when".
+  - question: "Who was this customer's advisor 18 months ago?"
+    note: "Story 8 — coverage history (temporal)"
+    sparql: >
+      SELECT ?customerName ?advisorName ?startDate ?endDate WHERE {
+          ?customer atlas:hasAdvisor ?rel .
+          ?rel atlas:coveringAdvisor ?advisor ; atlas:coverageStartDate ?startDate .
+          OPTIONAL { ?rel atlas:coverageEndDate ?endDate }
+          OPTIONAL { ?customer rdfs:label ?customerName }
+          OPTIONAL { ?advisor rdfs:label ?advisorName }
+          FILTER (?startDate <= "2024-11-01"^^xsd:date)
+          FILTER (!BOUND(?endDate) || ?endDate >= "2024-11-01"^^xsd:date)
+      }
+      ORDER BY ?customerName
+
+  # 9 — THE DECISION. Routing decisions and the advisor they targeted. EMPTY until a
+  #     referral is routed (demo Beat 4) — then this shows the governed routing record.
+  - question: "Which routing decisions have human review and what was the outcome?"
+    note: "Story 9 — the human-in-the-loop record (populates after routing)"
+    sparql: >
+      SELECT ?routing ?route ?advisorName WHERE {
+          ?routing a atlas:RoutingDecision ; atlas:selectedRoute ?route .
+          OPTIONAL { ?routing atlas:targetAdvisor ?advisor .
+                     OPTIONAL { ?advisor rdfs:label ?advisorName } }
+      }
+
+  # 10 — END-TO-END PROVENANCE. From a routed referral back to its household + advisor +
+  #      approved rationale. EMPTY until a referral is routed — the heart of the audit story.
+  - question: "What is the full audit trail from customer to advisor approval?"
+    note: "Story 10 — end-to-end provenance (populates after routing)"
+    sparql: >
+      SELECT ?routing ?route ?household ?advisorName ?rationale WHERE {
+          ?routing a atlas:RoutingDecision ; atlas:selectedRoute ?route ;
+                   atlas:aboutHousehold ?household .
+          OPTIONAL { ?routing atlas:targetAdvisor ?advisor .
+                     OPTIONAL { ?advisor rdfs:label ?advisorName } }
+          OPTIONAL { ?routing atlas:approvedRationale ?rationale }
+      }
