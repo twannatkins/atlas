@@ -38,7 +38,7 @@ The Workshop 2 spec in `spec/` is the source of truth. Generate artifacts from t
 2. **`spec/02-prerequisites.md`** — what must be true before any code runs.
 3. **`spec/04-aws-agent-registry/`** — agent and MCP server descriptors. Generate the Lambda handlers, IAM policies, and registration scripts from these.
 4. **`spec/05-appsync-graphql/`** — the FIBO-shaped schema and resolver patterns. The schema is built on Workshop 1's ontology classes; the resolvers federate via Ontop and direct AWS service calls.
-5. **`spec/06-react-monorepo/`** — the largest section. Both UIs, every route, every component. Written for Kiro and Claude Code to consume; use shadcn/ui primitives, design tokens from `06-react-monorepo/design-system/tokens.md`.
+5. **`spec/06-react-monorepo/`** — the largest section. Both UIs, every route, every component. Written for code-generation agents to consume; use shadcn/ui primitives, design tokens from `06-react-monorepo/design-system/tokens.md`.
 6. **`spec/07-cdk-stack/`** — the infrastructure. Deploys Ontop on ECS, AppSync, Cognito, Lake Formation policies, CloudFront distributions, and the MCP server Lambdas.
 7. **`spec/08-notebook-companion/`** — the teaching layer. Each notebook design includes the question, concept, build cells, verification cells, and what-just-changed bridge.
 

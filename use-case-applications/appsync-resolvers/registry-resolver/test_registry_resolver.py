@@ -19,21 +19,21 @@ from registry_resolver import handler
 
 
 class TestCapabilitiesResolver:
+    """capabilities resolves via _invoke_registry -> _invoke_agentcore (the AgentCore HTTP/
+    SigV4 transport). The tests mock _invoke_registry, the single seam that returns the
+    registry-mcp payload, so they assert the real mapping the live resolver performs (not
+    the obsolete lambda.invoke/Payload SDK path)."""
 
-    @patch("registry_resolver.boto3")
-    def test_returns_capabilities_for_persona(self, mock_boto3):
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-
-        registry_response = json.dumps({
+    @patch("registry_resolver._invoke_registry")
+    def test_returns_capabilities_for_persona(self, mock_invoke_registry):
+        mock_invoke_registry.return_value = {
             "status": "success",
             "agents": [
                 {"agentName": "nl-to-sparql-agent", "posture": "deterministic-audited",
                  "registryMetadata": {"display_name": "Ask the graph", "display_icon": "search", "capability_tag": "deterministic", "phase": 1}},
             ],
             "mcp_servers": [],
-        }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=registry_response))}
+        }
 
         event = {
             "info": {"fieldName": "capabilities"},
@@ -43,16 +43,18 @@ class TestCapabilitiesResolver:
 
         result = handler(event, None)
 
+        # The resolver invoked the registry with the list_capabilities op + persona.
+        mock_invoke_registry.assert_called_once()
+        assert mock_invoke_registry.call_args[0][0] == "list_capabilities"
         assert len(result) == 1
         assert result[0]["name"] == "nl-to-sparql-agent"
         assert result[0]["displayName"] == "Ask the graph"
 
-    @patch("registry_resolver.boto3")
-    def test_registry_failure_raises(self, mock_boto3):
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-        error_payload = json.dumps({"status": "error", "message": "service unavailable"}).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=error_payload))}
+    @patch("registry_resolver._invoke_registry")
+    def test_registry_failure_raises(self, mock_invoke_registry):
+        # _invoke_registry raises on an error status from the MCP (its real contract);
+        # the resolver propagates it rather than returning a fabricated palette.
+        mock_invoke_registry.side_effect = RuntimeError("service unavailable")
 
         event = {
             "info": {"fieldName": "capabilities"},
@@ -65,21 +67,19 @@ class TestCapabilitiesResolver:
 
 
 class TestRouteReferralResolver:
+    """routeReferral starts the referral-orchestrator Step Functions execution directly
+    (stepfunctions.start_execution) — NOT the old registry invoke path. The test mocks
+    boto3's stepfunctions client and asserts the real conformant route."""
 
     @patch("registry_resolver.boto3")
-    def test_invokes_orchestrator_through_registry(self, mock_boto3):
-        mock_lambda = MagicMock()
-        mock_boto3.client.return_value = mock_lambda
-
-        registry_response = json.dumps({
-            "status": "success",
-            "result": {
-                "routing_decision_uri": "atlas:routing/abc123",
-                "selected_advisor_uri": "atlas:advisor/001",
-                "audit_record_uri": "atlas:audit/abc123",
-            },
-        }).encode()
-        mock_lambda.invoke.return_value = {"Payload": MagicMock(read=MagicMock(return_value=registry_response))}
+    @patch("registry_resolver.STATE_MACHINE_ARN",
+           "arn:aws:states:us-east-1:123456789012:stateMachine:atlas-referral-orchestrator")
+    def test_starts_orchestrator_execution(self, mock_boto3):
+        # Patch the module global STATE_MACHINE_ARN directly (no reload — reloading would
+        # rebind boto3 to the real client and defeat the mock). boto3 is mocked so no real
+        # Step Functions call is made.
+        mock_sfn = MagicMock()
+        mock_boto3.client.return_value = mock_sfn
 
         event = {
             "info": {"fieldName": "routeReferral"},
@@ -94,5 +94,9 @@ class TestRouteReferralResolver:
 
         result = handler(event, None)
 
-        assert result["uri"] == "atlas:routing/abc123"
-        assert result["routingDecision"]["selectedRoute"] == "route_to_advisor"
+        # It started a Step Functions execution (the real transport), not a Lambda invoke.
+        mock_boto3.client.assert_called_with("stepfunctions")
+        mock_sfn.start_execution.assert_called_once()
+        # The returned route is the SHACL-conformant enum value, not the old free string.
+        assert result["routingDecision"]["selectedRoute"] == "ROUTE_ADVISOR_QUEUE"
+        assert result["uri"].startswith("atlas:routing/")

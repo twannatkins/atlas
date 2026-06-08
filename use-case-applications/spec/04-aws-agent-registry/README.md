@@ -32,7 +32,7 @@ All five are registered in Phase 1. Phase 2 uses the same five with no additions
 | `atlas-shacl-mcp` | SHACL shape validation, conformance reports |
 | `atlas-er-mcp` | AWS Entity Resolution lookups; MatchID → URI |
 | `atlas-fibo-mcp` | FIBO class introspection, ontology browsing |
-| `atlas-registry-mcp` | The Agent Registry's own MCP endpoint, used by UIs and Kiro for discovery |
+| `atlas-registry-mcp` | The Agent Registry's own MCP endpoint, used by UIs and code-generation tooling for discovery |
 
 ## Postures explained
 
@@ -59,7 +59,7 @@ If you are learning the architecture, read each agent's markdown explainer in th
 5. `referral-orchestrator.md` — the workflow pattern
 6. Phase 2 agents in any order, after Phase 1 is solid
 
-If you are generating code with Kiro or Claude Code, read the markdown for context, then generate against the JSON descriptors. Each JSON descriptor includes the Lambda code skeleton, the IAM policy template, and the registration payload.
+If you are generating code with an AI coding agent, read the markdown for context, then generate against the JSON descriptors. Each JSON descriptor includes the Lambda code skeleton, the IAM policy template, and the registration payload.
 
 ## What must never appear in an agent
 

@@ -1,10 +1,10 @@
 # atlas-registry-mcp
 
-The MCP server that exposes the Agent Registry itself. The UI uses this to populate the capability palette; Kiro uses it to discover what agents exist in the registry without hardcoding.
+The MCP server that exposes the Agent Registry itself. The UI uses this to populate the capability palette; code-generation tooling uses it to discover what agents exist in the registry without hardcoding.
 
 ## Purpose
 
-`atlas-registry-mcp` makes the Agent Registry itself accessible as an MCP server. This sounds circular — but it is the right design. The registry is a service like any other; exposing it through MCP means the UI's capability palette and Kiro's discovery flow use the same protocol everything else does.
+`atlas-registry-mcp` makes the Agent Registry itself accessible as an MCP server. This sounds circular — but it is the right design. The registry is a service like any other; exposing it through MCP means the UI's capability palette and the code-generation discovery flow use the same protocol everything else does.
 
 ## What it exposes
 

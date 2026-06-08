@@ -159,4 +159,4 @@ Each follows the question → concept → build → verification → what-just-c
 
 The audience for Workshop 2 is "a novice to agentic AI tooling." A novice does not learn by running cells that pass. A novice learns by understanding *why* each cell exists, *what* it changes about the world, and *what* opens up next. The five-section pattern is how each notebook teaches, not just builds.
 
-This is also why the notebooks are the primary teaching mechanism rather than the spec. The spec is for Kiro and Claude Code to read when generating production artifacts. The notebooks are for humans to read when learning. Both audiences are necessary; they are served by different documents.
+This is also why the notebooks are the primary teaching mechanism rather than the spec. The spec is for code-generation agents to read when generating production artifacts. The notebooks are for humans to read when learning. Both audiences are necessary; they are served by different documents.
