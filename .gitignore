@@ -19,6 +19,7 @@ notebooks/**/output/
 .next/
 out/
 next-env.d.ts
+tsconfig.tsbuildinfo
 
 # Option C runtime packaging — transient pip-install + zip staging dir
 # (scripts/build-runtimes.sh; the artifacts live in S3, never in git)

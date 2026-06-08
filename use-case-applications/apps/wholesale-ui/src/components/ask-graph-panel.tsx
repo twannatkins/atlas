@@ -52,21 +52,31 @@ export function AskGraphPanel() {
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 
   return (
-    <div className="space-y-4 rounded-lg border border-neutral-200 p-4">
-      <div className="flex items-center gap-2">
+    <div className="card">
+      <div className="card-h">
+        <span className="t">Ask the graph</span>
+        <span className="meta">
+          <svg className="i" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <circle cx="11" cy="11" r="6" />
+            <path d="M16 16l4 4" />
+          </svg>
+          nl-to-sparql-agent · template-bounded · live
+        </span>
+      </div>
+
+      <div className="field">
         <input
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask(question)}
           placeholder="Ask a question about the graph…"
-          className="flex-1 rounded-md border border-neutral-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
           aria-label="Ask the graph"
         />
         <button
+          className="btn accent"
           onClick={() => ask(question)}
           disabled={!question.trim() || loading}
-          className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
         >
           Ask
         </button>
@@ -75,46 +85,44 @@ export function AskGraphPanel() {
       {/* Suggested questions — ALWAYS visible. These are exactly what the agent can answer
           (read from its own templates), so expectations are set honestly. */}
       {suggestions.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-            Questions you can ask
-          </p>
-          <div className="flex flex-wrap gap-2">
+        <>
+          <p className="qlabel">Questions you can ask</p>
+          <div className="chips">
             {suggestions.map((q) => (
-              <button
-                key={q}
-                onClick={() => ask(q)}
-                className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-100"
-              >
+              <button key={q} className="qchip" onClick={() => ask(q)}>
                 {q}
               </button>
             ))}
           </div>
-        </div>
+        </>
       )}
 
-      {loading && <p className="text-sm text-neutral-400" aria-busy="true">Querying the graph…</p>}
+      {loading && (
+        <p className="loading-line" aria-busy="true">
+          Querying the graph…
+        </p>
+      )}
 
       {res && !loading && res.status === "success" && (
-        <div className="space-y-2">
-          <p className="text-xs text-neutral-400">
+        <div>
+          <p className="result-meta">
             {rows.length} result{rows.length === 1 ? "" : "s"} · template {res.templateId} · {res.executionTimeMs}ms
           </p>
           {rows.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <div style={{ overflowX: "auto" }}>
+              <table className="rtable">
                 <thead>
-                  <tr className="border-b border-neutral-200">
+                  <tr>
                     {columns.map((c) => (
-                      <th key={c} className="py-1 pr-4 font-medium text-neutral-600">{c}</th>
+                      <th key={c}>{c}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, i) => (
-                    <tr key={i} className="border-b border-neutral-100">
+                    <tr key={i}>
                       {columns.map((c) => (
-                        <td key={c} className="py-1 pr-4 text-neutral-800">{String(row[c] ?? "")}</td>
+                        <td key={c}>{String(row[c] ?? "")}</td>
                       ))}
                     </tr>
                   ))}
@@ -122,12 +130,12 @@ export function AskGraphPanel() {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-neutral-500">The query matched but returned no rows.</p>
+            <p className="empty">The query matched but returned no rows.</p>
           )}
           {res.sparql && (
-            <details className="text-xs text-neutral-400">
-              <summary className="cursor-pointer">Show the SPARQL that ran</summary>
-              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap font-mono">{res.sparql}</pre>
+            <details className="sparql-toggle">
+              <summary>Show the SPARQL that ran</summary>
+              <pre>{res.sparql}</pre>
             </details>
           )}
         </div>
@@ -135,14 +143,14 @@ export function AskGraphPanel() {
 
       {/* Honest no-match: NOT a fabricated answer — point back at the answerable questions. */}
       {res && !loading && res.status === "no_template_match" && (
-        <p className="text-sm text-neutral-600">
+        <p className="card-note">
           I can&apos;t answer that one yet. Try one of the questions above — those are the
           queries I can run today.
         </p>
       )}
 
       {res && !loading && res.status === "execution_error" && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="card-note" role="alert" style={{ color: "var(--rust-ink)" }}>
           The query couldn&apos;t be run (a system error reaching the graph). Please try again.
         </p>
       )}

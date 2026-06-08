@@ -7,7 +7,8 @@
 
 import React from "react";
 import "./globals.css"; // @tailwind base/components/utilities — generates the utility classes
-import "../../../shared/ui/tokens.css"; // the --color-* design-token vars the Tailwind theme references
+import "../../../shared/ui/tokens.css"; // the --color-* design-token vars
+import "../../../shared/ui/atlas-ui.css"; // the warm-paper "true-UI" design system (loaded last → wins)
 import { Providers } from "./providers";
 
 export const metadata = {
@@ -20,9 +21,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // theme-wholesale sets the info-blue accent for the Consumer-Banker lens; the
+  // `atlas` class turns on the warm-paper ground from atlas-ui.css.
   return (
     <html lang="en">
-      <body className="font-sans antialiased bg-neutral-50 text-neutral-900">
+      <body className="atlas theme-wholesale">
         <Providers>{children}</Providers>
       </body>
     </html>

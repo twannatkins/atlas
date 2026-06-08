@@ -45,17 +45,17 @@ export default function CallbackView() {
   }, [params, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6 text-sm">
+    <div className="signin-wrap">
       {error ? (
-        <div className="max-w-lg space-y-2 text-red-600" role="alert">
-          <p className="font-semibold">Sign-in failed</p>
-          <p className="text-neutral-600">{error}</p>
-          <a href="/" className="underline">
+        <div className="signin-card" role="alert">
+          <h1>Sign-in failed</h1>
+          <p>{error}</p>
+          <a className="btn accent" href="/">
             Return home
           </a>
         </div>
       ) : (
-        <p className="text-neutral-400" aria-busy="true">
+        <p className="loading-line" aria-busy="true">
           Completing sign-in…
         </p>
       )}

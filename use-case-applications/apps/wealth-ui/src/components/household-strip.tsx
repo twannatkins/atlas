@@ -5,9 +5,10 @@
 /**
  * Household strip component.
  *
- * Inline graph visualization showing 1-hop neighbors of a household.
- * Data comes from the household-traverser agent via the registry.
- * Limited to 1-hop by design — deeper traversals are explicit user actions.
+ * Inline graph visualization showing 1-hop neighbors of a household — rendered
+ * as the warm-paper relationship chips. Data comes from the live graph
+ * (household members via atlas:memberOf). Limited to 1-hop by design — deeper
+ * traversals are explicit user actions.
  */
 
 import React from "react";
@@ -25,13 +26,10 @@ interface HouseholdStripProps {
   loading?: boolean;
 }
 
-/** Type-to-icon mapping for visual differentiation */
-const TYPE_ICONS: Record<string, string> = {
-  "atlas:Customer": "👤",
-  "atlas:Account": "🏦",
-  "atlas:Advisor": "🎯",
-  "atlas:Household": "🏠",
-};
+/** Accounts read with the green "acct" accent; everyone else as a party chip. */
+function chipClass(type: string): string {
+  return /account/i.test(type) ? "rel acct" : "rel party";
+}
 
 export function HouseholdStrip({
   nodes,
@@ -39,46 +37,47 @@ export function HouseholdStrip({
   loading = false,
 }: HouseholdStripProps) {
   if (loading) {
-    return (
-      <div className="flex items-center gap-2 p-3 text-sm text-neutral-400" aria-busy="true">
-        <span className="animate-pulse">Loading relationship strip...</span>
-      </div>
-    );
+    return <p className="loading-line">Loading relationship strip…</p>;
   }
 
   if (nodes.length === 0) {
-    return (
-      <div className="p-3 text-sm text-neutral-400">
-        No relationships found.
-      </div>
-    );
+    return <p className="empty">No relationships found.</p>;
   }
 
   return (
-    <div
-      className="flex flex-wrap items-center gap-2 p-3"
-      role="list"
-      aria-label="Household relationships (1-hop)"
-    >
-      {nodes.map((node, index) => {
-        const icon = TYPE_ICONS[node.type] || "◆";
-        return (
-          <React.Fragment key={node.uri}>
-            {index > 0 && (
-              <span className="text-neutral-300" aria-hidden="true">—</span>
+    <div className="rel-chips" role="list" aria-label="Household relationships (1-hop)">
+      {nodes.map((node) => (
+        <button
+          key={node.uri}
+          onClick={() => onNodeClick?.(node.uri)}
+          className={chipClass(node.type)}
+          role="listitem"
+          aria-label={`${node.label} (${node.type.split(":").pop()})`}
+        >
+          <svg
+            className="i"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
+            {/category|account/i.test(node.type) ? (
+              <>
+                <rect x="3" y="6" width="18" height="13" rx="2" />
+                <path d="M3 10h18" />
+              </>
+            ) : (
+              <>
+                <circle cx="12" cy="8" r="3.2" />
+                <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+              </>
             )}
-            <button
-              onClick={() => onNodeClick?.(node.uri)}
-              className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-3 py-1 text-sm transition-colors hover:border-primary-500 hover:bg-primary-50"
-              role="listitem"
-              aria-label={`${node.label} (${node.type.split(":").pop()})`}
-            >
-              <span aria-hidden="true">{icon}</span>
-              <span>{node.label || node.uri.split("/").pop()}</span>
-            </button>
-          </React.Fragment>
-        );
-      })}
+          </svg>
+          <span>{node.label || node.uri.split("/").pop()}</span>
+        </button>
+      ))}
     </div>
   );
 }

@@ -5,8 +5,7 @@
  * registry), which wraps nl-to-sparql-agent — so it is TEMPLATE-BOUNDED, exactly like
  * the wholesale Ask-the-graph. Two honesty facts are surfaced, not hidden:
  *   - it is SINGLE-TURN: the agent's Memory is not wired (priorTurns is always 0), so
- *     each question is answered independently — shown as a visible indicator from the
- *     response data, not just copy;
+ *     each question is answered independently — shown as a visible "single-turn" pill;
  *   - it answers a fixed set of questions (suggestedQuestions, read live from the agent's
  *     own ground-truth.yaml) — always visible, never a bare "ask anything" box; an
  *     unmatched question shows those suggestions, never a fabricated answer.
@@ -67,94 +66,94 @@ export function ConversationPanel({ personaClaim }: { clientUri?: string; person
   );
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white">
-      {/* Single-turn indicator — surfaced as a fact, not a claim. */}
-      <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
-        <p className="text-xs text-neutral-500">
-          Each question is answered independently (single-turn).
-        </p>
+    <div className="card">
+      <div className="conv-h">
+        <span className="t">Ask about the book</span>
+        <span className="meta">
+          <span className="single">single-turn</span> conversational-context-manager · priorTurns 0
+        </span>
       </div>
 
       {/* Suggested questions — ALWAYS visible; exactly what the agent can answer. */}
       {suggestions.length > 0 && (
-        <div className="space-y-1 border-b border-neutral-200 p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-            Questions you can ask
-          </p>
-          <div className="flex flex-wrap gap-2">
+        <>
+          <p className="qlabel">Questions you can ask</p>
+          <div className="chips">
             {suggestions.map((q) => (
-              <button
-                key={q}
-                onClick={() => ask(q)}
-                className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-100"
-              >
+              <button key={q} className="qchip" onClick={() => ask(q)}>
                 {q}
               </button>
             ))}
           </div>
-        </div>
+        </>
       )}
 
       {/* Turn history */}
-      <div className="max-h-96 space-y-3 overflow-y-auto p-4">
+      <div style={{ marginTop: 12 }}>
         {turns.length === 0 && (
-          <p className="text-sm text-neutral-400">
-            Ask a question about the book. Each question is answered independently.
-          </p>
+          <p className="empty">Ask a question about the book. Each question is answered independently.</p>
         )}
         {turns.map((t, i) => (
-          <div key={i} className="space-y-1">
-            <p className="ml-8 rounded-md bg-primary-50 p-2 text-sm text-primary-900">{t.question}</p>
-            <div className="mr-8 rounded-md bg-neutral-50 p-2 text-sm text-neutral-800">
-              {t.status === "success" ? (
-                <>
-                  <p className="text-xs text-neutral-400">{t.rows.length} result{t.rows.length === 1 ? "" : "s"}</p>
-                  {t.rows.length > 0 ? (
-                    <ul className="mt-1 space-y-0.5">
-                      {t.rows.slice(0, 10).map((row, j) => (
-                        <li key={j} className="font-mono text-xs">{Object.values(row).map(String).join(" · ")}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-neutral-500">No matching rows.</p>
-                  )}
-                  {t.sparql && (
-                    <details className="mt-1 text-xs text-neutral-400">
-                      <summary className="cursor-pointer">Show the SPARQL that ran</summary>
-                      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap font-mono">{t.sparql}</pre>
-                    </details>
-                  )}
-                </>
-              ) : t.status === "no_template_match" ? (
-                <p>I can&apos;t answer that one yet — try one of the questions above.</p>
-              ) : (
-                <p className="text-red-600">The query couldn&apos;t be run just now. Please try again.</p>
-              )}
+          <React.Fragment key={i}>
+            <div className="turn">
+              <span className="role">advisor</span>
+              <div className="bubble q">{t.question}</div>
             </div>
-          </div>
+            <div className="turn">
+              <span className="role">atlas</span>
+              <div className="bubble a">
+                {t.status === "success" ? (
+                  <>
+                    {t.rows.length > 0 ? (
+                      <ul className="rows">
+                        {t.rows.slice(0, 10).map((row, j) => (
+                          <li key={j}>{Object.values(row).map(String).join(" · ")}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span>No matching rows.</span>
+                    )}
+                    {t.sparql && (
+                      <details className="sparql-toggle">
+                        <summary>Show the SPARQL that ran</summary>
+                        <pre>{t.sparql}</pre>
+                      </details>
+                    )}
+                  </>
+                ) : t.status === "no_template_match" ? (
+                  <span>I can&apos;t answer that one yet — try one of the questions above.</span>
+                ) : (
+                  <span>The query couldn&apos;t be run just now. Please try again.</span>
+                )}
+              </div>
+            </div>
+          </React.Fragment>
         ))}
-        {loading && <div className="text-sm text-neutral-400 animate-pulse">Querying the graph…</div>}
+        {loading && <p className="loading-line" aria-busy="true">Querying the graph…</p>}
       </div>
 
       {/* Input */}
-      <div className="flex gap-2 border-t border-neutral-200 p-3">
+      <div className="convinput">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask(input)}
           placeholder="Ask about the book…"
-          className="flex-1 rounded-md border border-neutral-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
           aria-label="Conversation input"
         />
         <button
+          className="btn accent"
           onClick={() => ask(input)}
           disabled={!input.trim() || loading}
-          className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
         >
           Send
         </button>
       </div>
+      <p className="card-note">
+        Each question is answered independently — answers come from the graph (not scoped per
+        advisor). Template-bounded: a fixed set of deterministic SPARQL queries.
+      </p>
     </div>
   );
 }

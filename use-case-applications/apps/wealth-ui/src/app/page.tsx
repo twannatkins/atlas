@@ -1,9 +1,9 @@
 /**
  * Advisor dashboard — the Wealth Advisor's coverage book.
  *
- * Shows assigned clients with behavioral signals, engagement scores,
- * and theme relevance. Same GraphQL schema as the Wholesale UI but
- * different fragments — this is Thesis 2 made visible.
+ * Shows assigned clients with their coverage status. Same GraphQL schema as the
+ * Wholesale UI but a different lens — this is Thesis 2 made visible: same
+ * backbone, the warm-paper shell with an indigo accent instead of blue.
  */
 
 "use client";
@@ -12,10 +12,17 @@ import React from "react";
 import { useQuery } from "@apollo/client";
 import { ADVISOR_DASHBOARD_QUERY } from "../graphql/queries";
 import { CapabilityPalette } from "../components/capability-palette";
+import { AppShell, SignInGate } from "../../../shared/ui/chrome";
 import { useAuth } from "../../../shared/auth/use-auth";
 
+const NAV = [
+  { href: "/", label: "My clients" },
+  { href: "/conversations", label: "Ask the graph" },
+  { href: "/themes", label: "Themes" },
+];
+
 export default function AdvisorDashboard() {
-  const { personaClaim, displayName, isAuthenticated, signIn } = useAuth();
+  const { personaClaim, isAuthenticated, signIn } = useAuth();
   const { data, loading } = useQuery(ADVISOR_DASHBOARD_QUERY, {
     variables: { limit: 30 },
     skip: !isAuthenticated,
@@ -23,54 +30,58 @@ export default function AdvisorDashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <button
-          onClick={signIn}
-          className="rounded-md bg-primary-600 px-6 py-3 text-white font-medium hover:bg-primary-700"
-        >
-          Sign in as Wealth Advisor
-        </button>
-      </div>
+      <AppShell brandSuffix="Wealth" navLinks={NAV}>
+        <SignInGate
+          label="Sign in as Wealth Advisor"
+          blurb="The advisor workbench. Sign in to see your client coverage, the wealth-readiness signals derived from the graph, and the single-turn conversational surface over the book."
+          signIn={signIn}
+        />
+      </AppShell>
     );
   }
 
   const clients = data?.searchCustomers ?? [];
 
   return (
-    <div className="flex min-h-screen">
-      <main className="flex-1 p-6">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold">My clients</h1>
-          <p className="text-sm text-neutral-400">
-            {displayName} · {personaClaim} · {clients.length} clients
-          </p>
-        </header>
+    <AppShell brandSuffix="Wealth" navLinks={NAV}>
+      <div className="shell">
+        <div className="shell-main">
+          <div className="page-head">
+            <h1>My clients</h1>
+            <p className="sub">{clients.length} clients · coverage and signals from the graph</p>
+          </div>
 
-        {loading && <p className="text-neutral-400">Loading...</p>}
+          {loading && <p className="loading-line">Loading your clients…</p>}
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {clients.map((client: any) => (
-            <a
-              key={client.uri}
-              href={`/clients/${encodeURIComponent(client.uri)}`}
-              className="block rounded-lg border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-md"
-            >
-              <h2 className="font-medium text-neutral-800">{client.label}</h2>
-              <p className="text-xs text-neutral-400">{client.customerId}</p>
-              {client.advisoryRelationships?.length > 0 && (
-                <p className="mt-1 text-xs text-green-600">Active coverage</p>
-              )}
-            </a>
-          ))}
+          <div className="entity-grid">
+            {clients.map((client: any) => {
+              const covered = client.advisoryRelationships?.length > 0;
+              return (
+                <a
+                  key={client.uri}
+                  href={`/clients/${encodeURIComponent(client.uri)}`}
+                  className="entity-card"
+                >
+                  <div className="en">{client.label}</div>
+                  <p className="eid">{client.customerId}</p>
+                  <div className="etags">
+                    {covered ? (
+                      <span className="mini-sig">Active coverage</span>
+                    ) : (
+                      <span className="mini-gap">Coverage gap</span>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
         </div>
-      </main>
 
-      <aside className="w-72 border-l border-neutral-200 bg-neutral-50">
         <CapabilityPalette
           personaClaim={personaClaim}
           onInvoke={(name) => console.log("Invoke:", name)}
         />
-      </aside>
-    </div>
+      </div>
+    </AppShell>
   );
 }

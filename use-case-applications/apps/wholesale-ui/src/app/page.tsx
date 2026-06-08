@@ -2,8 +2,8 @@
  * Dashboard page — the Consumer Banker's assigned book.
  *
  * Shows customers sorted by signal strength. This page demonstrates
- * that the query is persona-scoped: a Consumer Banker sees 45 clients,
- * a BSA Analyst would see all 200. The UI code is identical; the
+ * that the query is persona-scoped: a Consumer Banker sees their book,
+ * a BSA Analyst would see all. The UI code is identical; the
  * difference comes from Lake Formation scoping in the resolver.
  */
 
@@ -12,13 +12,17 @@
 import React from "react";
 import { useQuery } from "@apollo/client";
 import { DASHBOARD_QUERY } from "../graphql/queries";
-import { SignalCard } from "../components/signal-card";
 import { CapabilityPalette } from "../components/capability-palette";
 import { AskGraphPanel } from "../components/ask-graph-panel";
+import { AppShell, SignInGate } from "../../../shared/ui/chrome";
 import { useAuth } from "../../../shared/auth/use-auth";
 
+const NAV = [
+  { href: "/", label: "My book" },
+];
+
 export default function DashboardPage() {
-  const { personaClaim, displayName, isAuthenticated, signIn } = useAuth();
+  const { personaClaim, isAuthenticated, signIn } = useAuth();
   const { data, loading } = useQuery(DASHBOARD_QUERY, {
     variables: { limit: 50 },
     skip: !isAuthenticated,
@@ -26,69 +30,61 @@ export default function DashboardPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <button
-          onClick={signIn}
-          className="rounded-md bg-primary-600 px-6 py-3 text-white font-medium hover:bg-primary-700"
-        >
-          Sign in as Consumer Banker
-        </button>
-      </div>
+      <AppShell brandSuffix="Wholesale" navLinks={NAV}>
+        <SignInGate
+          label="Sign in as Consumer Banker"
+          blurb="The consumer-to-wealth referral workbench. Sign in to see your book, the wealth-readiness signals derived from the graph, and the actions the registry makes available."
+          signIn={signIn}
+        />
+      </AppShell>
     );
   }
 
   const customers = data?.searchCustomers ?? [];
 
   return (
-    <div className="flex min-h-screen">
-      <main className="flex-1 p-6">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold">My book</h1>
-          <p className="text-sm text-neutral-400">
-            {displayName} · {personaClaim} · {customers.length} clients
-          </p>
-        </header>
+    <AppShell brandSuffix="Wholesale" navLinks={NAV}>
+      <div className="shell">
+        <div className="shell-main">
+          <div className="page-head">
+            <h1>My book</h1>
+            <p className="sub">{customers.length} customers · scoped by Lake Formation to your persona</p>
+          </div>
 
-        {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
-        <section className="mb-6">
-          <h2 className="mb-2 text-lg font-semibold">Ask the graph</h2>
+          {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
           <AskGraphPanel />
-        </section>
 
-        {loading && <p className="text-neutral-400">Loading...</p>}
+          {loading && <p className="loading-line">Loading your book…</p>}
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {customers.map((customer: any) => (
-            <a
-              key={customer.uri}
-              href={`/customers/${encodeURIComponent(customer.uri)}`}
-              className="block rounded-lg border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-md"
-            >
-              <h2 className="font-medium text-neutral-800">{customer.label}</h2>
-              <p className="text-xs text-neutral-400">{customer.customerId}</p>
-              {customer.wealthSignals?.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {customer.wealthSignals.slice(0, 2).map((sig: any) => (
-                    <SignalCard
-                      key={sig.uri}
-                      signalType={sig.signalType}
-                      strength={sig.strength}
-                      signalDate={sig.signalDate}
-                    />
-                  ))}
-                </div>
-              )}
-            </a>
-          ))}
+          <div className="entity-grid">
+            {customers.map((customer: any) => {
+              const sigs = customer.wealthSignals ?? [];
+              return (
+                <a
+                  key={customer.uri}
+                  href={`/customers/${encodeURIComponent(customer.uri)}`}
+                  className="entity-card"
+                >
+                  <div className="en">{customer.label}</div>
+                  <p className="eid">{customer.customerId}</p>
+                  {sigs.length > 0 && (
+                    <div className="etags">
+                      <span className="mini-sig">
+                        {sigs.length} signal{sigs.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                  )}
+                </a>
+              );
+            })}
+          </div>
         </div>
-      </main>
 
-      <aside className="w-72 border-l border-neutral-200 bg-neutral-50">
         <CapabilityPalette
           personaClaim={personaClaim}
           onInvoke={(name) => console.log("Invoke:", name)}
         />
-      </aside>
-    </div>
+      </div>
+    </AppShell>
   );
 }

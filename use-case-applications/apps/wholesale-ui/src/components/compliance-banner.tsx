@@ -44,23 +44,22 @@ export function ComplianceBanner({
     : "Active compliance review — contact BSA team before client outreach";
 
   return (
-    <div
-      role="alert"
-      aria-live="polite"
-      className="flex items-center gap-3 rounded-md border px-4 py-3"
-      style={{
-        backgroundColor: "var(--color-compliance-bg)",
-        borderColor: "var(--color-compliance-border)",
-        color: "var(--color-compliance-text)",
-      }}
-    >
-      <span aria-hidden="true" className="text-lg">⚠️</span>
-      <span className="text-sm font-medium">{message}</span>
-      {illustrative && (
-        <span className="ml-auto rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-600">
-          Example
-        </span>
-      )}
+    <div className="banner" role="alert" aria-live="polite">
+      <svg
+        className="ic i"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      >
+        <path d="M12 3l7 3v6c0 4-3 7-7 8-4-1-7-4-7-8V6l7-3z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+      <div className="tx">
+        <b>{message.split(" — ")[0]}</b>
+        {message.includes(" — ") ? ` — ${message.split(" — ")[1]}` : ""}
+        {illustrative && <span className="pill-ex">Example</span>}
+      </div>
     </div>
   );
 }

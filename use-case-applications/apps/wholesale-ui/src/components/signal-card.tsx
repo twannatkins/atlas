@@ -1,9 +1,15 @@
 /**
  * Signal card component.
  *
- * Renders a single wealth signal with its strength indicator and provenance.
- * Provenance is visible — the novice sees which SHACL shape validated the
- * signal and which R2RML mapping produced the underlying triple.
+ * Renders a single wealth signal with its provenance. Provenance is visible —
+ * the novice sees which SHACL shape validated the signal and which R2RML
+ * mapping produced the underlying triple (the `.prov` line). This is what
+ * makes ATLAS auditable.
+ *
+ * NO strength badge: there is no atlas:signalStrength predicate in the derived
+ * data, so any "strong/moderate/gap" badge would be fabricated rather than
+ * derived. The left accent only distinguishes a coverage-GAP signal (info) from
+ * a positive signal (green) — both facts that exist in the data, not a score.
  */
 
 import React from "react";
@@ -13,8 +19,8 @@ interface SignalCardProps {
   signalType: string;
   /**
    * Optional and currently unrendered: there is no derived signalStrength in the
-   * data, so the strength badge is omitted (see render below). Kept on the prop so
-   * a future derived strength can reinstate the badge without a signature change.
+   * data, so the strength badge is omitted. Kept on the prop so a future derived
+   * strength can reinstate the badge without a signature change.
    */
   strength?: "strong" | "moderate" | "weak" | "gap";
   signalDate?: string;
@@ -47,41 +53,27 @@ export function SignalCard({
   provenance,
 }: SignalCardProps) {
   const label = SIGNAL_LABELS[signalType] || signalType;
+  // A coverage-gap signal reads as an info accent (something to act on), a
+  // positive signal as the green default. This keys off the signal's TYPE — a
+  // real fact — not a fabricated strength score.
+  const isGap = /noadvisor|coverage|gap/i.test(signalType);
 
-  // Strength badge intentionally omitted: there is no atlas:signalStrength predicate
-  // in the derived data, so any badge ("strong"/"moderate"/"gap") would be fabricated
-  // rather than derived. Reinstate it only once a strength is genuinely derived
-  // (e.g. via atlas:Score). A neutral accent replaces the former strength-keyed color.
   return (
-    <div
-      className="rounded-lg border-l-4 p-4 shadow-sm"
-      style={{
-        borderLeftColor: "var(--color-signal-neutral, #64748b)",
-        borderRadius: "var(--signal-card-radius)",
-        padding: "var(--signal-card-padding)",
-        boxShadow: "var(--signal-card-shadow)",
-      }}
-      role="article"
-      aria-label={label}
-    >
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-neutral-800">{label}</h3>
+    <div className={isGap ? "sig gap" : "sig"} role="article" aria-label={label}>
+      <div className="sig-top">
+        <span className="sig-name">{label}</span>
       </div>
-
       {signalDate && (
-        <p className="mt-1 text-xs text-neutral-400">
+        <p className="sig-date">
           Detected: {new Date(signalDate).toLocaleDateString()}
         </p>
       )}
-
       {provenance && (
-        <div className="mt-2">
-          <ProvenanceBadge
-            validatedBy={provenance.validatedBy}
-            derivedFrom={provenance.derivedFrom}
-            generatedBy={provenance.generatedBy}
-          />
-        </div>
+        <ProvenanceBadge
+          validatedBy={provenance.validatedBy}
+          derivedFrom={provenance.derivedFrom}
+          generatedBy={provenance.generatedBy}
+        />
       )}
     </div>
   );

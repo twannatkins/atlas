@@ -11,21 +11,25 @@
 
 import React from "react";
 import { ConversationPanel } from "../../components/conversation-panel";
+import { AppShell } from "../../../../shared/ui/chrome";
 import { useAuth } from "../../../../shared/auth/use-auth";
+
+const NAV = [
+  { href: "/", label: "My clients" },
+  { href: "/conversations", label: "Ask the graph" },
+  { href: "/themes", label: "Themes" },
+];
 
 export default function ConversationsPage() {
   const { personaClaim } = useAuth();
 
   return (
-    <main className="p-6 max-w-3xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Ask the graph</h1>
-        <p className="text-sm text-neutral-400">
-          Single-turn natural-language queries · powered by conversational-context-manager
-        </p>
-      </header>
-
+    <AppShell brandSuffix="Wealth" navLinks={NAV}>
+      <div className="page-head">
+        <h1>Ask the graph</h1>
+        <p className="sub">Single-turn natural-language queries · conversational-context-manager</p>
+      </div>
       <ConversationPanel personaClaim={personaClaim} />
-    </main>
+    </AppShell>
   );
 }
