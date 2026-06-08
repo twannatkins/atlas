@@ -6,7 +6,8 @@
  */
 
 import React from "react";
-import "../../../shared/ui/tokens.css";
+import "./globals.css"; // @tailwind base/components/utilities — generates the utility classes
+import "../../../shared/ui/tokens.css"; // the --color-* design-token vars the Tailwind theme references
 import { Providers } from "./providers";
 
 export const metadata = {
