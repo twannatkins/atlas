@@ -73,10 +73,16 @@
 }
 
 /* ── app ground ───────────────────────────────────────────────────────── */
+/* --wash is the soft top-right radial tint (per template: warm parchment on Wholesale,
+   cool lilac on Wealth). Set per theme below; defaults to the wholesale warm wash. */
+:root { --wash: #efeadd; }
+.theme-wholesale { --wash: #efeadd; }
+.theme-wealth { --wash: #ece9f6; }
+
 body.atlas {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 85% -10%, var(--accent-bg) 0%, rgba(255, 255, 255, 0) 55%),
+    radial-gradient(1200px 600px at 85% -10%, var(--wash) 0%, rgba(255, 255, 255, 0) 60%),
     var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -86,9 +92,9 @@ body.atlas {
 }
 
 .atlas-wrap {
-  max-width: 1180px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 24px 22px 64px;
+  padding: 28px 22px 60px;
 }
 
 /* the "true-UI" legend strip — live vs roadmap, always honest */
@@ -307,7 +313,7 @@ body.atlas {
 }
 .two {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 12px;
 }
