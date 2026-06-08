@@ -49,6 +49,40 @@ function personaLabel(claim: string): string {
   return map[claim] || claim || "";
 }
 
+/**
+ * A clean breadcrumb label for the current path. NEVER renders the raw URL-encoded entity
+ * URI (e.g. /clients/https%3A%2F%2F…%23customer-…) — that long string overflowed the appbar
+ * and crushed the nav. Maps each known route to a readable label; for a dynamic detail
+ * route it shows the page label plus the entity's short id (decoded from the last URI
+ * segment), e.g. "Client 360 · c6b6e4ad".
+ */
+function crumbLabel(pathname: string): string {
+  if (!pathname || pathname === "/") return "My book";
+  const seg = pathname.replace(/^\/+|\/+$/g, "").split("/");
+  const root = seg[0];
+  const labels: Record<string, string> = {
+    customers: "Customer 360",
+    clients: "Client 360",
+    referrals: "Referral",
+    conversations: "Ask the graph",
+    themes: "Themes",
+    callback: "Signing in…",
+  };
+  const base = labels[root];
+  if (!base) return "My book";
+  // For a dynamic detail route, append a short, decoded entity id (never the encoded URI).
+  if (seg.length > 1 && seg[1] && seg[1] !== "_placeholder") {
+    let decoded = seg[1];
+    try { decoded = decodeURIComponent(seg[1]); } catch { /* keep raw */ }
+    // last URI fragment, e.g. "customer-c6b6e4ad-…-resolved" → "c6b6e4ad"
+    const tail = decoded.split(/[#/]/).pop() || decoded;
+    const m = tail.match(/(?:customer|household|advisor|signal)-([0-9a-f]{8})/i);
+    const shortId = m ? m[1] : tail.slice(0, 12);
+    return `${base} · ${shortId}`;
+  }
+  return base;
+}
+
 export function AppShell({ brandSuffix, navLinks, children }: AppShellProps) {
   const { displayName, personaClaim, isAuthenticated, signOut } = useAuth();
   const pathname = usePathname();
@@ -77,7 +111,7 @@ export function AppShell({ brandSuffix, navLinks, children }: AppShellProps) {
           <a className="brand" href="/">
             <span className="mk">A</span> ATLAS · {brandSuffix}
           </a>
-          <span className="crumb">{pathname}</span>
+          <span className="crumb">{crumbLabel(pathname)}</span>
           {isAuthenticated && (
             <nav className="navlinks" aria-label="Sections">
               {navLinks.map((l) => (

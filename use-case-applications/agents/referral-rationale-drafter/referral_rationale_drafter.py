@@ -67,9 +67,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if not household_uri or not isinstance(household_uri, str):
             return _error_response(invocation_id, start_time, "context_query_failed",
                                    "household_uri is required")
-        if not signal_uris or not isinstance(signal_uris, list):
+        # signal_uris must be a LIST, but an EMPTY list is ALLOWED: a banker can ask for a
+        # draft on a household with no derived signals (or before the UI's signal query has
+        # resolved). In that case we draft from the household CONTEXT alone (real members),
+        # not from signals. Previously `if not signal_uris` treated [] as missing (Python:
+        # `not [] == True`) and hard-rejected with context_query_failed — failing
+        # Generate-Draft for those households. Default None→[] and only reject a non-list.
+        if signal_uris is None:
+            signal_uris = []
+        if not isinstance(signal_uris, list):
             return _error_response(invocation_id, start_time, "context_query_failed",
-                                   "signal_uris is required and must be an array")
+                                   "signal_uris must be an array")
         if not persona_claim or persona_claim not in VALID_PERSONAS:
             return _error_response(invocation_id, start_time, "context_query_failed",
                                    f"persona_claim must be one of: {VALID_PERSONAS}")
@@ -81,12 +89,22 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return _error_response(invocation_id, start_time, "context_query_failed",
                                    f"Failed to query household context: {exc}")
 
-        # Step 2: Query SLGD for signal details
+        # Step 2: Query SLGD for signal details (returns "No signals provided." for []).
         try:
             signals_summary = _get_signals_summary(signal_uris, persona_claim)
         except Exception as exc:
             return _error_response(invocation_id, start_time, "context_query_failed",
                                    f"Failed to query signal details: {exc}")
+
+        # HONESTY GUARD: if there are NEITHER signals NOR real household context, there is
+        # nothing real to ground a rationale on — decline honestly rather than let the model
+        # invent one. (Derive-don't-fabricate: a grounded draft when context exists; an
+        # explicit insufficient-context status when it does not.)
+        no_signals = len(signal_uris) == 0
+        no_household = household_context.strip() == "No household context available."
+        if no_signals and no_household:
+            return _error_response(invocation_id, start_time, "insufficient_context",
+                                   "No signals and no household context to ground a rationale.")
 
         # Step 3: Load prompt template and generate narrative
         template = _load_prompt_template()
