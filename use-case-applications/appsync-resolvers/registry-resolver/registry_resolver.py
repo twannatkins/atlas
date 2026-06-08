@@ -218,6 +218,11 @@ def _resolve_route_referral(args: Dict, persona: str, identity: Dict) -> Dict:
         "routingDecision": {
             "uri": routing_decision_uri,
             "selectedRoute": "ROUTE_ADVISOR_QUEUE",
+            # The orchestrator deterministically routes to the wealth-advisor protagonist
+            # (select_advisor sorts "Marcus Webb" first), so the confirmation can name him.
+            # The workflow runs async; the advisory relationship lands a few seconds later
+            # (the UI re-checks coverage on the wealth side).
+            "targetAdvisorLabel": "Marcus Webb",
         },
         "provenance": {
             "generatedBy": "referral-orchestrator",

@@ -9,9 +9,10 @@
 
 "use client";
 
-import React from "react";
-import { useQuery } from "@apollo/client";
+import React, { useState, useCallback } from "react";
+import { useQuery, useMutation } from "@apollo/client";
 import { DASHBOARD_QUERY } from "../graphql/queries";
+import { RESET_DEMO_ROUTINGS_MUTATION } from "../graphql/mutations";
 import { AskGraphPanel } from "../components/ask-graph-panel";
 import { AppShell, SignInGate } from "../../../shared/ui/chrome";
 import { useAuth } from "../../../shared/auth/use-auth";
@@ -22,10 +23,28 @@ const NAV = [
 
 export default function DashboardPage() {
   const { isAuthenticated, signIn } = useAuth();
-  const { data, loading } = useQuery(DASHBOARD_QUERY, {
+  const { data, loading, refetch } = useQuery(DASHBOARD_QUERY, {
     variables: { limit: 50 },
     skip: !isAuthenticated,
   });
+
+  // Workshop Reset — removes the demo-created routings so the walkthrough can be re-run.
+  const [resetDemo] = useMutation(RESET_DEMO_ROUTINGS_MUTATION);
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const handleReset = useCallback(async () => {
+    setResetting(true);
+    setResetMsg("");
+    try {
+      const { data: r } = await resetDemo();
+      setResetMsg(r?.resetDemoRoutings?.message || "Reset complete.");
+      await refetch();
+    } catch {
+      setResetMsg("Reset could not be completed just now.");
+    } finally {
+      setResetting(false);
+    }
+  }, [resetDemo, refetch]);
 
   if (!isAuthenticated) {
     return (
@@ -43,10 +62,18 @@ export default function DashboardPage() {
 
   return (
     <AppShell brandSuffix="Wholesale" navLinks={NAV}>
-      <div className="page-head">
-        <h1>My book</h1>
-        <p className="sub">{customers.length} customers · scoped by Lake Formation to your persona</p>
+      <div className="page-head" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <h1>My book</h1>
+          <p className="sub">{customers.length} customers · scoped by Lake Formation to your persona</p>
+        </div>
+        {/* Workshop control — reset the demo-created routings (advisory relationships +
+            routing decisions) back to the seed default so the walkthrough can repeat. */}
+        <button className="btn" onClick={handleReset} disabled={resetting} title="Remove demo-created referrals and return the graph to its seed state">
+          {resetting ? "Resetting…" : "↺ Reset demo"}
+        </button>
       </div>
+      {resetMsg && <p className="card-note" style={{ marginBottom: 12 }}>{resetMsg}</p>}
 
       {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
       <AskGraphPanel />
@@ -56,6 +83,7 @@ export default function DashboardPage() {
       <div className="entity-grid">
         {customers.map((customer: any) => {
           const sigs = customer.wealthSignals ?? [];
+          const activeCoverage = (customer.advisoryRelationships ?? []).find((r: any) => r.isActive);
           return (
             <a
               key={customer.uri}
@@ -64,13 +92,22 @@ export default function DashboardPage() {
             >
               <div className="en">{customer.label}</div>
               <p className="eid">{customer.customerId}</p>
-              {sigs.length > 0 && (
-                <div className="etags">
+              <div className="etags">
+                {sigs.length > 0 && (
                   <span className="mini-sig">
                     {sigs.length} signal{sigs.length === 1 ? "" : "s"}
                   </span>
-                </div>
-              )}
+                )}
+                {/* Coverage status — covered customers already have a wealth advisor (don't
+                    re-refer); uncovered + signalled are the referral candidates. */}
+                {activeCoverage ? (
+                  <span className="mini-sig" title="Already has a wealth advisor">
+                    ✓ {activeCoverage.advisor?.label || "Advised"}
+                  </span>
+                ) : (
+                  <span className="mini-gap">No advisor</span>
+                )}
+              </div>
             </a>
           );
         })}

@@ -147,6 +147,8 @@ atlas:RoutingDecision — A decision to route a signal to a downstream handler.
 type RoutingDecision {
   uri: ID!
   selectedRoute: String!
+  """Human-readable name of the advisor the referral was routed to (e.g. "Marcus Webb")."""
+  targetAdvisorLabel: String
   humanReview: HumanReview
   workflowStep: WorkflowStep
   provenance: Provenance
@@ -398,6 +400,22 @@ type Mutation {
   always 0). Returns real rows for a matched template, or status "no_template_match".
   """
   converse(question: String!, sessionId: String!): ConverseResult!
+
+  """
+  Workshop Reset — remove everything the demo routing created (the advisory relationships
+  stamped atlas:demoRoutingGenerated and the RoutingDecision nodes), returning the graph
+  to its default seed state so the Rachel→Marcus walkthrough can be re-run cleanly. Seed
+  coverage is never touched. Intended for the workshop demo only.
+  """
+  resetDemoRoutings: ResetResult!
+}
+
+"""Result of the workshop Reset mutation."""
+type ResetResult {
+  status: String!
+  advisoryRelationshipsRemoved: Int!
+  routingDecisionsRemoved: Int!
+  message: String!
 }
 
 # ─────────────────────────────────────────────────────────────────────

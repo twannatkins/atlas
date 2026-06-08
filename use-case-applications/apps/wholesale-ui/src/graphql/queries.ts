@@ -25,6 +25,13 @@ export const DASHBOARD_QUERY = gql`
       wealthSignals {
         ...WealthSignalFields
       }
+      advisoryRelationships {
+        uri
+        isActive
+        advisor {
+          label
+        }
+      }
     }
   }
 `;

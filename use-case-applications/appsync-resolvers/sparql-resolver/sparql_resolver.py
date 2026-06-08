@@ -210,6 +210,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return _resolve_audit_trail(arguments, persona_claim)
         elif field_name == "themes":
             return _resolve_themes(arguments, persona_claim)
+        elif field_name == "resetDemoRoutings":
+            return _resolve_reset_demo_routings(persona_claim)
         else:
             raise ValueError(f"Unknown field: {field_name}")
 
@@ -784,6 +786,66 @@ def _resolve_themes(args: Dict, persona: str) -> List[Dict]:
         }
         for r in rows
     ]
+
+
+def _resolve_reset_demo_routings(persona: str) -> Dict[str, Any]:
+    """Workshop Reset — remove everything the demo routing created, returning the graph to
+    its default (seed) state so the Rachel→Marcus walkthrough can be run again cleanly.
+
+    Deletes ONLY data stamped by the routing workflow, never seed data:
+      1. Demo AdvisoryRelationships — those carrying atlas:demoRoutingGenerated true — plus
+         the customer atlas:hasAdvisor links that point at them. (Seed coverage has no
+         demoRoutingGenerated flag, so it is untouched.)
+      2. atlas:RoutingDecision nodes (all of them: every RoutingDecision in the SLGD is a
+         product of a demo route — none are seeded).
+
+    Returns a count summary. Requires neptune-db:WriteDataViaQuery (the resolver role has
+    the atlas-neptune-iam-auth policy) and the direct-Neptune transport (in-VPC).
+    """
+    if neptune_client is None or not NEPTUNE_SLGD_ENDPOINT:
+        raise RuntimeError("Reset requires the in-VPC direct-Neptune transport (NEPTUNE_SLGD_ENDPOINT unset).")
+
+    # Count first (for the summary), then delete.
+    count_rels = _query_sparql(prefixed("""
+        SELECT (COUNT(DISTINCT ?rel) AS ?n) WHERE {
+            ?rel atlas:demoRoutingGenerated true .
+        }
+    """), persona)
+    count_decisions = _query_sparql(prefixed("""
+        SELECT (COUNT(DISTINCT ?d) AS ?n) WHERE { ?d a atlas:RoutingDecision . }
+    """), persona)
+    n_rels = int(count_rels[0]["n"]) if count_rels and count_rels[0].get("n") else 0
+    n_dec = int(count_decisions[0]["n"]) if count_decisions and count_decisions[0].get("n") else 0
+
+    # 1. Delete the demo advisory relationships + the hasAdvisor links pointing at them,
+    #    and all triples about each demo rel.
+    neptune_client.sparql_update(prefixed("""
+        DELETE {
+            ?member atlas:hasAdvisor ?rel .
+            ?rel ?p ?o .
+        } WHERE {
+            ?rel atlas:demoRoutingGenerated true .
+            ?rel ?p ?o .
+            OPTIONAL { ?member atlas:hasAdvisor ?rel }
+        }
+    """))
+
+    # 2. Delete the RoutingDecision nodes (all triples about them).
+    neptune_client.sparql_update(prefixed("""
+        DELETE { ?d ?p ?o . } WHERE { ?d a atlas:RoutingDecision . ?d ?p ?o . }
+    """))
+
+    logger.info(json.dumps({
+        "event": "reset_demo_routings",
+        "advisory_relationships_removed": n_rels,
+        "routing_decisions_removed": n_dec,
+    }))
+    return {
+        "status": "success",
+        "advisoryRelationshipsRemoved": n_rels,
+        "routingDecisionsRemoved": n_dec,
+        "message": f"Reset complete — removed {n_rels} demo advisory relationship(s) and {n_dec} routing decision(s).",
+    }
 
 
 def _query_sparql(sparql: str, persona_claim: str) -> List[Dict]:

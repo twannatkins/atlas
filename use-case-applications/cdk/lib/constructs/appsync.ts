@@ -295,6 +295,9 @@ export class AppSyncConstruct extends Construct {
     registryDs.createResolver("RouteReferralResolver", { typeName: "Mutation", fieldName: "routeReferral" });
     registryDs.createResolver("DraftRationaleResolver", { typeName: "Mutation", fieldName: "draftRationale" });
     registryDs.createResolver("ConverseResolver", { typeName: "Mutation", fieldName: "converse" });
+    // Workshop Reset — removes the demo-created advisory relationships + routing decisions
+    // (direct-Neptune DELETE in the sparql resolver, which has WriteDataViaQuery).
+    sparqlDs.createResolver("ResetDemoRoutingsResolver", { typeName: "Mutation", fieldName: "resetDemoRoutings" });
 
     this.apiUrl = api.graphqlUrl;
   }

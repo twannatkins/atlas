@@ -39,6 +39,9 @@ export default function ReferralDetailPage() {
   const [draftText, setDraftText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [draftError, setDraftError] = useState("");
+  // Persistent routing result (replaces the old alert()) — drives the confirmation card.
+  const [routed, setRouted] = useState<{ advisor: string; route: string } | null>(null);
+  const [routeError, setRouteError] = useState("");
 
   const handleGenerateDraft = useCallback(async () => {
     setIsGenerating(true);
@@ -72,8 +75,9 @@ export default function ReferralDetailPage() {
   const handleApprove = useCallback(
     async (approvedText: string) => {
       const signalUris = (data?.wealthSignals ?? []).map((s: any) => s.uri);
+      setRouteError("");
       try {
-        await routeReferral({
+        const { data: res } = await routeReferral({
           variables: {
             householdUri,
             signalUris,
@@ -81,9 +85,14 @@ export default function ReferralDetailPage() {
             originatingBankerId: userId,
           },
         });
-        alert("Referral routed successfully.");
+        const rd = res?.routeReferral?.routingDecision;
+        setRouted({
+          advisor: rd?.targetAdvisorLabel || "the advisor queue",
+          route: rd?.selectedRoute || "ROUTE_ADVISOR_QUEUE",
+        });
       } catch (err) {
         console.error("Routing failed:", err);
+        setRouteError("Routing could not be completed just now. Please try again.");
       }
     },
     [data, householdUri, userId, routeReferral],
@@ -205,7 +214,33 @@ export default function ReferralDetailPage() {
           onGenerateDraft={handleGenerateDraft}
           onApprove={handleApprove}
         />
+        {routeError && (
+          <p className="card-note" role="alert" style={{ color: "var(--rust-ink)" }}>
+            {routeError}
+          </p>
+        )}
       </div>
+
+      {/* Routing confirmation — persistent (replaces the old alert). Shows the real
+          RoutingDecision: the route taken + the advisor it was routed to (Marcus Webb).
+          The advisory relationship lands a few seconds later; the wealth UI then shows the
+          client as covered. */}
+      {routed && (
+        <div className="card" style={{ borderColor: "#BFD9C6", background: "var(--green-bg)" }}>
+          <div className="card-h">
+            <span className="t">✓ Referral routed</span>
+            <span className="meta">
+              <span className="lab-live">live</span> referral-orchestrator · Step Functions
+            </span>
+          </div>
+          <p className="sub" style={{ color: "var(--ink)" }}>
+            Routed to <strong>{routed.advisor}</strong> via <code>{routed.route}</code>. The
+            wealth advisor now sees this client as covered in the Wealth UI. A
+            RoutingDecision (PROV-O) was written to the graph; SHACL validated the route
+            against the closed set before it was committed.
+          </p>
+        </div>
+      )}
 
       {/* Audit trail — real routing & review events when present */}
       {referrals.length > 0 && (

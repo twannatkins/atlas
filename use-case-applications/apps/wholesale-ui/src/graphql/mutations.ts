@@ -32,11 +32,28 @@ export const ROUTE_REFERRAL_MUTATION = gql`
       routingDecision {
         uri
         selectedRoute
+        targetAdvisorLabel
       }
       provenance {
         generatedBy
         generatedAtTime
       }
+    }
+  }
+`;
+
+/**
+ * Workshop Reset — remove the demo-created advisory relationships + routing decisions,
+ * returning the graph to its default seed state so the Rachel→Marcus walkthrough can be
+ * re-run cleanly. Seed coverage is never touched.
+ */
+export const RESET_DEMO_ROUTINGS_MUTATION = gql`
+  mutation ResetDemoRoutings {
+    resetDemoRoutings {
+      status
+      advisoryRelationshipsRemoved
+      routingDecisionsRemoved
+      message
     }
   }
 `;

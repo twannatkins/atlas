@@ -25,15 +25,21 @@ from neptune_client import sparql_query
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# ADVISOR_QUERY uses only populated predicates (advisorId confirmed in SLGD).
-# rdfs:label and atlas:currentCapacity are absent in synthetic data — querying
-# them would return zero rows. Label falls back to the advisorId.
+# ADVISOR_QUERY returns advisors with their label (now populated by the display-label
+# load — scripts/load_display_labels.py). The wealth-advisor protagonist "Marcus Webb"
+# is sorted FIRST so the workshop's referral always routes to him (he is THE wealth
+# advisor the attendee logs into the Wealth UI as). This makes the cross-persona handoff
+# coherent: Rachel routes → Marcus receives. When real advisor data with capacity exists,
+# this ORDER BY is replaced by capacity-based ranking.
 ADVISOR_QUERY = """
 PREFIX atlas: <https://github.com/your-org/atlas/ontology#>
-SELECT ?advisor ?advisorId WHERE {
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?advisor ?advisorId ?label WHERE {
     ?advisor a atlas:Advisor ;
              atlas:advisorId ?advisorId .
+    OPTIONAL { ?advisor rdfs:label ?label }
 }
+ORDER BY DESC(?label = "Marcus Webb") ?advisorId
 LIMIT 9
 """
 
@@ -53,7 +59,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         selected = advisors[0]
         advisor_uri = selected.get("advisor", "")
-        advisor_label = selected.get("advisorId", advisor_uri)  # fallback to ID
+        # Prefer the human label ("Marcus Webb"); fall back to advisorId then URI.
+        advisor_label = selected.get("label") or selected.get("advisorId", advisor_uri)
 
         logger.info(json.dumps({
             "invocation_id": invocation_id,
