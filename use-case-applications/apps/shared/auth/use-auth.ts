@@ -208,17 +208,23 @@ export async function exchangeCodeForToken(code: string): Promise<{ persona: str
 
   // The resolver reads custom:persona then falls back to cognito:groups[0]
   // (sparql_resolver.py:115-119). Mirror that here for the UI's local state.
+  // Persona + the username live on the ACCESS token; the human display name ("name")
+  // lives on the ID token (standard OIDC claim), so decode both.
   const claims = decodeJwtPayload(accessToken);
+  const idClaims = tokens.id_token ? decodeJwtPayload(tokens.id_token) : {};
   const groups: string[] = claims["cognito:groups"] || [];
-  const persona = claims["custom:persona"] || groups[0] || "atlas-consumer-banker";
+  const persona = claims["custom:persona"] || idClaims["custom:persona"] || groups[0] || "atlas-consumer-banker";
   const user = claims["username"] || claims["sub"] || "";
+  // Prefer the readable name claim (e.g. "Rachel Kim") for the app bar; fall back to the
+  // preferred_username, then the raw username/sub if no name attribute is set.
+  const displayName = idClaims["name"] || idClaims["preferred_username"] || user;
 
   // atlas_access_token is the key providers.tsx prefers for the Authorization
   // header; persona/user/display feed the existing session-restore in useAuth.
   localStorage.setItem("atlas_access_token", accessToken);
   localStorage.setItem("atlas_persona", persona);
   localStorage.setItem("atlas_user_id", user);
-  localStorage.setItem("atlas_display_name", user);
+  localStorage.setItem("atlas_display_name", displayName);
 
   return { persona };
 }

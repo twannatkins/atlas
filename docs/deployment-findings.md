@@ -452,3 +452,34 @@ Final SLGD state after pipeline run:
 - nb05 verify cell: account counts changed to `>= 400` (same non-determinism), advisor `9` not `10`
 
 **Status:** WS2 pre-flight ready to run.
+
+---
+
+## WS2 UI live-data readiness — named protagonists + display labels
+
+**Date:** 2026-06-07 · **Account:** 981814817046 · **Branch:** `feature/agentcore-native`
+
+The two "true-UI" designs (warm-paper cards: signals, capabilities, rationale, audit,
+coverage, possible-next) are meant to be powered by LIVE WS1/WS2 graph queries, logged in
+as the named protagonists. Diagnosed + fixed three gaps so they are:
+
+| # | Finding | Resolution | Tag |
+|---|---------|-----------|-----|
+| U1 | The "0 clients / 0 results" screen was a STALE DEMO-LOGIN artifact, not a broken data path. Authenticated as the real Cognito users against live AppSync: searchCustomers, askGraph, customer(), draftRationale, capabilities ALL return real data. | No code fix — confirmed healthy. The demo localStorage path (IS_LOCAL_DEV) is unreachable on CloudFront. | (diagnosis) |
+| U2 | Promoted customers/advisors/households carry no `rdfs:label` (ER promotion wrote customerId but no name) → UIs showed raw UUIDs. | `scripts/load_display_labels.py` writes 273 `rdfs:label` triples from the synthetic fixtures (customer-master.json / advisors.json) via the sparql MCP `update` op (SigV4 + WriteDataViaQuery). Customer `c6b6e4ad…`→"Rachel Kim", first WEALTH advisor→"Marcus Webb"; all others keep their fixture names. | `LIVE-STATE` — labels live in SLGD only; a fresh SLGD rebuild must re-run this script (or fold label promotion into 05_entity_resolution.ipynb — recommended follow-up). |
+| U3 | Login users were `banker-test`/`advisor-test` with an opaque password; the workshop teaches logging in AS Rachel Kim / Marcus Webb. | `scripts/setup_workshop_users.sh` creates `rachel.kim@…` (atlas-consumer-banker, name "Rachel Kim") + `marcus.webb@…` (atlas-wealth-advisor, name "Marcus Webb"), password `password123`, deletes all other users. Pool password policy relaxed (min 8, no class requirements) to allow `password123`. `exchangeCodeForToken` now reads the OIDC `name` claim from the ID token for the app-bar display name. | `LIVE-STATE` — users + relaxed policy are account-state, not in repo CFN. The two scripts are committed and idempotent; re-run after a pool rebuild. |
+
+**Resolver enrichment (committed, in repo — `128d3c8`):** wealthSignals now returns a real
+Provenance object (validatedBy=atlas:WealthSignalTypeShape, derivedFrom=the signal's real
+evidencedBy txn, generatedBy=hasSignalType); `_display_label` prefers a real rdfs:label
+and falls back to a readable handle off the real customerId; searchCustomers orders
+signalled customers first (one row per customer via EXISTS).
+
+**Verified live as Rachel Kim (password123):** dashboard shows real names + signals +
+provenance; client-360 for c6b6e4ad = "Rachel Kim" in her household with named members;
+capabilities (5, persona-scoped), askGraph (real rows), draftRationale (grounded Bedrock
+narrative citing the real Large Deposit Pattern) all live.
+
+**Follow-up (recommended):** promote `rdfs:label` inside `05_entity_resolution.ipynb` so a
+clean SLGD build carries names natively (removes the U2 LIVE-STATE dependency); fold the
+Cognito user creation + password policy into the WS0/CDK provisioning so U3 is declarative.
