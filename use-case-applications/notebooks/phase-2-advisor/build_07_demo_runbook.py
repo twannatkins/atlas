@@ -266,6 +266,47 @@ cells.append(code(
 "    print(f\"  {s['signalType']:28} validatedBy={p.get('validatedBy')}  derivedFrom={(p.get('derivedFrom') or '—')[-28:]}\")",
 ))
 
+# Beat 2b — the 10 questions as a coherent story
+cells.append(md(
+"### Beat 2b — \"Ask the graph\": the ten questions tell one story",
+"",
+"The suggested-question chips are not a random grab-bag — they are the **Rachel Kim",
+"referral journey**, in order. Each answers a real question a banker asks next, and each",
+"is a template-bounded SPARQL query (the agent matches the question to a validated",
+"template; it never free-generates). Walk them top to bottom and they build the case for a",
+"referral, then close the loop with the audit trail.",
+"",
+"| # | Question | What it returns | Why it's next in the story |",
+"|---|---|---|---|",
+"| 1 | Which customers have generated a wealth signal…? | Every signalled customer + signal type | **The opportunity** — who to look at. |",
+"| 2 | What specific transactions surfaced this customer? | The evidencing transactions (date, amount) | **The evidence** — provenance behind the signal. |",
+"| 3 | What kinds of wealth signals are most common? | Signal-type counts across the book | **Size it** — which plays are biggest. |",
+"| 4 | Which customers have no wealth advisor assigned? | Uncovered customers + balance | **Who's actionable** — uncovered = referable. |",
+"| 5 | Which households have mixed wealth coverage? | Households w/ covered + uncovered members | **Household play** — bring the whole household. |",
+"| 6 | Which household relationships does this customer have? | A customer's household members | **Map the household** you'll refer. |",
+"| 7 | What accounts and balances does this customer hold? | Accounts + balances | **The financial picture** justifying wealth. |",
+"| 8 | Who was this customer's advisor 18 months ago? | Coverage history (start/end) | **History** — temporal coverage, prior advisors. |",
+"| 9 | Which routing decisions have human review? | Routing decisions + target advisor | **The decision record** — *empty until you route.* |",
+"| 10 | What is the full audit trail…? | Routing → household → advisor → rationale | **End-to-end provenance** — *empty until you route.* |",
+"",
+"**Questions 9 and 10 are intentionally empty at the start of the demo** — there are no",
+"routing decisions until a referral is routed. That is the teaching beat: *the audit trail",
+"exists only because a governed, human-approved action happened.* After Beat 4 (route the",
+"referral), come back and ask 9 and 10 — now they return the decision you just made, with",
+"its PROV-O attribution. Run the cell to see all ten answered live (8 with rows now, 9–10",
+"filling in after you route in Beat 4).",
+))
+cells.append(code(
+"# Beat 2b: run every suggested question through the live agent, in story order.",
+"questions = gql(RACHEL, 'query { suggestedQuestions }')['data']['suggestedQuestions']",
+"for i, qtext in enumerate(questions, 1):",
+"    r = gql(RACHEL, 'query($q: String!){ askGraph(question:$q){ status templateId result } }', {'q': qtext})['data']['askGraph']",
+"    res = r.get('result')",
+"    rown = len(json.loads(res)) if isinstance(res, str) and res.strip().startswith('[') else (len(res) if isinstance(res, list) else 0)",
+"    tail = '  <- populates after you route a referral (Beat 4)' if rown == 0 else ''",
+"    print(f\"{i:2}. {rown:>4} rows · {qtext[:52]}{tail}\")",
+))
+
 # Beat 3 — capabilities
 cells.append(md(
 "### Beat 3 — the Capabilities card (the second driver)",
