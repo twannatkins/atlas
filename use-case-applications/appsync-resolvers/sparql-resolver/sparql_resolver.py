@@ -211,7 +211,7 @@ def _resolve_customer(args: Dict, persona: str) -> Dict[str, Any]:
     return {
         "uri": uri,
         "customerId": row.get("customerId", ""),
-        "label": row.get("label", ""),
+        "label": _display_label(row.get("label", ""), row.get("customerId", ""), uri),
     }
 
 
@@ -219,12 +219,13 @@ def _resolve_household(args: Dict, persona: str) -> Dict[str, Any]:
     """Resolve a household by URI with members."""
     uri = safe_uri(args.get("uri", ""))
     sparql = prefixed(f"""
-        SELECT ?label ?memberUri ?memberLabel WHERE {{
+        SELECT ?label ?memberUri ?memberLabel ?memberCustomerId WHERE {{
             <{uri}> a atlas:Household .
             OPTIONAL {{ <{uri}> rdfs:label ?label }}
             OPTIONAL {{
                 ?memberUri atlas:memberOf <{uri}> .
                 OPTIONAL {{ ?memberUri rdfs:label ?memberLabel }}
+                OPTIONAL {{ ?memberUri atlas:customerId ?memberCustomerId }}
             }}
         }}
     """)
@@ -233,12 +234,24 @@ def _resolve_household(args: Dict, persona: str) -> Dict[str, Any]:
         return None
 
     members = [
-        {"uri": r["memberUri"], "label": r.get("memberLabel", "")}
+        {
+            "uri": r["memberUri"],
+            "label": _display_label(
+                r.get("memberLabel", ""), r.get("memberCustomerId", ""), r["memberUri"]
+            ),
+        }
         for r in rows if r.get("memberUri")
     ]
+    # The household itself has no rdfs:label either; give it a readable handle from its URI
+    # tail (household-<short>) rather than a blank — same honest-presentation rule.
+    hh_label = rows[0].get("label", "")
+    if not hh_label:
+        tail = uri.rsplit("#", 1)[-1].rsplit("/", 1)[-1]
+        seg = tail.replace("household-", "").split("-")[0]
+        hh_label = f"Household {seg}" if seg else tail
     return {
         "uri": uri,
-        "label": rows[0].get("label", ""),
+        "label": hh_label,
         "members": members,
         "memberCount": len(members),
     }
@@ -260,20 +273,58 @@ def _resolve_customer_household(customer_uri: str, persona: str) -> Dict[str, An
     return _resolve_household({"uri": rows[0]["hh"]}, persona)
 
 
+def _display_label(raw_label: str, customer_id: str, uri: str = "") -> str:
+    """A readable display label for a customer.
+
+    The SLGD carries no rdfs:label on promoted customers — the ER promotion wrote
+    atlas:customerId but no human name (05_entity_resolution.ipynb cell-08), and we will
+    NOT fabricate one ("Rachel Kim"/"Marcus Webb" in the design mockups are illustrative,
+    not data). When a real rdfs:label exists we use it; otherwise we derive a short,
+    honest handle from the REAL customerId — e.g. "Customer c6b6e4ad" — so the UI shows a
+    stable identifier a human can read and match to the URI, not a 36-char UUID and not an
+    invented name. Presentation only; the authoritative id (customerId/uri) is unchanged.
+    """
+    if raw_label:
+        return raw_label
+    cid = (customer_id or "").strip()
+    if cid:
+        # UUID-style id → first segment is a stable, short, recognizable handle.
+        short = cid.split("-")[0] if "-" in cid else cid
+        return f"Customer {short}"
+    return ""
+
+
 def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
-    """Search customers — returns persona-scoped results."""
+    """Search customers — returns persona-scoped results.
+
+    Ordering: customers that have at least one derived wealth signal sort FIRST (the
+    actionable book), then the rest. Without this the dashboard leads with a wall of
+    signal-less customers (most of the 200) and the signalled ones — the whole point of
+    the screen — are buried past the limit. The ORDER BY keys off a real fact
+    (EXISTS producesSignal), not a fabricated score.
+    """
     limit = safe_int(args.get("limit", 20), max_val=100)
+    # BIND(EXISTS{...}) computes the has-signal fact WITHOUT joining the signal rows, so
+    # each customer stays a SINGLE row. A prior OPTIONAL producesSignal join multiplied a
+    # customer into one row per signal (c6b6e4ad appeared twice). EXISTS is the correct
+    # one-row-per-customer form; we still ORDER BY it so signalled customers sort first.
     sparql = prefixed(f"""
-        SELECT ?uri ?customerId ?label WHERE {{
+        SELECT ?uri ?customerId ?label ?hasSignal WHERE {{
             ?uri a atlas:Customer ;
                 atlas:customerId ?customerId .
             OPTIONAL {{ ?uri rdfs:label ?label }}
+            BIND(EXISTS {{ ?uri atlas:producesSignal ?s }} AS ?hasSignal)
         }}
+        ORDER BY DESC(?hasSignal) ?customerId
         LIMIT {limit}
     """)
     rows = _query_sparql(sparql, persona)
     return [
-        {"uri": r["uri"], "customerId": r.get("customerId", ""), "label": r.get("label", "")}
+        {
+            "uri": r["uri"],
+            "customerId": r.get("customerId", ""),
+            "label": _display_label(r.get("label", ""), r.get("customerId", ""), r["uri"]),
+        }
         for r in rows
     ]
 
@@ -298,7 +349,7 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
     """
     uri = safe_uri(args.get("customerUri", ""))
     sparql = prefixed(f"""
-        SELECT DISTINCT ?uri ?signalType ?signalLabel ?strength ?signalDate WHERE {{
+        SELECT DISTINCT ?uri ?signalType ?signalLabel ?strength ?signalDate ?evidence WHERE {{
             {{ <{uri}> atlas:producesSignal ?uri_sig }}
             UNION
             {{ ?member atlas:memberOf <{uri}> ;
@@ -312,6 +363,10 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
             OPTIONAL {{ ?signalType skos:prefLabel ?signalLabel }}
             OPTIONAL {{ ?uri_sig atlas:signalStrength ?strength }}
             OPTIONAL {{ ?uri_sig atlas:signalDate ?signalDate }}
+            # The transaction/observation that evidenced this signal — written by the
+            # derivation CONSTRUCT (05_entity_resolution.ipynb cell-21) as atlas:evidencedBy.
+            # OPTIONAL: the HouseholdAggregation rule does not stamp a single evidence txn.
+            OPTIONAL {{ ?uri_sig atlas:evidencedBy ?evidence }}
         }}
     """)
     rows = _query_sparql(sparql, persona)
@@ -327,9 +382,39 @@ def _resolve_wealth_signals(args: Dict, persona: str) -> List[Dict]:
             # value to a valid AWSDateTime so AppSync can serialize it; pass through
             # anything that already carries a time component, and leave null as null.
             "signalDate": _as_datetime(r.get("signalDate")),
+            # Provenance derived ONLY from facts that genuinely hold for this node — no
+            # fabrication. validatedBy is the SHACL shape that gates EVERY WealthSignal at
+            # write time (atlas:WealthSignalTypeShape, atlas-shapes.ttl:81; the derivation
+            # validates against it before INSERT, cell-24) — so it is true for every signal
+            # returned here. derivedFrom is the signal's real atlas:evidencedBy source when
+            # present (the actual transaction that evidenced it), else omitted. The signal
+            # type itself is the generating process.
+            "provenance": _signal_provenance(
+                r.get("signalType", ""), r.get("evidence", "")
+            ),
         }
         for r in rows
     ]
+
+
+def _signal_provenance(signal_type_uri: str, evidence_uri: str) -> Dict[str, Any]:
+    """Build a truthful Provenance object for a wealth signal.
+
+    Every field is a fact that holds for the node — nothing is invented:
+      - validatedBy: atlas:WealthSignalTypeShape gates every atlas:WealthSignal before it
+        is written (atlas-shapes.ttl Shape 5; the live derivation runs pyshacl against it
+        and INSERTs only on conform — 05_entity_resolution.ipynb cell-24). Universal, real.
+      - derivedFrom: the signal's own atlas:evidencedBy source (the transaction the
+        derivation pattern-matched). Omitted when absent (e.g. the household-aggregation
+        rule attaches no single evidence txn) rather than guessed.
+      - generatedBy: the signal type is the named derivation rule that produced it.
+    """
+    prov: Dict[str, Any] = {"validatedBy": "atlas:WealthSignalTypeShape"}
+    if evidence_uri:
+        prov["derivedFrom"] = evidence_uri
+    if signal_type_uri:
+        prov["generatedBy"] = signal_type_uri
+    return prov
 
 
 def _as_datetime(value):
