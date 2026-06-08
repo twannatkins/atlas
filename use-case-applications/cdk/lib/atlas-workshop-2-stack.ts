@@ -185,6 +185,12 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
       groundTruthS3Uri: `s3://${ontologyStagingBucket}/prompts/ground-truth.yaml`,
       // routeReferral starts this state machine directly (proven path).
       stateMachineArn: stepFunctions.stateMachineArn,
+      // PERFORMANCE: put the sparql resolver in the VPC + give it Neptune SigV4 access so
+      // reads go directly to Neptune (~200ms) instead of through the AgentCore MCP (~5s floor).
+      vpc: networking.vpc,
+      lambdaSecurityGroup: networking.lambdaSecurityGroup,
+      neptuneSlgdEndpoint: neptuneEndpoint ?? "",
+      neptuneIamAuthPolicyArn: cdk.Fn.importValue("atlas-neptune-iam-auth-policy"),
     });
 
     // ─── Outputs ────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import * as appsync from "aws-cdk-lib/aws-appsync";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as path from "path";
 import { Construct } from "constructs";
 
@@ -44,6 +45,18 @@ export interface AppSyncProps {
    * registry invoke_capability → invoke_agent route used a non-existent boto3 method.)
    */
   stateMachineArn: string;
+  /**
+   * PERFORMANCE: VPC + security group + Neptune endpoint + IAM-auth policy so the
+   * sparql resolver queries Neptune DIRECTLY via SigV4 (the proven step-Lambda path),
+   * instead of paying the ~5s AgentCore invoke floor on every read. The MCP path stays
+   * as a fallback (resolver outside VPC) and for governed writes.
+   */
+  vpc: ec2.IVpc;
+  lambdaSecurityGroup: ec2.SecurityGroup;
+  /** Neptune SLGD cluster endpoint hostname (no port/protocol). */
+  neptuneSlgdEndpoint: string;
+  /** ARN of the atlas-neptune-iam-auth managed policy (neptune-db:ReadDataViaQuery). */
+  neptuneIamAuthPolicyArn: string;
 }
 
 /**
@@ -152,12 +165,30 @@ export class AppSyncConstruct extends Construct {
       handler: "sparql_resolver.handler",
       code: lambda.Code.fromAsset(path.join(resolverBase, "sparql-resolver")),
       timeout: cdk.Duration.seconds(30),
-      environment: { SPARQL_MCP_ARN: props.sparqlMcpArn, ...mcpAuthEnv },
+      // In the VPC so it can reach Neptune directly (the perf fix). Same private subnets +
+      // SG the step Lambdas use.
+      vpc: props.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [props.lambdaSecurityGroup],
+      environment: {
+        SPARQL_MCP_ARN: props.sparqlMcpArn,
+        // Presence of this endpoint flips the resolver to the direct-Neptune read path
+        // (neptune_client SigV4); reads no longer pay the AgentCore invoke floor.
+        NEPTUNE_SLGD_ENDPOINT: props.neptuneSlgdEndpoint,
+        ...mcpAuthEnv,
+      },
     });
     sparqlProxyFn.addToRolePolicy(new iam.PolicyStatement({
       actions: [mcpInvokeAction],
       resources: [`${props.sparqlMcpArn}*`],
     }));
+    // Attach atlas-neptune-iam-auth so the resolver can SigV4-sign neptune-db:ReadDataViaQuery
+    // — same managed policy the step Lambdas use.
+    sparqlProxyFn.role?.addManagedPolicy(
+      iam.ManagedPolicy.fromManagedPolicyArn(
+        this, "SparqlResolverNeptunePolicy", props.neptuneIamAuthPolicyArn,
+      ),
+    );
 
     const registryProxyFn = new lambda.Function(this, "RegistryProxy", {
       runtime: lambda.Runtime.PYTHON_3_12,

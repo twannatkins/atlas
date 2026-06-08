@@ -39,6 +39,20 @@ logger.setLevel(logging.INFO)
 
 SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 
+# ── Direct-Neptune read transport (PERFORMANCE) ──────────────────────────────
+# When the resolver runs INSIDE the VPC (NEPTUNE_SLGD_ENDPOINT set + the Lambda has
+# vpc/securityGroup + the atlas-neptune-iam-auth policy), reads go straight to Neptune
+# via SigV4 — the same proven path the referral-orchestrator step Lambdas use
+# (neptune_client.py). This removes the ~5s AgentCore invoke_agent_runtime cold-container
+# floor that dominated every read (a trivial COUNT through the MCP was ~4.8s; the Neptune
+# SELECT itself is ~200ms). The MCP path remains as a fallback when the endpoint is unset
+# (resolver not in VPC), and the atlas-sparql-mcp is still used for governed WRITES.
+NEPTUNE_SLGD_ENDPOINT = os.environ.get("NEPTUNE_SLGD_ENDPOINT", "")
+try:
+    import neptune_client  # vendored SigV4 Neptune client (urllib, stdlib-only)
+except Exception:  # pragma: no cover - import guard for non-VPC/test contexts
+    neptune_client = None
+
 # ── AgentCore invoke transport ───────────────────────────────────────────────
 # Two transports exist; MCP_AUTH_MODE selects which is live:
 #
@@ -347,13 +361,19 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
                (GROUP_CONCAT(DISTINCT ?sigpack ; SEPARATOR="{sep}") AS ?sigs)
                (GROUP_CONCAT(DISTINCT ?covpack ; SEPARATOR="{sep}") AS ?covs) WHERE {{
             {{
-                SELECT ?uri ?customerId ?label
-                       (EXISTS {{ ?uri atlas:producesSignal ?x }} AS ?hasSignal) WHERE {{
+                # Inner subquery: page the customers FIRST (so the outer signal/coverage
+                # join touches only `limit` customers, not all 200 — the latter times out).
+                # Order signalled customers first via a COUNT of producesSignal — standard
+                # SPARQL aggregation (Neptune does NOT support EXISTS{{}} projected in a
+                # sub-SELECT, which silently yields empty/unordered results).
+                SELECT ?uri ?customerId ?label (COUNT(?sigCount) AS ?nsig) WHERE {{
                     ?uri a atlas:Customer ;
                         atlas:customerId ?customerId .
                     OPTIONAL {{ ?uri rdfs:label ?label }}
+                    OPTIONAL {{ ?uri atlas:producesSignal ?sigCount }}
                 }}
-                ORDER BY DESC(?hasSignal) ?customerId
+                GROUP BY ?uri ?customerId ?label
+                ORDER BY DESC(?nsig) ?customerId
                 LIMIT {limit}
             }}
             OPTIONAL {{
@@ -666,7 +686,18 @@ def _resolve_themes(args: Dict, persona: str) -> List[Dict]:
 
 
 def _query_sparql(sparql: str, persona_claim: str) -> List[Dict]:
-    """Invoke atlas-sparql-mcp via AgentCore HTTP."""
+    """Execute a read query against the SLGD.
+
+    Fast path (in-VPC): query Neptune DIRECTLY via SigV4 (neptune_client), avoiding the
+    ~5s AgentCore invoke floor. Used whenever NEPTUNE_SLGD_ENDPOINT is set and the vendored
+    client imported. neptune_client.sparql_query returns the SAME [{var: value}] row shape
+    the MCP returns, so callers are unchanged.
+
+    Fallback (resolver not in VPC): invoke atlas-sparql-mcp over AgentCore HTTP.
+    """
+    if NEPTUNE_SLGD_ENDPOINT and neptune_client is not None:
+        return neptune_client.sparql_query(sparql, graph_tier="slgd")
+
     result = _invoke_agentcore(SPARQL_MCP_ARN, {
         "operation": "query",
         "sparql": sparql,
