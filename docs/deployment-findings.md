@@ -483,3 +483,26 @@ narrative citing the real Large Deposit Pattern) all live.
 **Follow-up (recommended):** promote `rdfs:label` inside `05_entity_resolution.ipynb` so a
 clean SLGD build carries names natively (removes the U2 LIVE-STATE dependency); fold the
 Cognito user creation + password policy into the WS0/CDK provisioning so U3 is declarative.
+
+---
+
+## WS2 UI — detail-page 403, N+1 latency, and the AgentCore invoke floor
+
+**Date:** 2026-06-08 · **Account:** 981814817046
+
+| # | Finding | Resolution | Tag |
+|---|---------|-----------|-----|
+| U4 | Clicking any customer/client/referral returned S3 **AccessDenied** (403). output:"export" ships only `<prefix>/_placeholder/index.html` for a dynamic route; `/customers/<enc-uri>/` resolved to a nonexistent object and OAC returned 403, so the SPA never loaded. | CloudFront SpaRewriteFn maps ANY `/customers//referrals//clients/` path to that route's `_placeholder/index.html`; new `useEntityUri()` hook reads the real URI from `window.location.pathname` (not useParams, which is the build-time placeholder). Committed in cloudfront.ts + published live to the function. | `FIXED` (live function updated AND in repo) |
+| U5 | Dashboard latency ~24s. **N+1**: searchCustomers listed N customers, then a separate nested resolver call PER customer (signals; wealth also coverage) = N+1 AgentCore invocations. | searchCustomers batches signals AND coverage via GROUP_CONCAT with an INNER-LIMIT subquery (flat outer LIMIT times out >35s — materializes all 200 first); nested Customer.wealthSignals / advisoryRelationships short-circuit on the pre-fetched arrays. 51 calls → 1. Measured ~7s warm (was 23.7s). | `FIXED` (in repo) |
+| U6 | Residual ~5–7s floor. A **trivial COUNT through the MCP is ~4.8s** — i.e. the cost is the AgentCore `invoke_agent_runtime` overhead (cold container spin per invoke), NOT Neptune (the SELECT is ~200ms) and NOT query shape. | NOT fixed — needs a transport change. Options, in order of effort: (a) move the atlas-sparql-mcp off AgentCore onto **ECS Fargate** with an always-warm task + ALB, so the resolver hits a hot HTTP endpoint (kills the per-invoke cold start — the user's call, and correct); (b) resolver → Neptune **direct** via SigV4 from inside the VPC (bypass the MCP for reads), keeping the MCP for governed writes; (c) provisioned concurrency / keep-warm ping. (a) or (b) should take the dashboard to sub-2s. | `OPEN` `PERF` |
+
+**Route-referral (wired):** the customer-360 header now offers "Route referral" (when the
+customer has no active coverage) → `/referrals/<householdUri>`. routeReferral itself was
+already live (registry_resolver._resolve_route_referral starts the referral-orchestrator
+Step Functions execution: select_advisor → validate[SHACL] → write_routing_decision →
+notify → audit).
+
+**Wealth coverage is real:** Marcus Webb covers real clients (Alexis Johnson, Casey Chen,
+Taylor Brown, …); 14/30 dashboard clients show their advisor + active/ended state, batched.
+Per-advisor scoping ("only MY clients") still needs an advisor-identity→advisor-URI mapping
+(token has no advisor URI) — remains a roadmap item.

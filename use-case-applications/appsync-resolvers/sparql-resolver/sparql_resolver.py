@@ -153,6 +153,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # parent customer's uri. Returns [] (not null) for a customer with no coverage,
         # which satisfies the non-nullable list.
         if parent_type == "Customer" and field_name == "advisoryRelationships":
+            # Same N+1 short-circuit as wealthSignals: the wealth dashboard's
+            # searchCustomers batched coverage onto the parent, so return it without
+            # another round-trip. Single-customer pages fall through to the live query.
+            if "advisoryRelationships" in source:
+                return source["advisoryRelationships"]
             return _resolve_advisory_relationships({"customerUri": source.get("uri", "")}, persona_claim)
         # Customer.household (nested) — nullable, so it did not null the customer, but it
         # had no resolver so it always returned null. Resolve the customer's household via
@@ -333,9 +338,14 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
     # (>35s). With the inner LIMIT the outer join touches only `limit` customers; measured
     # ~5s for limit=50 (essentially the AgentCore invoke floor — the query work is ~0).
     # The inner EXISTS computes signalled-first ordering without joining signal rows.
+    # Both the wealth-readiness signals AND the advisory coverage are batched here via
+    # GROUP_CONCAT, so BOTH the wholesale dashboard (signals) and the wealth dashboard
+    # (coverage) are a single round-trip — the nested Customer.wealthSignals and
+    # Customer.advisoryRelationships resolvers short-circuit on the pre-fetched arrays.
     sparql = prefixed(f"""
         SELECT ?uri ?customerId ?label
-               (GROUP_CONCAT(DISTINCT ?sigpack ; SEPARATOR="{sep}") AS ?sigs) WHERE {{
+               (GROUP_CONCAT(DISTINCT ?sigpack ; SEPARATOR="{sep}") AS ?sigs)
+               (GROUP_CONCAT(DISTINCT ?covpack ; SEPARATOR="{sep}") AS ?covs) WHERE {{
             {{
                 SELECT ?uri ?customerId ?label
                        (EXISTS {{ ?uri atlas:producesSignal ?x }} AS ?hasSignal) WHERE {{
@@ -357,6 +367,17 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
                             STR(COALESCE(?sigDate, "")), "{fsep}",
                             STR(COALESCE(?sigEvidence, ""))) AS ?sigpack)
             }}
+            OPTIONAL {{
+                ?uri atlas:hasAdvisor ?rel .
+                ?rel atlas:coveringAdvisor ?advUri .
+                OPTIONAL {{ ?advUri rdfs:label ?advLabel }}
+                OPTIONAL {{ ?rel atlas:coverageStartDate ?covStart }}
+                OPTIONAL {{ ?rel atlas:coverageEndDate ?covEnd }}
+                BIND(CONCAT(STR(?rel), "{fsep}",
+                            STR(COALESCE(?advLabel, ?advUri)), "{fsep}",
+                            STR(COALESCE(?covStart, "")), "{fsep}",
+                            STR(COALESCE(?covEnd, ""))) AS ?covpack)
+            }}
         }}
         GROUP BY ?uri ?customerId ?label
     """)
@@ -367,10 +388,12 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
             "uri": r["uri"],
             "customerId": r.get("customerId", ""),
             "label": _display_label(r.get("label", ""), r.get("customerId", ""), r["uri"]),
-            # Attach the signals parsed from the packed GROUP_CONCAT. AppSync's nested
-            # Customer.wealthSignals resolver finds these already on `source` and returns
-            # them WITHOUT a per-customer round-trip (see handler short-circuit).
+            # Attach signals + coverage parsed from the packed GROUP_CONCATs. AppSync's
+            # nested Customer.wealthSignals / Customer.advisoryRelationships resolvers find
+            # these already on `source` and return them WITHOUT a per-customer round-trip
+            # (see handler short-circuits).
             "wealthSignals": _unpack_signals(r.get("sigs", "")),
+            "advisoryRelationships": _unpack_coverage(r.get("covs", "")),
         })
     return out
 
@@ -401,6 +424,37 @@ def _unpack_signals(packed: str) -> List[Dict]:
             "strength": "",
             "signalDate": _as_datetime(sig_date) if sig_date else None,
             "provenance": _signal_provenance(sig_type, evidence),
+        })
+    return out
+
+
+def _unpack_coverage(packed: str) -> List[Dict]:
+    """Parse the GROUP_CONCAT advisory-coverage blob into AdvisoryRelationship objects.
+
+    Format: "<relUri>|||<advisorLabel>|||<startDate>|||<endDate>" rows joined by the
+    record token. Empty blob → []. isActive = no coverageEndDate (the same rule as the
+    standalone advisoryRelationships resolver). Powers the wealth dashboard's coverage
+    tags and CoverageStrip in ONE round-trip (the nested resolver short-circuits).
+    """
+    if not packed:
+        return []
+    out: List[Dict] = []
+    for rec in packed.split("@@SIG@@"):
+        if not rec:
+            continue
+        parts = rec.split("|||")
+        if len(parts) < 2 or not parts[0]:
+            continue
+        rel_uri, advisor_label = parts[0], parts[1]
+        start = parts[2] if len(parts) > 2 else ""
+        end = parts[3] if len(parts) > 3 else ""
+        out.append({
+            "uri": rel_uri,
+            "advisor": {"uri": "", "label": advisor_label},
+            "coverageStartDate": start or "",
+            "coverageEndDate": end or None,
+            "relationshipType": "Primary",
+            "isActive": not end,
         })
     return out
 
