@@ -147,11 +147,19 @@ export default function ReferralDetailPage() {
               {memberNodes.length > 0 ? " · no advisory coverage" : ""}
             </p>
           </div>
-          <button className="btn primary" onClick={() => handleApprove(draftText || "")} disabled={!draftText}>
+          {/* Always enabled (when not already routed): routes with the drafted rationale
+              if one exists, else a default. The richer Generate-draft → Approve path is
+              still available in the Rationale card below; this header button is the quick
+              one-click route so the action is never a dead-looking disabled control. */}
+          <button
+            className="btn primary"
+            onClick={() => handleApprove(draftText || "Routed to wealth advisory based on derived wealth-readiness signals.")}
+            disabled={!!routed}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8 6h6a4 4 0 014 4v6" />
             </svg>
-            Route referral
+            {routed ? "Routed ✓" : "Route referral"}
           </button>
         </div>
 

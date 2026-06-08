@@ -23,9 +23,13 @@ const NAV = [
 
 export default function DashboardPage() {
   const { isAuthenticated, signIn } = useAuth();
-  const { data, loading, refetch } = useQuery(DASHBOARD_QUERY, {
+  const { data, loading, error, refetch } = useQuery(DASHBOARD_QUERY, {
     variables: { limit: 50 },
     skip: !isAuthenticated,
+    // The resolver is a VPC Lambda — the very first request after idle can cold-start.
+    // notifyOnNetworkStatusChange + a visible retry means a slow first load never looks
+    // like an empty book.
+    notifyOnNetworkStatusChange: true,
   });
 
   // Workshop Reset — removes the demo-created routings so the walkthrough can be re-run.
@@ -78,7 +82,20 @@ export default function DashboardPage() {
       {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
       <AskGraphPanel />
 
-      {loading && <p className="loading-line">Loading your book…</p>}
+      {loading && <p className="loading-line">Loading your book… (first load may take a few seconds while the query service warms up)</p>}
+
+      {error && !loading && (
+        <div className="card">
+          <p className="card-note" role="alert" style={{ color: "var(--rust-ink)" }}>
+            Your book couldn&apos;t load just now ({error.message}).
+          </p>
+          <button className="btn accent" onClick={() => refetch()}>Retry</button>
+        </div>
+      )}
+
+      {!loading && !error && customers.length === 0 && (
+        <p className="empty">No customers in your book.</p>
+      )}
 
       <div className="entity-grid">
         {customers.map((customer: any) => {
