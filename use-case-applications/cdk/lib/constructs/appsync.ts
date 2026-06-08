@@ -273,6 +273,14 @@ export class AppSyncConstruct extends Construct {
     // dead. Both reuse the flat resolver logic scoped to the parent customer uri.
     sparqlDs.createResolver("CustomerAdvisoryRelationshipsResolver", { typeName: "Customer", fieldName: "advisoryRelationships" });
     sparqlDs.createResolver("CustomerHouseholdResolver", { typeName: "Customer", fieldName: "household" });
+    // Nested Customer.accounts (non-nullable [Account!]!) + Account.transactions/holdings —
+    // same gap/fix: CUSTOMER_360_QUERY selects customer{ accounts{ transactions } }, but
+    // none had a resolver, so Customer.accounts returned null and nulled the whole customer
+    // ("Customer not found" on the 360 page). All reuse the sparql_resolver Lambda, scoped
+    // to the parent uri (event.source.uri). holdings returns [] (not in the synthetic SLGD).
+    sparqlDs.createResolver("CustomerAccountsResolver", { typeName: "Customer", fieldName: "accounts" });
+    sparqlDs.createResolver("AccountTransactionsResolver", { typeName: "Account", fieldName: "transactions" });
+    sparqlDs.createResolver("AccountHoldingsResolver", { typeName: "Account", fieldName: "holdings" });
     sparqlDs.createResolver("AdvisoryRelationshipsResolver", { typeName: "Query", fieldName: "advisoryRelationships" });
     sparqlDs.createResolver("ReferralsResolver", { typeName: "Query", fieldName: "referrals" });
     sparqlDs.createResolver("AuditTrailResolver", { typeName: "Query", fieldName: "auditTrail" });

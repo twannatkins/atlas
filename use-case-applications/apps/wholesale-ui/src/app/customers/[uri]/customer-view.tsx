@@ -106,6 +106,36 @@ export default function CustomerPage() {
           <CapabilityCards personaClaim={personaClaim} />
         </div>
 
+        {/* Accounts — real promoted accounts + their recent transactions (live graph) */}
+        {customer.accounts && customer.accounts.length > 0 && (
+          <div className="card">
+            <div className="card-h">
+              <span className="t">Accounts</span>
+              <span className="meta">
+                <span className="lab-live">live</span> hasAccount · SLGD
+              </span>
+            </div>
+            {customer.accounts.map((acct: any) => (
+              <div key={acct.uri} className="cov">
+                <div className="cov-top">
+                  <span className="cov-name">{acct.accountType || "Account"}</span>
+                  {typeof acct.balanceUSD === "number" && (
+                    <span className="cov-state on">
+                      {acct.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
+                    </span>
+                  )}
+                </div>
+                {acct.transactions && acct.transactions.length > 0 && (
+                  <p className="cov-dt">
+                    {acct.transactions.length} recent txn{acct.transactions.length === 1 ? "" : "s"} ·{" "}
+                    {acct.transactions[0].transactionType}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Household relationship strip */}
         {customer.household && (
           <div className="card">

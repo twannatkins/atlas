@@ -179,6 +179,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # customer is not in a household (the schema allows it).
         if parent_type == "Customer" and field_name == "household":
             return _resolve_customer_household(source.get("uri", ""), persona_claim)
+        # Customer.accounts (nested, non-nullable [Account!]!) — had NO resolver, so it
+        # returned null and nulled the whole customer ("Customer not found" on the 360
+        # page). Same fix pattern: resolve the customer's accounts via atlas:hasAccount;
+        # returns [] when the customer has none.
+        if parent_type == "Customer" and field_name == "accounts":
+            return _resolve_accounts(source.get("uri", ""), persona_claim)
+        # Account.transactions / Account.holdings (nested, non-nullable) — would null an
+        # Account if selected. transactions resolves via atlas:hasTransaction; holdings is
+        # not in the synthetic SLGD, so it returns [] (honest empty, satisfies [Holding!]!).
+        if parent_type == "Account" and field_name == "transactions":
+            limit = safe_int(arguments.get("limit", 50), max_val=200)
+            return _resolve_transactions(source.get("uri", ""), limit, persona_claim)
+        if parent_type == "Account" and field_name == "holdings":
+            return []
 
         if field_name == "customer":
             return _resolve_customer(arguments, persona_claim)
@@ -606,6 +620,77 @@ def _resolve_advisory_relationships(args: Dict, persona: str) -> List[Dict]:
         }
         for r in rows
     ]
+
+
+def _resolve_accounts(customer_uri: str, persona: str) -> List[Dict]:
+    """Resolve a customer's accounts (the nested Customer.accounts field).
+
+    Promotion wrote atlas:hasAccount + atlas:accountId/accountType/balanceUSD
+    (05_entity_resolution.ipynb cell-10). Returns [] for a customer with no accounts,
+    satisfying the non-nullable [Account!]! (a null here nulls the whole customer — the
+    "Customer not found" bug on the 360 page). transactions/holdings are resolved lazily
+    by their own nested resolvers, so they are not fetched here.
+    """
+    uri = safe_uri(customer_uri)
+    sparql = prefixed(f"""
+        SELECT ?acct ?accountId ?accountType ?balance WHERE {{
+            <{uri}> atlas:hasAccount ?acct .
+            OPTIONAL {{ ?acct atlas:accountId ?accountId }}
+            OPTIONAL {{ ?acct atlas:accountType ?accountType }}
+            OPTIONAL {{ ?acct atlas:balanceUSD ?balance }}
+        }}
+    """)
+    rows = _query_sparql(sparql, persona)
+    out: List[Dict] = []
+    for r in rows:
+        bal = r.get("balance")
+        try:
+            bal_f = float(bal) if bal not in (None, "") else None
+        except (TypeError, ValueError):
+            bal_f = None
+        out.append({
+            "uri": r["acct"],
+            "accountId": r.get("accountId", ""),
+            "accountType": r.get("accountType", ""),
+            "balanceUSD": bal_f,
+            # transactions + holdings resolve via their own nested resolvers.
+        })
+    return out
+
+
+def _resolve_transactions(account_uri: str, limit: int, persona: str) -> List[Dict]:
+    """Resolve an account's transactions (nested Account.transactions field).
+
+    Promotion wrote atlas:hasTransaction + amountUSD/transactionDate/transactionType
+    (cell-10). Returns [] when none. amountUSD coerced to float; date normalized to
+    AWSDateTime like signalDate.
+    """
+    uri = safe_uri(account_uri)
+    lim = safe_int(limit, max_val=200)
+    sparql = prefixed(f"""
+        SELECT ?txn ?amount ?txnDate ?txnType WHERE {{
+            <{uri}> atlas:hasTransaction ?txn .
+            OPTIONAL {{ ?txn atlas:amountUSD ?amount }}
+            OPTIONAL {{ ?txn atlas:transactionDate ?txnDate }}
+            OPTIONAL {{ ?txn atlas:transactionType ?txnType }}
+        }}
+        LIMIT {lim}
+    """)
+    rows = _query_sparql(sparql, persona)
+    out: List[Dict] = []
+    for r in rows:
+        amt = r.get("amount")
+        try:
+            amt_f = float(amt) if amt not in (None, "") else None
+        except (TypeError, ValueError):
+            amt_f = None
+        out.append({
+            "uri": r["txn"],
+            "amountUSD": amt_f,
+            "transactionDate": _as_datetime(r.get("txnDate")),
+            "transactionType": r.get("txnType", ""),
+        })
+    return out
 
 
 def _resolve_referrals(args: Dict, persona: str) -> List[Dict]:
