@@ -11,10 +11,10 @@
 "use client";
 
 import React from "react";
-import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import { CLIENT_360_QUERY } from "../../../graphql/queries";
 import { useAuth } from "../../../../../shared/auth/use-auth";
+import { useEntityUri } from "../../../../../shared/auth/use-entity-uri";
 import { AppShell } from "../../../../../shared/ui/chrome";
 import { CoverageStrip } from "../../../components/coverage-strip";
 import { ConversationPanel } from "../../../components/conversation-panel";
@@ -36,8 +36,9 @@ function initials(name: string): string {
 }
 
 export default function ClientPage() {
-  const params = useParams();
-  const uri = decodeURIComponent(params.uri as string);
+  // Read the real client URI from the path (static export serves a shared _placeholder
+  // doc for every /clients/* path, so useParams() can't be trusted here).
+  const uri = useEntityUri("/clients/");
   const { personaClaim } = useAuth();
 
   const { data, loading } = useQuery(CLIENT_360_QUERY, {

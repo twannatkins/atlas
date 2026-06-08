@@ -46,11 +46,29 @@ export class CloudFrontConstruct extends Construct {
     // last segment has no "." (a route) gets /index.html appended; anything with a file
     // extension (/_next/static/*.js, *.css, favicon.ico) passes through untouched.
     const spaRewrite = new cloudfront.Function(this, "SpaRewriteFn", {
-      comment: "Rewrite clean SPA routes to <route>/index.html; assets and query pass through.",
+      comment: "Map dynamic routes to their _placeholder doc; clean routes to <route>/index.html; assets pass through.",
       code: cloudfront.FunctionCode.fromInline(`
 function handler(event) {
   var request = event.request;
   var uri = request.uri;
+
+  // ── Dynamic routes (Next.js [uri] pages) ──────────────────────────────────
+  // These export ONLY a single <prefix>/_placeholder/index.html — there is no
+  // per-entity object in S3. A request like /customers/<url-encoded-uri>/ would
+  // otherwise resolve to a nonexistent object and 403 (S3 OAC returns AccessDenied,
+  // not 404). So for ANY path under a dynamic-route prefix we serve that route's
+  // _placeholder document; the React app reads the real entity URI from
+  // window.location via useParams(), client-side. The querystring is preserved.
+  var dynPrefixes = ['/customers/', '/referrals/', '/clients/'];
+  for (var i = 0; i < dynPrefixes.length; i++) {
+    var p = dynPrefixes[i];
+    if (uri.indexOf(p) === 0 && uri !== p + '_placeholder/index.html') {
+      request.uri = p + '_placeholder/index.html';
+      return request;
+    }
+  }
+
+  // ── Static routes ─────────────────────────────────────────────────────────
   if (uri === '/') {
     return request; // DefaultRootObject (index.html) handles the bare root
   }

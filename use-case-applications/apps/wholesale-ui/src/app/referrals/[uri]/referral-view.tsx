@@ -10,7 +10,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useEntityUri } from "../../../../../shared/auth/use-entity-uri";
 import { useQuery, useMutation } from "@apollo/client";
 import { REFERRAL_DETAIL_QUERY } from "../../../graphql/queries";
 import { ROUTE_REFERRAL_MUTATION, DRAFT_RATIONALE_MUTATION } from "../../../graphql/mutations";
@@ -25,12 +25,13 @@ import { CapabilityCards } from "../../../components/capability-cards";
 const NAV = [{ href: "/", label: "My book" }];
 
 export default function ReferralDetailPage() {
-  const params = useParams();
-  const householdUri = decodeURIComponent(params.uri as string);
+  // Read the household URI from the path (static export → shared _placeholder doc).
+  const householdUri = useEntityUri("/referrals/");
   const { personaClaim, userId } = useAuth();
 
   const { data, loading } = useQuery(REFERRAL_DETAIL_QUERY, {
     variables: { householdUri },
+    skip: !householdUri,
   });
 
   const [routeReferral] = useMutation(ROUTE_REFERRAL_MUTATION);

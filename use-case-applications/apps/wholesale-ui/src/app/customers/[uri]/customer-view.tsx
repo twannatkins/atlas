@@ -10,10 +10,10 @@
 "use client";
 
 import React from "react";
-import { useParams } from "next/navigation";
 import { useCustomer } from "../../../hooks/use-customer";
 import { useSignals } from "../../../hooks/use-signals";
 import { useAuth } from "../../../../../shared/auth/use-auth";
+import { useEntityUri } from "../../../../../shared/auth/use-entity-uri";
 import { AppShell } from "../../../../../shared/ui/chrome";
 import { Entity360 } from "../../../components/entity-360";
 import { SignalCard } from "../../../components/signal-card";
@@ -24,8 +24,9 @@ import { ComplianceBanner } from "../../../components/compliance-banner";
 const NAV = [{ href: "/", label: "My book" }];
 
 export default function CustomerPage() {
-  const params = useParams();
-  const uri = decodeURIComponent(params.uri as string);
+  // Read the real entity URI from the path (static export serves a shared _placeholder
+  // doc for every /customers/* path, so useParams() can't be trusted here).
+  const uri = useEntityUri("/customers/");
   const { personaClaim } = useAuth();
   const { customer, loading: customerLoading } = useCustomer(uri);
   const { signals, loading: signalsLoading } = useSignals(uri);
@@ -49,12 +50,28 @@ export default function CustomerPage() {
   }
 
   const relationships = customer.advisoryRelationships ?? [];
+  const hasActiveCoverage = relationships.some((r: any) => r.isActive);
+  // Route-referral target: the customer's household (the referral is household-scoped),
+  // falling back to the customer URI. Only offered when there is NO active coverage —
+  // routing an already-covered customer to wealth is the nonsensical action.
+  const routeTarget = customer.household?.uri || uri;
 
   return (
     <AppShell brandSuffix="Wholesale" navLinks={NAV}>
       <Entity360
         customerLabel={customer.label || "Unknown"}
         customerId={customer.customerId}
+        subtitle="Referred from Consumer Banking · coverage and signals from the graph"
+        headerAction={
+          !hasActiveCoverage ? (
+            <a className="btn primary" href={`/referrals/${encodeURIComponent(routeTarget)}`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8 6h6a4 4 0 014 4v6" />
+              </svg>
+              Route referral
+            </a>
+          ) : undefined
+        }
       >
         {/* Compliance banner — illustrative (marked "Example"): no per-entity compliance
             state exists to drive it (hasComplianceHold undefined + never persisted; see
