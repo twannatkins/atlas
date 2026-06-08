@@ -212,6 +212,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return _resolve_themes(arguments, persona_claim)
         elif field_name == "resetDemoRoutings":
             return _resolve_reset_demo_routings(persona_claim)
+        elif field_name == "takeOnClient":
+            return _resolve_take_on_client(arguments, persona_claim)
         else:
             raise ValueError(f"Unknown field: {field_name}")
 
@@ -421,11 +423,19 @@ def _resolve_search_customers(args: Dict, persona: str) -> List[Dict]:
                 OPTIONAL {{ ?advUri rdfs:label ?advLabel }}
                 OPTIONAL {{ ?rel atlas:coverageStartDate ?covStart }}
                 OPTIONAL {{ ?rel atlas:coverageEndDate ?covEnd }}
+                # routedByWorkflow + takenOnAt for the "new client" banner (additive — these
+                # do NOT affect isActive/coverage). demoRoutingGenerated marks a relationship
+                # created by the routing workflow (doubles as "routed to this advisor by the
+                # app"); takenOnAt is set when the advisor takes the client on.
+                OPTIONAL {{ ?rel atlas:demoRoutingGenerated ?covRouted }}
+                OPTIONAL {{ ?rel atlas:takenOnAt ?covTakenOn }}
                 BIND(CONCAT(STR(?rel), "{fsep}",
                             STR(COALESCE(?advLabel, ?advUri)), "{fsep}",
                             STR(COALESCE(?covStart, "")), "{fsep}",
                             STR(COALESCE(?covEnd, "")), "{fsep}",
-                            STR(?advUri)) AS ?covpack)
+                            STR(?advUri), "{fsep}",
+                            STR(COALESCE(?covRouted, "")), "{fsep}",
+                            STR(COALESCE(?covTakenOn, ""))) AS ?covpack)
             }}
         }}
         GROUP BY ?uri ?customerId ?label
@@ -501,6 +511,8 @@ def _unpack_coverage(packed: str) -> List[Dict]:
         # uri makes the client cache throw "Missing field uri" and nulls the whole query
         # (the 0-customers / 0-clients bug). Fall back to the rel uri so it is never empty.
         advisor_uri = parts[4] if len(parts) > 4 and parts[4] else rel_uri + "#advisor"
+        routed = parts[5] if len(parts) > 5 else ""
+        taken_on = parts[6] if len(parts) > 6 else ""
         out.append({
             "uri": rel_uri,
             "advisor": {"uri": advisor_uri, "label": advisor_label},
@@ -510,6 +522,11 @@ def _unpack_coverage(packed: str) -> List[Dict]:
             "coverageEndDate": _as_datetime(end) if end else None,
             "relationshipType": "Primary",
             "isActive": not end,
+            # Banner fields (additive, parallel — do NOT affect isActive/coverage above).
+            # routedByWorkflow: this rel was created by the routing workflow. takenOnAt: when
+            # the advisor took the client on (null until takeOnClient writes atlas:takenOnAt).
+            "routedByWorkflow": str(routed).lower() in ("true", "1"),
+            "takenOnAt": _as_datetime(taken_on) if taken_on else None,
         })
     return out
 
@@ -620,13 +637,15 @@ def _resolve_advisory_relationships(args: Dict, persona: str) -> List[Dict]:
     """Resolve advisory relationships for a customer."""
     customer_uri = safe_uri(args.get("customerUri", ""))
     sparql = prefixed(f"""
-        SELECT ?uri ?advisorUri ?advisorLabel ?startDate ?endDate ?relType WHERE {{
+        SELECT ?uri ?advisorUri ?advisorLabel ?startDate ?endDate ?relType ?routed ?takenOn WHERE {{
             <{customer_uri}> atlas:hasAdvisor ?uri .
             ?uri atlas:coveringAdvisor ?advisorUri ;
                 atlas:coverageStartDate ?startDate .
             OPTIONAL {{ ?advisorUri rdfs:label ?advisorLabel }}
             OPTIONAL {{ ?uri atlas:coverageEndDate ?endDate }}
             OPTIONAL {{ ?uri atlas:relationshipType ?relType }}
+            OPTIONAL {{ ?uri atlas:demoRoutingGenerated ?routed }}
+            OPTIONAL {{ ?uri atlas:takenOnAt ?takenOn }}
         }}
     """)
     rows = _query_sparql(sparql, persona)
@@ -634,6 +653,9 @@ def _resolve_advisory_relationships(args: Dict, persona: str) -> List[Dict]:
         {
             "uri": r["uri"],
             "advisor": {"uri": r.get("advisorUri", ""), "label": r.get("advisorLabel", "")},
+            # Banner fields (additive, parallel — do NOT affect isActive/coverage below).
+            "routedByWorkflow": str(r.get("routed", "")).lower() in ("true", "1"),
+            "takenOnAt": _as_datetime(r.get("takenOn")) if r.get("takenOn") else None,
             # AWSDateTime fields stored as bare xsd:date — normalize (see _as_datetime).
             "coverageStartDate": _as_datetime(r.get("startDate")) if r.get("startDate") else None,
             "coverageEndDate": _as_datetime(r.get("endDate")) if r.get("endDate") else None,
@@ -850,6 +872,46 @@ def _resolve_reset_demo_routings(persona: str) -> Dict[str, Any]:
         "advisoryRelationshipsRemoved": n_rels,
         "routingDecisionsRemoved": n_dec,
         "message": f"Reset complete — removed {n_rels} demo advisory relationship(s) and {n_dec} routing decision(s).",
+    }
+
+
+def _resolve_take_on_client(args: Dict, persona: str) -> Dict[str, Any]:
+    """The wealth advisor TAKES ON a routed client — a real take-on transition.
+
+    Writes atlas:takenOnAt <now> to the customer's ROUTED advisory relationship (the one
+    carrying atlas:demoRoutingGenerated). This is the genuine fact that clears the advisor's
+    "new client" banner — not a timer, not a client-side dismiss. ADDITIVE: it does NOT
+    touch atlas:coverageStartDate or write a coverageEndDate, so isActive and the
+    route→cover→reset loop are completely unchanged (coverage stays active-at-routing).
+
+    Idempotent: re-taking-on overwrites takenOnAt with a fresh timestamp (DELETE then
+    INSERT) — no duplicate triples. Requires neptune-db:WriteDataViaQuery (the resolver
+    role already has it via atlas-neptune-iam-auth — the same write the reset DELETE uses).
+    """
+    if neptune_client is None or not NEPTUNE_SLGD_ENDPOINT:
+        raise RuntimeError("takeOnClient requires the in-VPC direct-Neptune transport (NEPTUNE_SLGD_ENDPOINT unset).")
+    customer_uri = safe_uri(args.get("customerUri", ""))
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    # Target ONLY the routed relationship(s) for this customer (demoRoutingGenerated). Clear
+    # any prior takenOnAt first (idempotent), then stamp the new one. Never touches coverage.
+    update = prefixed(f"""
+        DELETE {{ ?rel atlas:takenOnAt ?old }}
+        INSERT {{ ?rel atlas:takenOnAt "{now}"^^xsd:dateTime }}
+        WHERE {{
+            <{customer_uri}> atlas:hasAdvisor ?rel .
+            ?rel atlas:demoRoutingGenerated true .
+            OPTIONAL {{ ?rel atlas:takenOnAt ?old }}
+        }}
+    """)
+    neptune_client.sparql_update(update)
+
+    logger.info(json.dumps({"event": "take_on_client", "customer_uri": customer_uri, "taken_on_at": now}))
+    return {
+        "status": "success",
+        "customerUri": customer_uri,
+        "takenOnAt": now,
+        "message": "Client taken on.",
     }
 
 

@@ -188,7 +188,20 @@ type AdvisoryRelationship {
   relationshipType: String!
   lineOfBusiness: String
   isActive: Boolean!
-  provenance: Provenance
+  """
+  True when this relationship was created by the referral-routing workflow (carries
+  atlas:demoRoutingGenerated) rather than seed coverage — i.e. "routed to this advisor by
+  the app." Drives the wealth advisor's "new client" banner. Additive/nullable; does NOT
+  affect isActive or coverage (coverage is active at routing, unchanged).
+  """
+  routedByWorkflow: Boolean
+  """
+  When the advisor TOOK ON this routed client (atlas:takenOnAt). Null until the advisor
+  accepts via takeOnClient. The "new client" banner shows while routedByWorkflow && !takenOnAt
+  and clears once this is set — a real take-on transition, not a timer. Parallel to
+  isActive/coverage; does not change them.
+  """
+  takenOnAt: AWSDateTime
 }
 
 """
@@ -408,6 +421,14 @@ type Mutation {
   coverage is never touched. Intended for the workshop demo only.
   """
   resetDemoRoutings: ResetResult!
+
+  """
+  Wealth advisor TAKES ON a routed client. Writes a real atlas:takenOnAt timestamp to the
+  customer's routed (atlas:demoRoutingGenerated) advisory relationship — a genuine take-on
+  transition (not a timer/fake), which clears the advisor's "new client" banner. Additive:
+  does NOT touch isActive or coverageStartDate (coverage stays active-at-routing). Idempotent.
+  """
+  takeOnClient(customerUri: ID!): TakeOnResult!
 }
 
 """Result of the workshop Reset mutation."""
@@ -415,6 +436,14 @@ type ResetResult {
   status: String!
   advisoryRelationshipsRemoved: Int!
   routingDecisionsRemoved: Int!
+  message: String!
+}
+
+"""Result of takeOnClient — the take-on transition outcome."""
+type TakeOnResult {
+  status: String!
+  customerUri: ID!
+  takenOnAt: AWSDateTime
   message: String!
 }
 

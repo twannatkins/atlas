@@ -46,6 +46,8 @@ export const ADVISOR_DASHBOARD_QUERY = gql`
         advisor { uri label }
         isActive
         coverageStartDate
+        routedByWorkflow
+        takenOnAt
       }
     }
   }
@@ -64,6 +66,8 @@ export const CLIENT_360_QUERY = gql`
         coverageEndDate
         relationshipType
         isActive
+        routedByWorkflow
+        takenOnAt
       }
       wealthSignals {
         uri
@@ -101,6 +105,21 @@ export const CAPABILITIES_QUERY = gql`
       posture
       capabilityTag
       phase
+    }
+  }
+`;
+
+/**
+ * Take-on — the wealth advisor accepts a routed client. Writes a real atlas:takenOnAt
+ * fact to the routed advisory relationship, which clears the "new client" banner
+ * (routedByWorkflow && !takenOnAt). Not a timer/dismiss — a real take-on transition.
+ */
+export const TAKE_ON_CLIENT_MUTATION = gql`
+  mutation TakeOnClient($customerUri: ID!) {
+    takeOnClient(customerUri: $customerUri) {
+      status
+      takenOnAt
+      message
     }
   }
 `;

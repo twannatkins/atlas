@@ -10,9 +10,9 @@
 
 "use client";
 
-import React from "react";
-import { useQuery } from "@apollo/client";
-import { CLIENT_360_QUERY } from "../../../graphql/queries";
+import React, { useState, useCallback } from "react";
+import { useQuery, useMutation } from "@apollo/client";
+import { CLIENT_360_QUERY, TAKE_ON_CLIENT_MUTATION } from "../../../graphql/queries";
 import { useAuth } from "../../../../../shared/auth/use-auth";
 import { useEntityUri } from "../../../../../shared/auth/use-entity-uri";
 import { AppShell } from "../../../../../shared/ui/chrome";
@@ -41,10 +41,22 @@ export default function ClientPage() {
   const uri = useEntityUri("/clients/");
   const { personaClaim } = useAuth();
 
-  const { data, loading } = useQuery(CLIENT_360_QUERY, {
+  const { data, loading, refetch } = useQuery(CLIENT_360_QUERY, {
     variables: { uri },
     skip: !uri,
   });
+
+  // Take-on — accept a routed client. Writes a real atlas:takenOnAt fact (clears the
+  // "new client" banner). Refetch after so the banner updates from the real new state.
+  const [takeOn, { loading: takingOn }] = useMutation(TAKE_ON_CLIENT_MUTATION);
+  const handleTakeOn = useCallback(async () => {
+    try {
+      await takeOn({ variables: { customerUri: uri } });
+      await refetch();
+    } catch (e) {
+      console.error("take-on failed:", e);
+    }
+  }, [takeOn, uri, refetch]);
 
   if (loading) {
     return (
@@ -66,6 +78,12 @@ export default function ClientPage() {
   }
 
   const signals = client.wealthSignals ?? [];
+  // "New client" — this client was routed to the advisor by the referral workflow
+  // (routedByWorkflow) and has NOT yet been taken on (no takenOnAt). Real graph state,
+  // not a timer: it clears only when takeOnClient writes atlas:takenOnAt. (isActive /
+  // coverage are unchanged — this is parallel state.)
+  const rels = client.advisoryRelationships ?? [];
+  const isNewlyRouted = rels.some((r: any) => r.routedByWorkflow && !r.takenOnAt);
 
   return (
     <AppShell brandSuffix="Wealth" navLinks={NAV}>
@@ -83,6 +101,23 @@ export default function ClientPage() {
           </div>
         </div>
       </div>
+
+      {/* "New client" banner — shows while routed-to-you AND not-yet-taken-on; the
+          Take-on button writes a real atlas:takenOnAt fact that clears it (not a timer). */}
+      {isNewlyRouted && (
+        <div className="banner" role="status" style={{ background: "var(--indigo-bg)", borderColor: "var(--indigo)" }}>
+          <svg className="ic i" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ color: "var(--indigo)" }}>
+            <path d="M12 3l7 3v6c0 4-3 7-7 8-4-1-7-4-7-8V6l7-3z" /><path d="M9 12l2 2 4-4" />
+          </svg>
+          <div className="tx" style={{ color: "var(--indigo)" }}>
+            <b>New — routed to you.</b> This client was referred from Consumer Banking and is
+            awaiting your take-on.
+          </div>
+          <button className="btn accent" style={{ marginLeft: "auto" }} onClick={handleTakeOn} disabled={takingOn}>
+            {takingOn ? "Taking on…" : "Take on client"}
+          </button>
+        </div>
+      )}
 
       {/* two columns: coverage + signals (both real) */}
       <div className="two">

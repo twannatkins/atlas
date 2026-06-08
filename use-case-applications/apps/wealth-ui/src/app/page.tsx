@@ -52,7 +52,11 @@ export default function AdvisorDashboard() {
 
       <div className="entity-grid">
         {clients.map((client: any) => {
-          const covered = client.advisoryRelationships?.length > 0;
+          const rels = client.advisoryRelationships ?? [];
+          const covered = rels.length > 0;
+          // "New" — routed to this advisor by the workflow and not yet taken on (real
+          // state; clears when the advisor takes the client on). Parallel to coverage.
+          const isNew = rels.some((r: any) => r.routedByWorkflow && !r.takenOnAt);
           return (
             <a
               key={client.uri}
@@ -62,6 +66,11 @@ export default function AdvisorDashboard() {
               <div className="en">{client.label}</div>
               <p className="eid">{client.customerId}</p>
               <div className="etags">
+                {isNew && (
+                  <span className="mini-sig" style={{ background: "var(--indigo-bg)", color: "var(--indigo)" }}>
+                    ● New — routed to you
+                  </span>
+                )}
                 {covered ? (
                   <span className="mini-sig">Active coverage</span>
                 ) : (

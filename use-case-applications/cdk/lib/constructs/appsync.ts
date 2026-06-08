@@ -302,6 +302,10 @@ export class AppSyncConstruct extends Construct {
     // Workshop Reset — removes the demo-created advisory relationships + routing decisions
     // (direct-Neptune DELETE in the sparql resolver, which has WriteDataViaQuery).
     sparqlDs.createResolver("ResetDemoRoutingsResolver", { typeName: "Mutation", fieldName: "resetDemoRoutings" });
+    // Take-on — wealth advisor accepts a routed client; writes a real atlas:takenOnAt to the
+    // routed relationship (direct-Neptune UPDATE, same WriteDataViaQuery). Clears the "new
+    // client" banner. Additive — does NOT touch isActive/coverage.
+    sparqlDs.createResolver("TakeOnClientResolver", { typeName: "Mutation", fieldName: "takeOnClient" });
 
     this.apiUrl = api.graphqlUrl;
   }
