@@ -19,11 +19,20 @@ Workshop 2 deploys resources that cost money when left running. The most signifi
 
 **Total for a workshop left running after completion: ~$24/day**
 
-If you are done with Workshop 2, tear down all CDK stacks and the Neptune clusters. The ontology, agents, notebooks, and CDK code remain in your repository — you can redeploy the full environment at any time.
+If you are done with Workshop 2, tear down the `AtlasWorkshop2` stack and the Workshop 1 Neptune clusters. The ontology, agents, notebooks, and CDK code remain in your repository — you can redeploy the full environment at any time.
 
 ---
 
-## Step 1 — Destroy the Workshop 2 CDK stacks
+## Step 1 — Destroy the Workshop 2 CDK stack
+
+Workshop 2 is a **single CDK stack — `AtlasWorkshop2`**. The CDK app synthesizes one
+stack that contains everything Workshop 2 deploys: the AppSync GraphQL API and its
+resolvers (including the in-VPC SPARQL resolver and the `takeOnClient` /
+`resetDemoRoutings` mutations), the Cognito user pool, the AgentCore runtimes and the
+AgentCore Memory store, Ontop on ECS Fargate, both UIs' S3 buckets + CloudFront
+distributions, and the Step Functions referral orchestrator. Tearing it down is therefore
+one `cdk destroy`. (Workshop 1's Neptune clusters are a *separate* stack,
+`atlas-neptune-twotier` — see Step 4.)
 
 From your terminal or SageMaker notebook terminal:
 
@@ -32,36 +41,18 @@ cd ~/atlas/use-case-applications/cdk
 cdk destroy --all
 ```
 
-CDK will prompt you to confirm deletion of each stack. Type `y` for each.
+`--all` resolves to the single `AtlasWorkshop2` stack (equivalently:
+`cdk destroy AtlasWorkshop2`). CDK prompts you to confirm; type `y`.
 
-Expected output (after all stacks are destroyed):
+Expected output (after the stack is destroyed):
 
 ```
-✅  atlas-phase2-agents-stack: destroyed
-✅  atlas-memory-stack: destroyed
-✅  atlas-wealth-ui-stack: destroyed
-✅  atlas-wholesale-ui-stack: destroyed
-✅  atlas-auth-stack: destroyed
-✅  atlas-appsync-stack: destroyed
-✅  atlas-ontop-stack: destroyed
-✅  atlas-mcp-stack: destroyed
+✅  AtlasWorkshop2: destroyed
 ```
 
-### Option B: destroy individual stacks
-
-If you want to keep some stacks running while tearing down others, destroy them individually:
-
-```bash
-# Destroy in reverse dependency order
-cdk destroy atlas-wealth-ui-stack
-cdk destroy atlas-wholesale-ui-stack
-cdk destroy atlas-phase2-agents-stack
-cdk destroy atlas-memory-stack
-cdk destroy atlas-auth-stack
-cdk destroy atlas-appsync-stack
-cdk destroy atlas-ontop-stack
-cdk destroy atlas-mcp-stack
-```
+Destroying `AtlasWorkshop2` removes the Cognito user pool, the AppSync API, the
+CloudFront distributions, the ECS/Ontop service, and the AgentCore runtimes + Memory
+store with it — they are all resources *within* that one stack, not separate stacks.
 
 ---
 
@@ -199,20 +190,27 @@ If you completed both phases in two working days and cleaned up immediately afte
 
 Over the course of Workshop 2, you built and deployed:
 
-| Layer | What | Where |
-|---|---|---|
-| Capability surface | 5 MCP server AgentCore Runtimes | CDK `atlas-mcp-stack` |
-| Phase 1 agents | 5 AgentCore Runtimes | CDK `atlas-mcp-stack` / agents stack |
-| Phase 2 agents | 3 AgentCore Runtimes (incl. memory-backed) | CDK `atlas-phase2-agents-stack` |
-| Federation | Ontop on ECS (3 R2RML mappings) | CDK `atlas-ontop-stack` |
-| API | FIBO-shaped AppSync GraphQL | CDK `atlas-appsync-stack` |
-| Auth | Cognito + IDC federation + Lake Formation | CDK `atlas-auth-stack` |
-| Memory | AgentCore Memory store (`atlas-wealth-conv`) | CDK `atlas-memory-stack` |
-| Wholesale UI | React app on CloudFront | CDK `atlas-wholesale-ui-stack` |
-| Wealth UI | React app on CloudFront | CDK `atlas-wealth-ui-stack` |
-| Registry | 13 AWS Agent Registry records | Manual + CDK auto-register |
+Everything below is provisioned by the **single `AtlasWorkshop2` CDK stack** (the "Where"
+column names the construct within that stack, not separate stacks):
 
-The code, notebooks, spec, and ontology remain in your repository. Every CDK stack is reproducible from source. The workshop can be re-deployed at any time by running `cdk deploy --all` from `use-case-applications/cdk/`.
+| Layer | What | Where (construct in `AtlasWorkshop2`) |
+|---|---|---|
+| Capability surface | 5 MCP server AgentCore Runtimes | agent-runtime constructs |
+| Phase 1 agents | 5 AgentCore Runtimes | agent-runtime constructs |
+| Phase 2 agents | 3 AgentCore Runtimes (incl. memory-backed) | agent-runtime constructs |
+| Federation | Ontop on ECS Fargate (3 R2RML mappings) | ECS cluster/service/task + ALB |
+| API | FIBO-shaped AppSync GraphQL | AppSync API + resolvers (incl. in-VPC SPARQL resolver, `takeOnClient`/`resetDemoRoutings`) |
+| Auth | Cognito user pool + groups + hosted UI | Cognito construct |
+| Memory | AgentCore Memory store (`atlas-wealth-conv`) | `AWS::BedrockAgentCore::Memory` |
+| Wholesale UI | React app on CloudFront | S3 bucket + CloudFront distribution |
+| Wealth UI | React app on CloudFront | S3 bucket + CloudFront distribution |
+| Registry | Agent Registry records | custom resource (auto-register) |
+
+The code, notebooks, spec, and ontology remain in your repository. The stack is
+reproducible from source. The workshop can be re-deployed at any time by running
+`cdk deploy --all` from `use-case-applications/cdk/` (which deploys the one
+`AtlasWorkshop2` stack). The separate `atlas-neptune-twotier` stack from Workshop 1 owns
+the Neptune clusters the app reads.
 
 ---
 
