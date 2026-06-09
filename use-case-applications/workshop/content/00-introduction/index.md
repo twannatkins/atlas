@@ -14,7 +14,7 @@ The two applications are:
 - **The Wholesale UI** — a Consumer Banker's workbench for identifying wealth-referral candidates and routing them to the advisory team, backed by AI agents that surface wealth signals from the semantic graph
 - **The Wealth UI** — an advisor's workbench for managing their referral pipeline, preparing for client conversations, and tracking market themes, backed by a different set of agents with persistent conversational memory
 
-Both applications are governed by the same four-layer permission model (IAM Identity Center, Cognito, Lake Formation, SHACL named graphs). Both consume the same FIBO-shaped GraphQL API. Both drive their capability palettes from a live Agent Registry query rather than hardcoded feature flags.
+Both applications are governed by the same permission model. The layers enforced today are Identity (IAM Identity Center), Application (Cognito persona claim), field/capability access (AppSync authorization by Cognito group plus per-agent allow-lists — the persona is validated for *which fields and actions it may invoke*), and Semantic (SHACL on writes and decisions). A further layer — per-row Lake Formation data scoping, where the same query returns different rows per persona — is on the roadmap but not yet enforced. Both applications consume the same FIBO-shaped GraphQL API. Both drive their capability palettes from a live Agent Registry query rather than hardcoded feature flags.
 
 ## Why this architecture looks the way it does
 
@@ -28,7 +28,7 @@ Every agent in ATLAS enforces this at the code level: Bedrock is called only for
 
 Workshop 2 is divided into two phases.
 
-**Phase 1 — Consumer-to-Wealth Referral** covers the Wholesale UI use case end to end. Seven modules, roughly a full working day. You deploy MCP servers, register agents, wire a FIBO-shaped GraphQL API, and deploy the Wholesale UI. The Rachel Kim scenario — a Consumer Banker identifying a household with a wealth signal and routing it to an advisor — is the acceptance test for Phase 1.
+**Phase 1 — Consumer-to-Wealth Referral** covers the Wholesale UI use case end to end. Seven modules, roughly a full working day. You deploy MCP servers, register agents, wire a FIBO-shaped GraphQL API, and deploy the Wholesale UI. The Rachel Kim scenario — Dana Brooks, a Consumer Banker, identifies the customer Rachel Kim's household by its wealth signal and routes it to a Wealth Advisor — is the acceptance test for Phase 1.
 
 **Phase 2 — Wealth Advisor Spine** adds the Wealth UI, AgentCore Memory, JWT-based registry authorization, and three additional agents. Six modules. The two UIs then share the same backend and the same agent registry but serve different personas with different capability palettes. The acceptance test for Phase 2 is walking the same household referral from the advisor's perspective and confirming the two-UI thesis holds.
 

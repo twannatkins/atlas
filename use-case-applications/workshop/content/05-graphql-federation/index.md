@@ -9,12 +9,15 @@ weight: 50
 
 - Explain why ATLAS's GraphQL schema is called "FIBO-shaped" and what that means
   for the contract between Workshop 1 and Workshop 2
-- Trace the three resolver patterns: SPARQL via Ontop (Iceberg data), direct
-  Neptune SPARQL (graph-native data), and Entity Resolution (source ID → canonical URI)
-- Implement and verify all three patterns using the schema from
+- Trace the two resolver paths the running system actually uses: a **read path**
+  that queries Neptune directly (SigV4, in-VPC, no agent) and an **action path**
+  that invokes an AgentCore agent (`askGraph`, `draftRationale`, `converse`) or a
+  Step Function (`routeReferral`)
+- Implement and verify both paths using the schema from
   `spec/05-appsync-graphql/schema.graphql`
-- Confirm that persona scoping is passed through the resolver layer, not enforced
-  there — and explain why that separation of concerns matters
+- Be precise about the persona claim: it gates *which fields a caller may invoke*
+  (access control, enforced today), not *which rows come back* (per-row Lake
+  Formation scoping is roadmap, not enforced)
 
 ## Time Estimate
 
@@ -27,9 +30,13 @@ weight: 50
 
 ## What You Will Build
 
-Simulated implementations of all three GraphQL resolver patterns, verified against
-the AppSync schema. Each resolver accepts a persona claim and passes it through to
-the MCP layer — it does not re-enforce permissions itself.
+Simulated implementations of the two GraphQL resolver paths, verified against the
+AppSync schema: a **read path** (direct Neptune SPARQL — the resolver runs the
+query against Neptune itself, no MCP, no agent) and an **action path** (the
+resolver invokes an AgentCore agent for `askGraph` / `draftRationale` / `converse`,
+or a Step Function for `routeReferral`). You will also see, honestly, what the
+persona claim does today: it gates field/capability *access*, not which rows a
+query returns.
 
 The notebook is `notebooks/phase-1-referral/04_graphql_federation.ipynb`.
 
@@ -50,7 +57,9 @@ Read cell 2 (`cell-02-concept`). It explains:
 - Why every GraphQL type carries a docstring that names its FIBO ontology class
 - Why the schema is the contract that makes Workshop 1's ontology visible to
   the Workshop 2 UIs
-- Why AppSync, not the agents, is the right place for persona-scoped data access
+- The two paths behind the schema (direct-Neptune reads vs. agent actions), and
+  the honest permission model: the persona claim gates *which fields a caller may
+  invoke* (enforced), while per-row Lake Formation scoping is roadmap, not enforced
 
 ### Step 3 — Run setup and load the schema (cell 3)
 
@@ -84,57 +93,56 @@ Ontology mapping from schema docstrings:
 All entity types mapped to ontology classes.
 ```
 
-### Step 5 — Simulate the Ontop resolver (cell 5)
+### Step 5 — Simulate the read-path resolver (cell 5)
 
-Run cell 5 (`cell-05-simulate-resolver`) to implement and run Pattern 1: the
-Ontop resolver that handles entity data stored in Iceberg tables. This resolver
-translates a GraphQL `customer` query into a SPARQL query and sends it to the
-Ontop endpoint.
-
-Expected output:
-
-```
-Pattern 1 — Ontop resolver (Iceberg data)
-  Query: customer(customerId: "CUST-001") { uri, label, customerId }
-  → SPARQL generated
-  → Ontop endpoint called
-  → rows: 1
-  Response: {uri: "atlas:cust/...", label: "...", customerId: "CUST-001"}
-```
-
-### Step 6 — Run all three resolver patterns (cell 6)
-
-Run cell 6 (`cell-06-three-patterns`) to implement and run all three patterns
-in sequence:
-- **Pattern 1**: Ontop (Iceberg) — entity data
-- **Pattern 2**: Direct Neptune SPARQL — graph-native data (WealthSignal, RoutingDecision, AuditRecord)
-- **Pattern 3**: Entity Resolution — source ID to canonical URI lookup
+Run cell 5 (`cell-05-simulate-resolver`) to implement and run the **read path**:
+the resolver translates a GraphQL `customer` query into SPARQL and runs it
+**directly against Neptune** (SigV4-signed, in-VPC) — no MCP server, no agent in
+the loop. This is the fast path the running system uses for every data read.
 
 Expected output:
 
 ```
-Pattern 1 (Ontop):              rows=1  ✓
-Pattern 2 (Direct Neptune):     rows=N  ✓
-Pattern 3 (Entity Resolution):  canonical_uri=atlas:cust/...  ✓
+Read path: resolver → Neptune SLGD directly (SigV4, in-VPC)
+  SPARQL (first 100 chars): ...
+  Result: {uri: "atlas:cust/...", customerId: "CUST-9C2A1E", label: "..."}
 ```
 
-![Three resolver patterns output](/static/images/05-step-06-three-patterns.png)
+### Step 6 — Run both real paths (cell 6)
 
-### Step 7 — Verify persona scoping (cell 7)
-
-Run cell 7 (`cell-07-persona-scoping`) to confirm that the same GraphQL query
-with different persona claims returns different row counts. The resolver does not
-enforce the difference — it passes the claim to the MCP layer and the MCP layer
-applies the Lake Formation scope.
+Run cell 6 (`cell-06-three-patterns`) to implement and run both paths the running
+system actually uses:
+- **Read path** — direct Neptune SPARQL (no agent): `customer`, `wealthSignals`,
+  `advisoryRelationships`, `referrals`, `auditTrail`
+- **Action path** — resolver → AgentCore agent: `askGraph` → nl-to-sparql-agent
+  (and `draftRationale` / `converse`); `routeReferral` starts a Step Function
 
 Expected output:
 
 ```
-Persona scoping check
-  Consumer Banker   → rows: N (book-of-clients filtered)
-  Wealth Advisor    → rows: M (different book)
-  BSA Analyst       → rows: K (broader access)
-  N ≠ M or K  ✓  (persona scoping works)
+1. Read — graph data (direct Neptune, no agent): Signals found: 2
+2. Action — natural-language query (resolver → nl-to-sparql-agent):
+   status=success template=signals_for_customer rows=2
+```
+
+![Both resolver paths output](/static/images/05-step-06-three-patterns.png)
+
+### Step 7 — What the persona claim does today (cell 7)
+
+Run cell 7 (`cell-07-persona-scoping`). It is honest about access control: the
+persona claim gates *which fields/capabilities a caller may invoke* (for example,
+only `atlas-consumer-banker` may call `draftRationale`). It does **not** return a
+different set of rows per persona — per-row Lake Formation scoping is roadmap, not
+enforced; the direct-Neptune read path returns the same rows regardless of caller.
+
+Expected output:
+
+```
+Access control — who may call draftRationale (enforced today):
+  atlas-consumer-banker    → ALLOWED
+  atlas-wealth-advisor     → REFUSED
+  atlas-bsa-analyst        → REFUSED
+(A refused persona is denied the CALL — not handed a smaller row set.)
 ```
 
 ### Step 8 — Verify schema mapping (cell 9)
@@ -159,22 +167,26 @@ Schema mapping verification
 Run cell 10 (`cell-10-verify-resolver-shapes`) to confirm that each resolver
 pattern returns the fields declared in the schema.
 
-### Step 10 — Verify persona scoping assertion (cell 11)
+### Step 10 — Verify access control assertion (cell 11)
 
-Run cell 11 (`cell-11-verify-persona-scoping`) to assert that Consumer Banker
-and BSA Analyst receive different row counts from the same query.
+Run cell 11 (`cell-11-verify-persona-scoping`) to assert the *access-control*
+layer: only allow-listed personas may invoke a protected field (e.g. only the
+Consumer Banker may `draftRationale` or `routeReferral`). It deliberately does
+**not** assert a different row count per persona — that would test a fiction,
+because row scoping is roadmap.
 
 Expected output:
 
 ```
-[PASS] Persona scoping: Consumer Banker ≠ BSA Analyst row counts.
+✓ Access control confirmed: the persona claim decides WHO MAY CALL each field.
+  Per-row data scoping is roadmap — the read path returns the same rows for all personas.
 ```
 
 ## Expected Outputs
 
-- All three resolver patterns return correctly shaped responses
+- Both resolver paths (read = direct Neptune, action = agent) return correctly shaped responses
 - Schema mapping verification prints `[PASS] All entity types mapped to ontology classes`
-- Persona scoping assertion prints `[PASS]`
+- Access-control assertion confirms only allow-listed personas may invoke a protected field
 
 ## Troubleshooting
 
@@ -191,12 +203,15 @@ If the schema docstrings use a different format (inline `"""class"""`, or no
 newlines), the regex will not match. Open the schema file and confirm the
 docstring format matches the expected pattern.
 
-**Cell 7 returns identical row counts for all personas**
+**Cell 7 — expecting different row counts per persona?**
 
-The persona-scoping delta depends on Lake Formation row filtering being active.
-If all personas see the same rows, the most likely cause is that the test
-environment is not running inside the VPC, so the Lake Formation tags are not
-being applied. Run from SageMaker Studio (inside the VPC) for row-filtered results.
+That is the most common misconception, so the cell is written to prevent it. The
+persona claim controls *which fields/capabilities a caller may invoke* (access
+control), not which rows a query returns. Per-row Lake Formation scoping — the
+same query returning different rows per persona — is **roadmap, not enforced**;
+the direct-Neptune read path returns the same rows regardless of caller. If you
+expected a row-count delta, re-read cell 2's "what the persona claim does — and
+does not — do today" section.
 
 **Cell 9 fails: "type Capability has no ontology mapping"**
 

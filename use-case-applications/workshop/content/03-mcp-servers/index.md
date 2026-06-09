@@ -51,13 +51,16 @@ it separates the *what* (run a SPARQL query) from the *how* (which cluster, whic
 tier, which connection pattern).
 
 The second problem is persona enforcement. The `atlas-sparql-mcp` server accepts a
-`persona_claim` parameter on every operation. That claim is translated, inside the
-server, into a Lake Formation scope that filters which rows and columns the query
-is allowed to return. A Consumer Banker's claim covers their assigned book of
-clients. A BSA Analyst's claim includes compliance-restricted fields the Consumer
-Banker cannot see. If every agent enforced this scope independently, the enforcement
-would be inconsistent. The MCP server is the single place where that enforcement
-lives, so it can be tested once and trusted everywhere.
+`persona_claim` parameter on every operation and **validates** it — access control
+the agents do not each re-implement. Be precise about what that validation does
+*today*: it is the field/capability access-control layer (which persona may invoke
+which operation), enforced consistently in one place. Per-row **Lake Formation**
+scoping — translating a claim into a row/column filter so the *same* query returns
+*different rows* per persona — is the **design target, roadmap, not yet wired**.
+The running read path returns the same rows regardless of caller; do not teach
+row-level scoping as live. Centralizing the persona *validation* in the MCP server
+is still the win: it is tested once and trusted everywhere, and it is where the
+Lake Formation scope will attach when that layer is built.
 
 This is why ATLAS has five MCP servers rather than five agents that each call AWS
 services directly. Each server wraps one capability: SPARQL over Neptune, SHACL
@@ -213,12 +216,13 @@ The MCP contract requires error returns, not raises. Wrap the entire body of
 from the except clause. The pre-flight Check does not verify this — it is an MCP
 contract requirement that first surfaces here.
 
-**Neptune call succeeds but rows are empty for the Consumer Banker persona**
+**Neptune call succeeds but rows are empty**
 
-Lake Formation row filtering is working correctly — the Consumer Banker's assigned
-book of clients may not include the specific household in the test query. Change the
-test `persona_claim` to `"atlas-bsa-analyst"` to confirm the query returns data,
-then switch back.
+This is about the data, not the persona — per-row Lake Formation scoping is not
+enforced, so the persona claim does not filter rows (the same query returns the
+same rows for every persona). Empty results mean the specific household/URI in the
+test query has no matching triples. Check the URI against a known-populated entity
+rather than switching personas.
 
 ## What's Next
 

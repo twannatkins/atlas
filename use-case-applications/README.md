@@ -80,7 +80,7 @@ use-case-applications/
 │   ├── conversational-context-manager/  # Session-scoped memory; multi-turn context
 │   └── theme-summarizer/        # Market theme summaries; Wealth Advisor only
 ├── mcp-servers/                 # Five MCP server handlers (AgentCore Runtimes)
-│   ├── atlas-sparql-mcp/        # SPARQL over Neptune; persona-scoped Lake Formation
+│   ├── atlas-sparql-mcp/        # SPARQL over Neptune; validates persona (LF row-scoping is roadmap)
 │   ├── atlas-shacl-mcp/         # SHACL shape validation
 │   ├── atlas-er-mcp/            # Entity Resolution identity lookup
 │   ├── atlas-fibo-mcp/          # FIBO class introspection

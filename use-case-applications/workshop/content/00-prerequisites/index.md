@@ -21,7 +21,7 @@ You need an AWS account with the following services available in **us-east-1**:
 | AWS Bedrock AgentCore | Modules 3–13 | Agent Runtime invocation and registry |
 | AWS AppSync | Modules 5–13 | FIBO-shaped GraphQL API |
 | Amazon Cognito | Modules 6–13 | UI authentication and IDC federation |
-| AWS Lake Formation | Modules 6–13 | Row-level access control |
+| AWS Lake Formation | Modules 6–13 | Provisioned for data governance (per-row scoping is roadmap, not enforced) |
 | Amazon CloudFront | Modules 6–13 | UI delivery |
 | Amazon EventBridge | Module 6 | Advisor notification events |
 | AWS Step Functions | Module 6 | Referral orchestration workflow |
