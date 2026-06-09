@@ -1,0 +1,275 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  ATLAS Workshop 0 — Foundation network (customer bring-your-own). The minimal
+  VPC the ATLAS workshops ASSUME already exists: Workshop 1's Neptune stack takes
+  VpcId + SubnetIds + VpcCidr as parameters and Workshop 2's CDK looks up the same
+  VPC + private subnets — neither creates the network. Builds exactly that and
+  nothing more. Outputs VpcId / PrivateSubnetIds / VpcCidr feed those consumers.
+  Private subnets are placed in AgentCore-supported AZs only (us-east-1b excluded
+  — see the AZ-exclusion rule comment below). No VPC endpoints / Transit Gateway /
+  flow logs: nothing in either workshop references them.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE AZ-EXCLUSION RULE (a correctness constraint, not a style choice)
+# ─────────────────────────────────────────────────────────────────────────────
+# Amazon Bedrock AgentCore VPC mode (used by Workshop 2's agent runtimes) can only
+# place ENIs in a SUBSET of Availability Zones. In us-east-1 the supported zones
+# are the AZ-IDs use1-az1, use1-az2, and use1-az4. It does NOT support use1-az6.
+#
+# AZ *names* (us-east-1a..f) are shuffled per AWS account, but AZ *IDs*
+# (use1-azN) are stable and account-independent. In THIS account, for example:
+#   use1-az1 = us-east-1c   use1-az2 = us-east-1d   use1-az4 = us-east-1a
+#   use1-az6 = us-east-1b  <-- the unsupported zone (varies by account by NAME)
+#
+# So we place the private subnets by AvailabilityZoneId, constrained by
+# AllowedValues to the supported set. That makes selecting the unsupported zone
+# (use1-az6 / "us-east-1b") STRUCTURALLY IMPOSSIBLE — you cannot pass it as a
+# parameter. If you instead picked AZs by name, the same name maps to a different
+# AZ-ID in another account and you could silently land on the unsupported zone;
+# Workshop 2's AgentCore runtimes would then fail to place ENIs with a confusing,
+# far-downstream error. This is the rule that use-case-applications/cdk/lib/
+# constructs/networking.ts encodes in its privateSubnetIds derivation.
+# ─────────────────────────────────────────────────────────────────────────────
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+    Description: >
+      CIDR block for the foundation VPC. A clean /16 by default. This becomes the
+      VpcCidr output that Workshop 1's Neptune stack uses for its security-group
+      ingress on port 8182.
+
+  ProjectTag:
+    Type: String
+    Default: atlas
+    Description: >
+      Tag value for cost tracking. Matches Workshop 1's ProjectTag parameter so
+      every resource across WS0/WS1/WS2 carries the same Project tag.
+
+  # --- AZ-IDs for the two private subnets (AgentCore-supported only) ---
+  # AllowedValues is the supported set; us-east-1b (use1-az6) is intentionally
+  # NOT an allowed value, so it cannot be selected. Defaults are two distinct
+  # supported AZ-IDs, satisfying Neptune's 2+-AZ DBSubnetGroup requirement.
+  PrivateSubnet1AzId:
+    Type: String
+    Default: use1-az1
+    AllowedValues: [use1-az1, use1-az2, use1-az4]
+    Description: >
+      AZ-ID for private subnet 1. Must be an AgentCore-supported zone. use1-az6
+      (us-east-1b) is deliberately absent from AllowedValues — it is unsupported.
+
+  PrivateSubnet2AzId:
+    Type: String
+    Default: use1-az2
+    AllowedValues: [use1-az1, use1-az2, use1-az4]
+    Description: >
+      AZ-ID for private subnet 2. Must DIFFER from PrivateSubnet1AzId so the two
+      private subnets span two AZs (Neptune DBSubnetGroup requires 2+ AZs).
+
+Rules:
+  # Enforce the 2-AZ requirement at template-validation time: the two private
+  # subnets must be in DIFFERENT supported AZs (Neptune DBSubnetGroup needs 2+).
+  PrivateSubnetsSpanTwoAzs:
+    Assertions:
+      - Assert: !Not [!Equals [!Ref PrivateSubnet1AzId, !Ref PrivateSubnet2AzId]]
+        AssertDescription: >
+          PrivateSubnet1AzId and PrivateSubnet2AzId must differ — Neptune's
+          DBSubnetGroup requires subnets in at least two Availability Zones.
+
+Resources:
+  # VPC — REQUIRED BY: WS1 atlas-neptune-twotier.yaml `VpcId` parameter; WS2
+  # networking.ts `vpcId` (ec2.Vpc.fromLookup). The whole foundation hangs off this.
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true   # Neptune endpoints + AWS API DNS resolution in-VPC
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-vpc
+
+  # Internet Gateway — REQUIRED BY: the NAT gateway (a NAT needs an IGW for its
+  # public subnet to reach the internet). No IGW => no NAT => no 443 egress.
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-igw
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+
+  # Public subnet — REQUIRED BY: the NAT gateway (a NAT gateway lives in a public
+  # subnet). It exists ONLY to host the NAT; no workload runs here. A /24 carved
+  # from the VPC CIDR's first octet-block via Fn::Cidr.
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 4, 8]]
+      AvailabilityZoneId: !Ref PrivateSubnet1AzId  # co-locate NAT with a supported AZ
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-public
+
+  # Private subnet 1 — REQUIRED BY: WS1 `SubnetIds` (Neptune DBSubnetGroup, 2+ AZ)
+  # and WS2 `privateSubnetIds` (Lambda + ECS + AgentCore placement). In a
+  # SUPPORTED AZ-ID (see AZ-exclusion rule above).
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 4, 8]]
+      AvailabilityZoneId: !Ref PrivateSubnet1AzId
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-private-1
+
+  # Private subnet 2 — REQUIRED BY: the SAME consumers as private subnet 1; a
+  # SECOND subnet in a DIFFERENT supported AZ is what satisfies Neptune's
+  # DBSubnetGroup 2+-AZ requirement and gives AgentCore two zones to place in.
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 4, 8]]
+      AvailabilityZoneId: !Ref PrivateSubnet2AzId
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-private-2
+
+  # Elastic IP — REQUIRED BY: the NAT gateway (a NAT gateway needs a static EIP).
+  NatEip:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-nat-eip
+
+  # NAT gateway — REQUIRED BY: WS2 egress. networking.ts opens Lambda :443 "to
+  # Bedrock and AWS APIs via NAT" and ECS :443 "to ECR and S3"; the agents reach
+  # Bedrock/S3/ECR over HTTPS. Private subnets have no public IP, so outbound 443
+  # must route through a NAT. (Deliberately ONE NAT — sufficient for the workshop;
+  # a per-AZ NAT is a production HA choice, not a workshop requirement.)
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-nat
+
+  # Public route table — REQUIRED BY: the public subnet (default route to the IGW
+  # so the NAT gateway can reach the internet).
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-public-rt
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  # Private route table — REQUIRED BY: the private subnets (default route to the
+  # NAT so in-VPC Lambda/ECS/agents get outbound 443). Shared by both private
+  # subnets — one NAT, one private route table.
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Name
+          Value: atlas-foundation-private-rt
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+Outputs:
+  # OUTPUT CONTRACT — these three outputs are the EXACT inputs the downstream
+  # stacks consume. Do not rename without updating the consumers.
+
+  VpcId:
+    Description: >
+      Foundation VPC id. Feeds WS1 atlas-neptune-twotier.yaml `VpcId` parameter
+      and WS2 cdk context `vpcId` (networking.ts ec2.Vpc.fromLookup).
+    Value: !Ref Vpc
+    Export:
+      Name: atlas-foundation-vpc-id
+
+  PrivateSubnetIds:
+    Description: >
+      The two private subnets, in AgentCore-supported AZs (us-east-1b excluded).
+      Feeds WS1 `SubnetIds` (Neptune DBSubnetGroup, 2+ AZ) and WS2 cdk context
+      `privateSubnetIds` (Lambda/ECS/AgentCore placement). Comma-delimited so it
+      drops straight into a List<AWS::EC2::Subnet::Id> parameter.
+    Value: !Join [',', [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+    Export:
+      Name: atlas-foundation-private-subnet-ids
+
+  VpcCidr:
+    Description: >
+      The foundation VPC CIDR. Feeds WS1 `VpcCidr` parameter (Neptune SG ingress
+      on 8182).
+    Value: !Ref VpcCidr
+    Export:
+      Name: atlas-foundation-vpc-cidr
