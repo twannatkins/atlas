@@ -40,8 +40,8 @@ calls; the event structure and audit trail shape are identical.
 ## Steps
 
 Before running any code, read cell 0 (`cell-00-title`) and cell 1 (`cell-01-terms`).
-The Key Terms table defines "cross-UI flow," "routing decision," "notification,"
-and "conversational follow-up."
+The Key Terms table defines "cross-UI flow," "routing decision," the "New — routed
+to you" banner → take-on, and "conversational follow-up."
 
 ### Step 1 — Open the notebook and select the kernel
 
@@ -52,9 +52,18 @@ Select the **ATLAS Workshop 2 (Python 3.12)** kernel.
 
 Read cell 2 (`cell-02-concept`). It explains:
 - Why the flow crosses the UI boundary at the routing decision
+- The route → banner → take-on → reset loop: Dana routes → Marcus sees **"New —
+  routed to you"** (`routedByWorkflow && !takenOnAt`, a real state) → **Take on
+  client** writes a real `atlas:takenOnAt` and clears the banner (parallel to
+  unchanged coverage) → **Reset** returns the graph to seed state
 - How the routing decision creates a PROV-O AuditRecord that links both UIs
 - Why Thesis 2 requires connected workflows — not just different views of data,
   but actions in one UI producing effects in the other
+
+This page is the runner-altitude view; the canonical presenter script is
+`use-case-applications/DEMO.md`. The per-persona halves are in
+[Module 6 — Wholesale UI](../06-wholesale-ui/) (Dana) and
+[Module 10 — The Wealth UI](../10-wealth-ui/) (Marcus).
 
 ### Step 3 — Run setup (cell 3)
 
@@ -100,32 +109,35 @@ Expected output:
 ```
 Step 2: Rationale drafted and approved
   Rationale: Client shows significant engagement decay (decay ratio 0.111). ...
-  Approved by: banker-jane-doe
+  Approved by: dana.brooks (Consumer Banker — the gate)
 
 Step 3: Referral routed
-  Routed to: advisor-alex-morgan
-  Persona:   atlas-wealth-advisor
+  Routed to: marcus.webb (Wealth Advisor)
+  routedByWorkflow: True  takenOnAt: None
+  → In the Wealth UI this shows as the 'New — routed to you' banner
+    (routedByWorkflow && !takenOnAt).
 ```
 
-### Step 6 — Steps 4–6: Advisor receives and acts (cell 6)
+### Step 6 — Steps 4–6: Advisor sees the banner, takes the client on (cell 6)
 
-Run cell 6 (`cell-06-step4-receive`) to simulate the Wealth Advisor's side:
-notification receipt, client profile open, and conversational follow-up.
-Note the `parent_audit_id` on the notification pointing to the routing event —
-this is the forward chain.
+Run cell 6 (`cell-06-step4-receive`) to simulate the Wealth Advisor's side: the
+**"New — routed to you"** banner shown, **Take on client** (a real `atlas:takenOnAt`
+that clears the banner, parallel to unchanged coverage), and a single-turn
+conversational follow-up. Note the `parent_audit_id` chaining banner → take-on.
 
 Expected output:
 
 ```
-Step 4: Notification received in Wealth UI
-  Signal: EngagementDecay
+Step 4: 'New — routed to you' banner shown in Wealth UI
+  banner_shown (routedByWorkflow && !takenOnAt): True
 
-Step 5: Client profile opened
-  Behavioral signals: ['EngagementDecay']
-  Themes: ['interest-rate-sensitive', 'tech-sector']
+Step 5: Take on client
+  takenOnAt written: ...  → banner_cleared: True
+  coverage_unchanged (isActive/coverageStartDate untouched): True
 
-Step 6: Conversational follow-up
-  Question: What themes are relevant to this client's portfolio?
+Step 6: Conversational follow-up (single-turn)
+  Question:   What is this client's current AUM and engagement trend?
+  priorTurns: 0 (AgentCore Memory not wired)
 ```
 
 ### Step 7 — Assemble and inspect the audit trail (cell 7)
@@ -139,20 +151,18 @@ Expected output:
 ```
 Full cross-UI audit trail:
 ============================================================
-  Step 1: [Wholesale UI ] signal_detected
+  Step 1: [Wholesale UI] signal_detected
            persona: atlas-consumer-banker
            audit_id: XXXXXXXX...
-  Step 2: [Wholesale UI ] rationale_drafted
+  Step 2: [—           ] rationale_drafted
            persona: atlas-consumer-banker
-           audit_id: XXXXXXXX...
            parent:   XXXXXXXX...
-  Step 3: [Wholesale UI ] referral_routed
+  Step 3: [—           ] referral_routed
            ...
-  Step 4: [Wealth UI   ] notification_received
+  Step 4: [Wealth UI   ] new_routed_banner_shown
            persona: atlas-wealth-advisor
-           audit_id: XXXXXXXX...
            parent:   XXXXXXXX...
-  Step 5: [Wealth UI   ] client_profile_opened
+  Step 5: [Wealth UI   ] take_on_client
   Step 6: [Wealth UI   ] conversational_followup
 
 Personas spanned: ['atlas-consumer-banker', 'atlas-wealth-advisor']
@@ -190,15 +200,17 @@ Expected output:
 ```
 Verifying routing decision links both UIs...
 
-Forward link (routing → notification): True
+Forward link (routing → banner shown): True
 Backward link (routing ← rationale ← signal): True
 
 Routing persona:      atlas-consumer-banker
-Notification persona: atlas-wealth-advisor
+Banner-shown persona: atlas-wealth-advisor
 Spans both personas:  True
 
+Banner shown then cleared by take-on (real transition): True
+
 [PASS] Routing decision correctly links both UIs.
-The cross-UI workflow is fully traceable.
+The cross-UI workflow — route → banner → take-on → clear — is fully traceable.
 ```
 
 ## Expected Outputs

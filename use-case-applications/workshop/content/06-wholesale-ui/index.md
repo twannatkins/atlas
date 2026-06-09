@@ -147,6 +147,18 @@ Route to advisor — Patel household
   AuditRecord written: atlas:audit/...
 ```
 
+### The demo loop — Dana's half
+
+In the live demo, this is the first half of the route → banner → take-on → reset
+loop. As **Dana Brooks (the Consumer Banker)** you: open the signalled customer
+**Rachel Kim**, click **Route referral → Generate draft** (grounded, probabilistic,
+requires review), then **Approve and route**. The outcome you trigger: Rachel lands
+in **Marcus Webb (the Wealth Advisor)**'s book flagged **"New — routed to you."**
+Marcus's half — the banner, **Take on client** (a real `takenOnAt` that clears it),
+and **Reset** — is in [Module 10 — The Wealth UI](../10-wealth-ui/) and the full
+walk in [Module 12 — End-to-End](../12-end-to-end/). Switching personas is just
+**Sign out** (top-right). The canonical script is `use-case-applications/DEMO.md`.
+
 ### Step 8 — Verify persona-scoped palette (cell 9)
 
 Run cell 9 (`cell-09-verify-palette`) to assert the two palette assertions from

@@ -142,6 +142,21 @@ fragment CustomerCoverageFragment on Customer {
 Same Customer type. Different fields. Different application.
 ```
 
+### The demo loop — Marcus's half (the "New — routed to you" banner → take-on)
+
+In the live demo, the Wealth UI is where the referral lands. After Dana routes from
+the Wholesale UI ([Module 6](../06-wholesale-ui/)), sign in as **Marcus Webb (the
+Wealth Advisor)** and you will see the routed customer **Rachel Kim** flagged **"New
+— routed to you."** That banner is a *real* state — shown while the relationship was
+created by the workflow and not yet accepted (`routedByWorkflow && !takenOnAt`), not
+a timer. Open her **Client 360** and click **Take on client**: it writes a real
+`atlas:takenOnAt` (the `takeOnClient` mutation) and the banner clears. Taking on is
+*parallel* to coverage — it does not change `isActive` or `coverageStartDate`
+(coverage was already active at routing). The conversational surface here is
+single-turn (`priorTurns` is always 0; AgentCore Memory is not wired). The full
+cross-persona walk and the **Reset** are in [Module 12 — End-to-End](../12-end-to-end/)
+and `use-case-applications/DEMO.md`.
+
 ### Step 7 — Verify palette differentiation (cell 8)
 
 Run cell 8 (`cell-08-verify-different-caps`) to assert that the two personas see
