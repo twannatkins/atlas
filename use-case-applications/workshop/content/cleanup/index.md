@@ -139,19 +139,19 @@ If you do not need the workshop Cognito users:
 # Get the user pool ID from the CDK output (or the console)
 USER_POOL_ID="us-east-1_XXXXXXXXX"
 
-# Delete the workshop users
+# Delete the workshop users (the pool uses email as the username)
 aws cognito-idp admin-delete-user \
     --user-pool-id $USER_POOL_ID \
-    --username rachel.kim \
+    --username dana.brooks@atlas.demo \
     --region us-east-1
 
 aws cognito-idp admin-delete-user \
     --user-pool-id $USER_POOL_ID \
-    --username james.park \
+    --username marcus.webb@atlas.demo \
     --region us-east-1
 ```
 
-The Cognito user pool itself is deleted by `cdk destroy atlas-auth-stack` (Step 1).
+The Cognito user pool itself is part of the Workshop 2 app stack (`AtlasWorkshop2`), so it is deleted when you tear that stack down in Step 1 (`cdk destroy --all`). Deleting the users above is only needed if you want to remove them while keeping the pool.
 
 ---
 
