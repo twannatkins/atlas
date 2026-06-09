@@ -88,12 +88,21 @@ done
 
 ---
 
-## Step 3 — Delete the AgentCore Memory store
+## Step 3 — (Usually not needed) the AgentCore Memory store
+
+The AgentCore Memory store is a resource **inside the `AtlasWorkshop2` stack** (logical
+type `AWS::BedrockAgentCore::Memory`, physical id `atlas_workshop_memory-…`), so `cdk
+destroy` in Step 1 removes it — you do **not** normally delete it by hand. If you ever need
+to delete it directly, resolve the real id from the stack first (it is CDK-generated, not a
+fixed name):
 
 ```bash
-aws bedrock-agentcore-control delete-memory \
-    --memory-namespace atlas-wealth-conv \
-    --region us-east-1
+MEMORY_ID=$(aws cloudformation describe-stack-resources \
+    --stack-name AtlasWorkshop2 --region us-east-1 \
+    --query "StackResources[?ResourceType=='AWS::BedrockAgentCore::Memory'].PhysicalResourceId | [0]" \
+    --output text)
+echo "Memory: $MEMORY_ID"   # e.g. arn:aws:bedrock-agentcore:...:memory/atlas_workshop_memory-XXXX
+# aws bedrock-agentcore-control delete-memory --memory-id "$MEMORY_ID" --region us-east-1
 ```
 
 ---
@@ -149,6 +158,10 @@ The Cognito user pool itself is part of the Workshop 2 app stack (`AtlasWorkshop
 ## Step 6 — Verify no resources remain
 
 ```bash
+# The single most reliable check: the app stack should be gone after Step 1.
+aws cloudformation describe-stacks --stack-name AtlasWorkshop2 --region us-east-1 \
+    2>/dev/null && echo "STILL PRESENT — re-run Step 1" || echo "AtlasWorkshop2: gone"
+
 # Check for remaining AgentCore Runtimes
 aws bedrock-agentcore-control list-agent-runtimes \
     --region us-east-1 \
@@ -159,18 +172,16 @@ aws bedrock-agentcore-control list-registry-records \
     --region us-east-1 \
     --query 'registryRecords[?starts_with(name, `atlas`)]'
 
-# Check for Neptune clusters
+# Check for Neptune clusters (Workshop 1 — only gone if you also ran Step 4)
 aws neptune describe-db-clusters \
     --region us-east-1 \
     --query "DBClusters[?contains(DBClusterIdentifier, 'atlas')]"
-
-# Check for ECS services (Ontop)
-aws ecs list-services \
-    --cluster atlas-ontop \
-    --region us-east-1 2>/dev/null || echo "ECS cluster already deleted"
 ```
 
-All four commands should return empty results or "not found" errors.
+The ECS/Ontop cluster has a CDK-generated name (`AtlasWorkshop2-OntopCluster…`), not a
+fixed `atlas-ontop` — but you do not need to check it by name: it is a resource inside
+`AtlasWorkshop2`, so if the stack is gone (first command), the cluster is gone with it.
+Each command should return empty results, "gone", or a "not found" error.
 
 ---
 

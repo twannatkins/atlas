@@ -50,6 +50,7 @@ See [`workshop/content/00-prerequisites/index.md`](./workshop/content/00-prerequ
 - An AWS account with permissions to deploy Neptune, S3, IAM roles, and call Bedrock
 - Bedrock model access enabled in your region (Claude on Bedrock)
 - SageMaker Studio domain accessible
+- A VPC with at least two private subnets in two different Availability Zones for the Neptune deployment (Module 3). If you already have a suitable VPC, use it; if you are starting from a clean account, build one first with **Module 0 — the foundation network** (`notebooks/00_foundation.ipynb` + `infrastructure/atlas-foundation.yaml`), which outputs the `VpcId` / `PrivateSubnetIds` / `VpcCidr` that Module 3 consumes (and bakes in the AgentCore AZ-exclusion that Workshop 2 depends on). The foundation template is dry-validated (config-verified; a full clean-account run is the live proof, tabled).
 - Comfort with running cells in a Jupyter notebook
 
 You do not need a local Python environment, local Docker, or local AWS CLI configuration. Everything runs in SageMaker Studio.

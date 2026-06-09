@@ -35,7 +35,7 @@ cells.append(md(
 "",
 "This runbook answers that. It (1) recaps what the two workshops built, (2) discovers the",
 "live endpoints from your own deployment (nothing hardcoded — so it works in a freshly",
-"rebuilt account), (3) walks the **Dana Brooks → Marcus Webb** referral scenario (referring the customer Rachel Kim) across",
+"rebuilt account), (3) walks the **Dana Brooks → Marcus Webb** referral scenario — in which Dana, a consumer banker, refers **the customer Rachel Kim** to Marcus, a wealth advisor — across",
 "both UIs, explaining every card, and (4) resets the demo so you can run it again.",
 ))
 

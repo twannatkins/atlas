@@ -18,6 +18,10 @@ navigation:
     path: "00-prerequisites"
     weight: 5
 
+  - title: "Module 0 — The Foundation Network (optional)"
+    path: "00-foundation"
+    weight: 8
+
   - title: "Module 1 — From Business Question to Ontology"
     path: "01-from-business-question"
     weight: 10

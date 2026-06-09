@@ -208,10 +208,17 @@ additional permissions for Neptune, CloudFormation, and Bedrock.
 
 ---
 
-## Step 4 — Note Your VPC and Subnet IDs
+## Step 4 — Get a VPC with two private subnets (and note its IDs)
 
-You will need these in Module 3 when deploying Neptune clusters. Neptune must be
-in the same VPC as your SageMaker Studio domain so the notebooks can reach it.
+Module 3 deploys the Neptune clusters into a VPC, and you will pass that VPC's id, its
+CIDR, and at least **two subnet IDs in different Availability Zones** as parameters.
+There are two ways to have one — choose the path that fits your account.
+
+### Option A — Use an existing VPC (bring-your-own)
+
+If your SageMaker Studio domain already runs in a VPC with at least two private subnets
+in different AZs (the common case), use it. Neptune must be in the **same** VPC as your
+Studio domain so the notebooks can reach it on port 8182.
 
 1. Open the [VPC console](https://console.aws.amazon.com/vpc/) in a new tab
 2. In the left navigation, choose **Your VPCs**
@@ -222,12 +229,26 @@ in the same VPC as your SageMaker Studio domain so the notebooks can reach it.
 7. Record at least **two subnet IDs** that are in **different Availability Zones**
    (check the "Availability Zone" column — you need subnets in at least 2 different AZs)
 
-**Tip:** If you're using the default VPC, it already has subnets in every AZ.
+> To check which VPC Studio uses: SageMaker console → Domains → your domain → look for
+> "VPC" in the Network section.
 
-**Important:** The VPC your SageMaker Studio domain uses must be the same VPC where
-you deploy Neptune. If they're in different VPCs, the notebooks won't be able to
-connect to Neptune on port 8182. To check which VPC Studio uses: SageMaker console →
-Domains → your domain → look for "VPC" in the Network section.
+### Option B — Build the foundation VPC first (Module 0)
+
+If you are starting from a **clean account** or do not have a suitable VPC, build one with
+**[Module 0 — The Foundation Network](../00-foundation/)** *before* Module 1. Module 0
+deploys `agentic-semantic-layer/infrastructure/atlas-foundation.yaml` — a minimal VPC with
+two private subnets in **AgentCore-supported AZs** (it deliberately excludes `us-east-1b`,
+a constraint Workshop 2's agent runtimes depend on) — and outputs the exact
+`VpcId` / `PrivateSubnetIds` / `VpcCidr` you then paste into Module 3. The full teaching is
+in [`notebooks/00_foundation.ipynb`](../../../notebooks/00_foundation.ipynb).
+
+> **Honest status:** the foundation template is **dry-validated** (cfn-lint clean,
+> `validate-template` valid, change-set previewed) — config-verified, not yet proven by a
+> full clean-account run. If Option A applies to you, prefer it; Option B is the buildable
+> path when no suitable VPC exists.
+
+Either way, by the end of this step you have a **VpcId, a VpcCidr, and two subnet IDs in
+two different AZs** written down for Module 3.
 
 ---
 
