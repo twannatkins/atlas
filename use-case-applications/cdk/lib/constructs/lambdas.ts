@@ -113,9 +113,17 @@ export class LambdaConstruct extends Construct {
       fn.role?.addManagedPolicy(neptunePolicy);
 
       // validate-routing loads atlas-shapes.ttl from S3 for inline SHACL validation.
+      // Needs s3:GetObject on the object AND s3:ListBucket on the bucket itself — the
+      // handler's S3 access path performs a bucket-scoped list/precheck, which fails
+      // with AccessDenied (ListBucket) if only GetObject on the object-ARN is granted.
+      const shapesBucket = props.shapesS3Uri.replace("s3://", "").split("/")[0];
       fn.addToRolePolicy(new iam.PolicyStatement({
         actions: ["s3:GetObject"],
-        resources: [`arn:aws:s3:::${props.shapesS3Uri.replace("s3://", "").split("/")[0]}/*`],
+        resources: [`arn:aws:s3:::${shapesBucket}/*`],
+      }));
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ["s3:ListBucket"],
+        resources: [`arn:aws:s3:::${shapesBucket}`],
       }));
 
       // notify-advisor fires CloudWatch Events — add events:PutEvents if not already granted.
