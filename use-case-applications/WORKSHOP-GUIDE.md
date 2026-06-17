@@ -114,6 +114,8 @@ labelled as such — never present it as working.
 | **Capabilities palette** | A live **registry display** — shows what exists for the persona. | **Click-to-invoke** from the palette (the dashed *"Invoke from palette · next"* row is honest about this). |
 | **Wealth signals** | *Large Deposit Pattern*, *Household Aggregation*, and a *No Advisor Coverage* marker are derived from real synthetic data. | The other three taxonomy signals (*Equity Event*, *Retirement Rollover*, *Business Sale Liquidity*) — defined in the ontology but not derived, because there is no source data for them yet. |
 | **RM Session Intelligence / behavioral signals** | Defined as agents/classes (`behavioral-signal-agent`, `atlas-part-2:` behavioral signals). | Surfaced live in the Wealth UI as an advisor-prep panel. |
+| **Semantic grounding card** | The FIBO alignment a customer instantiates, rendered live in both 360 pages from already-fetched data: the per-customer **instance** wears the `live` pill; the `atlas → FIBO` alignment is labelled as the loaded schema (`model FIBO 2024 Q3`), not a live lookup; the real `load → LGD → ER → SLGD → SHACL` lineage is drawn live. | **Binding to systems of record** — the same model bound to CIF / nCino / Snowflake as federated sources (drawn shaded on the card today, explicitly "not bound"). |
+| **Node-link graphs + question-driven highlight** | The model and the customer drawn as node-link graphs (instance = this customer's live neighborhood; schema = the loaded ontology, not per-customer). A real, template-bounded *Ask the graph* question **highlights the schema elements it traversed** + honest counts (real `GROUP BY` where the answer carries one; "N results" where honest; none for join-row/empty queries; an honest no-map note otherwise). | A larger template library would light up more of the model; binding more source systems (above) would extend the schema graph. |
 
 **The platform-economics story.** The reason to split *who can call what* (live) from *which
 rows you see* (roadmap) is that the access-control layer is cheap and structural — it rides on
@@ -144,3 +146,33 @@ Every entity the UIs render is FIBO-grounded in Workshop 1. When someone asks "w
 [`02_fibo_alignment.ipynb`](../agentic-semantic-layer/notebooks/02_fibo_alignment.ipynb) and
 declared in the GraphQL schema's type docstrings. That grounding is what lets a banking
 audience trust that the model is speaking their regulatory language, not a bespoke one.
+
+### The exemplar: the Semantic grounding card
+
+If you want a single artifact that *shows* the whole thesis, point at the **Semantic
+grounding card** on either 360 page. In one card it ties the three layers together: the
+FIBO-aligned ontology from **Workshop 1** (`atlas:Customer ⊑ fibo:IndependentParty` et al.,
+straight out of
+[`atlas-fibo-alignment.ttl`](./../agentic-semantic-layer/ontology/atlas-fibo-alignment.ttl)),
+the data it instantiates through **Workshop 2**'s federated read path, and the **UI** that
+renders it — all honestly labelled. It is "the semantic layer made visible," and it is also a
+worked example of the **live now / possible next** discipline this guide insists on: the
+per-customer instance is live, the `atlas → FIBO` alignment is the loaded schema (not a live
+lookup), the real `load → LGD → ER → SLGD → SHACL` lineage is drawn live, and the bank's
+unbound systems of record (CIF / nCino / Snowflake) are drawn shaded as roadmap. It is one
+shared component used by both UIs, so the grounding cannot drift between the banker's lens and
+the advisor's. Taught in [Module 6 — Wholesale UI](./workshop/content/06-wholesale-ui/) and
+[Module 10 — The Wealth UI](./workshop/content/10-wealth-ui/).
+
+And if the card *states* the model, the **node-link graphs draw it** — the model made
+literally visible. The **schema graph** draws the ontology (classes as nodes, relationships as
+edges); the **instance graph** draws one customer's real neighbourhood. The two graphs are the
+ontology-vs-instance distinction you can point at: one is the loaded model (the same for
+everyone, `FIBO 2024 Q3`, no live pill); the other is live per-customer data. The payoff is the
+**question-driven highlight**: ask a real, template-bounded *Ask the graph* question and the
+schema graph lights up the part of the model that query traversed, with honest counts where the
+answer carries them. That highlight is trustworthy for one specific reason — the query is *not*
+free-generated; it is one of a fixed, validated set ([Module 5 — GraphQL
+Federation](./workshop/content/05-graphql-federation/)), so its traversal is knowable. The
+graphs are template-bounded honesty made visible: the model you can see, lit up only by queries
+you can trust. Taught alongside the card in Modules 6 and 10.

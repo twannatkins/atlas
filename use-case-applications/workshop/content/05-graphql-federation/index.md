@@ -127,6 +127,15 @@ Expected output:
 
 ![Both resolver paths output](/static/images/05-step-06-three-patterns.png)
 
+The action path is **template-bounded**: `nl-to-sparql-agent` never free-generates
+SPARQL — it matches the question to one of a fixed, validated set and runs that. Hold
+onto this property: because the query that runs is one of a *known* set, the part of the
+ontology it traverses is knowable in advance. That is exactly what lets the Wholesale and
+Wealth UIs honestly **highlight the schema graph** when you ask a question — the model
+lights up to show the path a real query took. The payoff is taught in
+[Module 6 — Wholesale UI](../06-wholesale-ui/); this template-bounded design is what makes
+it trustworthy rather than decorative.
+
 ### Step 7 — What the persona claim does today (cell 7)
 
 Run cell 7 (`cell-07-persona-scoping`). It is honest about access control: the

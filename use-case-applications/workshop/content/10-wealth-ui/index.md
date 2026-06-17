@@ -16,6 +16,12 @@ weight: 100
   Consumer Banker — including `theme-summarizer` and `conversational-context-manager`
 - Explain how adding a third UI (e.g., a BSA compliance dashboard) would require
   only new fragments and a new persona claim, not schema or registry changes
+- Recognize the Semantic grounding card as the second call site of one shared
+  component — the same ontology truth, the advisor's-side framing — and why sharing
+  it (not mirroring) keeps the atlas → FIBO mapping from drifting between the two apps
+- Explain how the schema-graph highlight stays honest on the wealth conversation path,
+  which returns no template id — it matches the real query by its SPARQL signature
+  (unique match or an honest no-map), reaching the same bar a different way
 
 ## Time Estimate
 
@@ -156,6 +162,67 @@ a timer. Open her **Client 360** and click **Take on client**: it writes a real
 single-turn (`priorTurns` is always 0; AgentCore Memory is not wired). The full
 cross-persona walk and the **Reset** are in [Module 12 — End-to-End](../12-end-to-end/)
 and `use-case-applications/DEMO.md`.
+
+### The Semantic grounding card — Thesis 2, made literal
+
+Thesis 2 ("two UIs, one backbone") is usually shown through *fragments* — same
+`Customer` type, different field selection. The **Semantic grounding** card on the
+Client 360 page makes the thesis literal at the *component* level: it is the **same
+shared component** the Wholesale UI uses
+(`apps/shared/ui/semantic-grounding-card.tsx`), called here from
+`apps/wealth-ui/src/app/clients/[uri]/client-view.tsx` with `perspective="wealth"`.
+
+Two call sites, one source of ontology truth. The advisor's-side framing flips the
+advisory edge label to `advisesCustomer` (vs. `coveringAdvisor` in the wholesale
+view), but the FIBO alignment, the relationships, and the SHACL attribution are the
+**same loaded model** — because they come from the same component, which traces to the
+same Workshop 1 files (see [Module 6 — Wholesale UI](../06-wholesale-ui/) for the full
+file trace to `atlas-fibo-alignment.ttl`, `atlas-core.ttl`, and `atlas-shapes.ttl`).
+Sharing the card rather than mirroring it is the point: the atlas → FIBO mapping is the
+WS1 → WS2 contract, and one component means it cannot drift between the banker's lens
+and the advisor's.
+
+The same kind-of-truth discipline applies here too: the green `live` pill marks this
+client's actual per-customer instance data (coverage, signals, household), while the
+`atlas → FIBO` alignment is labelled `model FIBO 2024 Q3` as the loaded schema — not a
+live-per-client lookup. One honest difference to notice: the wealth `CLIENT_360_QUERY`
+does **not** select `accounts`, so the `atlas:Account ⊑ fibo:FinancialAccount` row
+simply does not render in this app — nothing is invented to fill it. That is
+render-from-fetched being honest about what each lens actually fetches.
+
+#### The graphs and the highlight — the same arc, the advisor's lens
+
+The two node-link graphs and the question-driven highlight carry over here exactly as
+[Module 6 — Wholesale UI](../06-wholesale-ui/) teaches them in full (the concept on-ramp,
+the instance-vs-schema distinction, and the three reasons the highlight is honest are all
+there — read that first if you skipped it). They are the *same shared components*
+([`node-link-graph.tsx`](../../../apps/shared/ui/node-link-graph.tsx),
+[`schema-graph-card.tsx`](../../../apps/shared/ui/schema-graph-card.tsx)), so the model is
+identical — only the lens differs:
+
+- The **instance graph** on the Client 360 draws *this client's* fetched neighbourhood,
+  advisor's-side (the advisory edge reads `advisesCustomer`). As in the wholesale lens, a
+  node appears only if that data was fetched — and because the wealth query doesn't fetch
+  `accounts`, there is honestly **no account node** here.
+- The **schema graph** sits above the conversation surface on the **Ask the graph**
+  (`/conversations`) page — the wealth analogue of the wholesale My-book placement. It is the
+  same loaded model (`model · FIBO 2024 Q3`, no live pill).
+
+The one genuine mechanism difference is worth teaching, because it shows the honesty rule
+holding under a harder constraint. The wholesale **Ask the graph** returns a `templateId`,
+so the highlight looks the template up directly. The wealth **conversation** path
+(`converse`, through `conversational-context-manager`) returns the real SPARQL **but no
+`templateId`**. So the highlight recognises the query **by its SPARQL signature** instead:
+it matches the returned SPARQL against the curated templates' required-and-forbidden token
+sets, and lights up **only on a unique match** — if the signature is ambiguous or unknown,
+it shows the honest no-map note rather than guess. Same bar (real query → knowable
+traversal → honest highlight, or nothing), reached without the convenience of a template id.
+Trace: `deriveSchemaHighlightFromConverse` and `matchEntryBySparql` in
+[`schema-graph-highlight.ts`](../../../apps/shared/ui/schema-graph-highlight.ts).
+
+![Semantic grounding card — advisor lens](/static/images/10-step-06-semantic-grounding-card.png)
+
+![Schema graph — advisor lens, highlighting a real conversation query](/static/images/10-step-07-schema-graph-highlight.png)
 
 ### Step 7 — Verify palette differentiation (cell 8)
 
