@@ -10,8 +10,16 @@ referral, then closing the loop with an auditable handoff to the wealth advisor.
 
 | | URL | Login | Password |
 |---|---|---|---|
-| **Wholesale UI** (Consumer Banker) | https://d2u767clefsqd0.cloudfront.net | `dana.brooks@atlas.demo` | `password123` |
-| **Wealth UI** (Wealth Advisor) | https://d1n2v02lda72pi.cloudfront.net | `marcus.webb@atlas.demo` | `password123` |
+| **Wholesale UI** (Consumer Banker) | _your_ `WholesaleUiUrl` | `dana.brooks@atlas.demo` | `password123` |
+| **Wealth UI** (Wealth Advisor) | _your_ `WealthUiUrl` | `marcus.webb@atlas.demo` | `password123` |
+
+> The two URLs are your deploy's CloudFront distributions — read them from your stack
+> outputs (they differ per account), e.g.:
+> ```bash
+> aws cloudformation describe-stacks --stack-name AtlasWorkshop2 \
+>   --query "Stacks[0].Outputs[?OutputKey=='WholesaleUiUrl' || OutputKey=='WealthUiUrl'].OutputValue" \
+>   --output text
+> ```
 
 - **Dana Brooks** — the Consumer Banker. Works the Wholesale UI.
 - **Marcus Webb** — the Wealth Advisor. Works the Wealth UI; receives the referral.

@@ -41,12 +41,13 @@ from pathlib import Path
 import boto3
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
-# The sparql MCP runtime ARN (AtlasSparqlMcpArn stack output). Override via env for a
-# different account/deploy.
-SPARQL_MCP_ARN = os.environ.get(
-    "SPARQL_MCP_ARN",
-    "arn:aws:bedrock-agentcore:us-east-1:981814817046:runtime/atlas_sparql_mcp-BzEJHwBgzM",
-)
+# The sparql MCP runtime ARN. REQUIRED — pass your own deploy's ARN (the AtlasSparqlMcpArn
+# stack output). There is deliberately NO default: a hardcoded fallback would carry one
+# account's ARN and silently target someone else's (or a nonexistent) runtime on a fresh
+# deploy. Fetch it from your stack, e.g.:
+#   export SPARQL_MCP_ARN=$(aws cloudformation describe-stacks --stack-name AtlasWorkshop2 \
+#     --query "Stacks[0].Outputs[?OutputKey=='AtlasSparqlMcpArn'].OutputValue" --output text)
+SPARQL_MCP_ARN = os.environ.get("SPARQL_MCP_ARN", "")
 INST = "https://github.com/your-org/atlas/instance#"
 FIXTURES = Path(__file__).resolve().parents[2] / "agentic-semantic-layer" / "data" / "synthetic"
 
@@ -142,6 +143,22 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="print triples, write nothing")
     args = ap.parse_args()
+
+    # SPARQL_MCP_ARN is required for any write (the --dry-run path only prints triples and
+    # never touches the MCP, so it is allowed to run without it).
+    if not args.dry_run and not SPARQL_MCP_ARN:
+        print("ERROR: SPARQL_MCP_ARN is not set.", file=sys.stderr)
+        print(
+            "Pass your sparql MCP runtime ARN from the stack output AtlasSparqlMcpArn, e.g.:\n"
+            "  export SPARQL_MCP_ARN=$(aws cloudformation describe-stacks "
+            "--stack-name AtlasWorkshop2 \\\n"
+            "    --query \"Stacks[0].Outputs[?OutputKey=='AtlasSparqlMcpArn'].OutputValue\" "
+            "--output text)\n"
+            "  python3 load_display_labels.py\n"
+            "(or run with --dry-run to print the triples without writing).",
+            file=sys.stderr,
+        )
+        return 1
 
     triples = build_label_triples()
     print(f"Built {len(triples)} rdfs:label triples from the synthetic fixtures.")

@@ -317,8 +317,10 @@ Expected output:
 
 ```
 Python 3.10.x (or higher)
-981814817046
+123456789012
 ```
+
+(the 12-digit number is your own AWS account ID)
 
 Package dependencies (`rdflib`, `pyshacl`, `pandas`, etc.) are verified
 automatically when you run the first cell of each notebook. You do not need
