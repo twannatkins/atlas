@@ -20,9 +20,21 @@
 # Idempotent: re-running resets passwords/attributes and re-asserts group membership.
 #
 # Usage:  POOL_ID=us-east-1_xxxx ./setup_workshop_users.sh
+#
+# POOL_ID is REQUIRED — pass your own pool's id (from the AtlasWorkshop2 stack output
+# `CognitoUserPoolId`). There is deliberately NO default: a hardcoded fallback would
+# silently target someone else's (or a nonexistent) pool on a fresh deploy.
 set -euo pipefail
 
-POOL_ID="${POOL_ID:-us-east-1_ByfAyZSdj}"
+POOL_ID="${POOL_ID:-}"
+if [[ -z "$POOL_ID" ]]; then
+  echo "ERROR: POOL_ID is not set." >&2
+  echo "Pass your Cognito user-pool id from the stack output CognitoUserPoolId, e.g.:" >&2
+  echo "  POOL_ID=\$(aws cloudformation describe-stacks --stack-name AtlasWorkshop2 \\" >&2
+  echo "    --query \"Stacks[0].Outputs[?OutputKey=='CognitoUserPoolId'].OutputValue\" \\" >&2
+  echo "    --output text) ./scripts/setup_workshop_users.sh" >&2
+  exit 1
+fi
 PASSWORD="${WORKSHOP_PASSWORD:-password123}"
 
 # Tracks the ACTUAL usernames Cognito assigns. In an email-as-username pool the stored
