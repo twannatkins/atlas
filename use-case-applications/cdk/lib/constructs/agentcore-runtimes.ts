@@ -12,7 +12,7 @@
  * optional enhancement for custom framework-level traces (e.g. LangGraph reasoning
  * steps), not required for baseline SR 11-7 audit coverage. If richer framework tracing
  * is desired in a future pass, bundle the ADOT distro via BundlingOptions + Docker or a
- * pre-built container image. See docs/deployment-findings.md.
+ * pre-built container image.
  *
  * Authorization: RuntimeAuthorizerConfiguration.usingCognito wires the
  * Cognito user pool directly into AgentCore Identity validation. The Runtime
@@ -89,7 +89,6 @@ export interface AgentCoreRuntimesProps {
    * PUBLICATION BLOCKER: the portable fix is Option C — a scripts/build-runtimes.sh
    * that pip-installs to a ./build dir, zips, and uploads to the WS1 staging bucket,
    * then CDK references the ZIPs via fromS3. No Docker required at cdk synth.
-   * Tracked in docs/deployment-findings.md.
    *
    * Why Docker bundling is self-biting for the published workshop: SageMaker Studio /
    * SageMaker Unified Studio notebook kernels have no Docker daemon — `cdk synth`
@@ -126,7 +125,7 @@ export interface AgentCoreRuntimesProps {
 // "python3") are rejected by AgentCore's server-side entrypoint validator. The
 // CDK README shows ["opentelemetry-instrument","main.py"] as its example but OTEL
 // is optional — AgentCore provides native CloudWatch observability automatically
-// without it. See docs/deployment-findings.md for the entrypoint validation analysis.
+// without it.
 const ENTRYPOINT = ["main.py"];
 const PYTHON_3_12 = agentcore.AgentCoreRuntime.PYTHON_3_12;
 
@@ -459,7 +458,6 @@ export class AgentCoreRuntimesConstruct extends Construct {
     // resources prevents that. CCM is excluded from this dependency set because CCM's
     // IAM policy already depends on Memory (via grantFullAccess token), so adding
     // Memory → CCM would cycle. The 11-runtime ordering is safe and acyclic.
-    // See docs/deployment-findings.md.
     const nonCcmRuntimes = [
       this.atlasShaclMcp, this.atlasSparqlMcp, this.atlasErMcp,
       this.atlasFiboMcp, this.atlasRegistryMcp, this.nlToSparqlAgent,

@@ -31,7 +31,7 @@
 #     the runtime via AgentRuntimeArtifact.fromS3 — it only references the S3 key, so
 #     `cdk synth` needs NO Docker. The ZIP already has the deps, so the runtime STARTS.
 #     This is the only path that is BOTH Studio-safe AND functional. It is the
-#     publication fix tracked in docs/deployment-findings.md.
+#     publication fix.
 #
 # WHAT A NOVICE SHOULD EXPECT TO SEE:
 #   Running `build` prints one block per runtime: a pip-install line, a zip line, and

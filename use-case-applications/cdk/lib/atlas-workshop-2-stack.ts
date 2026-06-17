@@ -122,7 +122,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     //   prerequisite — a runner's fresh account won't have it either. Not exercised
     //   in the Phase 1 referral capstone. Re-enable once the foundation template
     //   grants the CDK CloudFormation execution role LF data-lake-administrator rights
-    //   via put-data-lake-settings. See docs/ws0-foundation-spec.md.
+    //   via put-data-lake-settings.
     // new LakeFormationConstruct(this, "LakeFormation", {
     //   personas: cognito.personas,
     // });
@@ -131,7 +131,7 @@ export class AtlasWorkshop2Stack extends cdk.Stack {
     // Memory rollback-race fix (2nd edge): Memory also depends on OrchestratorRegistration
     // so it starts only after the custom resource Lambda completes successfully. Without
     // this, a fast-failing OrchestratorRegistration can trigger rollback while Memory is
-    // still mid-CREATING (~90s window), orphaning it. See docs/deployment-findings.md.
+    // still mid-CREATING (~90s window), orphaning it.
     const memory = new AgentCoreMemoryConstruct(this, "Memory");
     memory.node.addDependency(orchestratorRegistration);
 

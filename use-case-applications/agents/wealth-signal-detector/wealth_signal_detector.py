@@ -160,7 +160,7 @@ PHASE_1_SIGNALS = {
     # signal (customer with investable assets but no active wealth advisor = referral target),
     # but WS1 never derives it. For the capstone, this type is EXCLUDED from the default run
     # so the UI renders signals that actually exist in the substrate. Implementing the
-    # WS1-side derivation is a separate pass (see docs/ws2-comprehension.md).
+    # WS1-side derivation is a separate pass.
     #
     # The correct coverage check uses MINUS rather than nested FILTER NOT EXISTS to avoid
     # Neptune's false-negative on FILTER NOT EXISTS { ... FILTER NOT EXISTS { ... } }.
