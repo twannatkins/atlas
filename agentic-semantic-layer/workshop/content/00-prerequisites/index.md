@@ -52,6 +52,16 @@ other resources. A project is a container for your work.
 5. Wait for the project to be created (1–2 minutes)
 6. Click into your new `atlas-workshop` project
 
+> **The one rule that makes the rest work: Neptune must live in the *same* VPC as your
+> Studio kernel.** An "All capabilities" Unified Studio project runs its notebook kernels
+> inside a DataZone-managed VPC. In Module 3 you deploy Neptune into a VPC of your choosing —
+> and if that is *not* the VPC your Studio kernel runs in, the load step fails with Neptune
+> unreachable on port 8182 and no obvious cause. This workshop's proven path (the one the
+> authors ran) is **Path A: let Studio create its VPC, then deploy Neptune into that same
+> VPC.** Step 4 below shows you how to find that VPC's ID. (A clean-account alternative —
+> building the VPC first and putting Studio into it — is **Path B**, covered in Step 4
+> Option B with an honest caveat about what has and hasn't been proven.)
+
 ### 1c. Open a JupyterLab Notebook Environment
 
 From inside your project:
@@ -155,10 +165,25 @@ additional permissions for Neptune, CloudFormation, and Bedrock.
 
 ### Find your execution role
 
-1. In the SageMaker console, choose **Domains** in the left navigation
-2. Click your domain name
-3. Look for the **Execution role** ARN (looks like
-   `arn:aws:iam::XXXX:role/AmazonSageMaker-ExecutionRole-XXXX` or similar)
+Unified Studio (DataZone-backed) does not expose a single "Execution role" field the way a
+classic SageMaker domain does — it uses a **DataZone-managed role** with a non-standard name
+pattern (e.g. `datazone_usr_role_…`), and the role your *kernel* runs as is the one that
+matters. The reliable way to identify it is to ask from inside the running environment:
+
+```bash
+# Run this in your JupyterLab terminal — it prints the exact role ARN the kernel runs as
+aws sts get-caller-identity --query Arn --output text
+```
+
+The ARN it prints (its `…role/<name>/…` segment) is the execution role to attach policies
+to below.
+
+> **Two-role caveat (account-specific).** A Unified Studio domain may carry **two**
+> DataZone-managed roles — a domain-default role and the kernel-running role. The command
+> above returns the one the kernel actually uses, which is the one that must receive every
+> permission. If a later notebook cell still gets a 403 after you attach a policy, you have
+> likely patched the wrong role — re-run the command from a *notebook cell* (not just the
+> terminal) to confirm the kernel's role and attach there too.
 
 ### Add managed policies
 
@@ -208,47 +233,71 @@ additional permissions for Neptune, CloudFormation, and Bedrock.
 
 ---
 
-## Step 4 — Get a VPC with two private subnets (and note its IDs)
+## Step 4 — Get the VPC your Neptune will share with Studio (and note its IDs)
 
 Module 3 deploys the Neptune clusters into a VPC, and you will pass that VPC's id, its
-CIDR, and at least **two subnet IDs in different Availability Zones** as parameters.
-There are two ways to have one — choose the path that fits your account.
+CIDR, and at least **two subnet IDs in different Availability Zones** as parameters. The
+non-negotiable constraint (from Step 1): **that VPC must be the one your Studio kernel runs
+in**, or the notebooks cannot reach Neptune on port 8182. Choose the path that fits your
+account.
 
-### Option A — Use an existing VPC (bring-your-own)
+### Path A — Use your Unified Studio project's VPC (the proven path)
 
-If your SageMaker Studio domain already runs in a VPC with at least two private subnets
-in different AZs (the common case), use it. Neptune must be in the **same** VPC as your
-Studio domain so the notebooks can reach it on port 8182.
+When you created the "All capabilities" project in Step 1, Unified Studio created a
+DataZone-managed VPC and runs your notebook kernels inside it. Deploy Neptune into **that
+same VPC** and the in-VPC kernel reaches it directly. This is the path the workshop authors
+ran end to end, so it is the one to prefer.
 
-1. Open the [VPC console](https://console.aws.amazon.com/vpc/) in a new tab
-2. In the left navigation, choose **Your VPCs**
-3. Record your **VPC ID** (e.g., `vpc-0abc123def456`)
-4. Record your **VPC CIDR block** (e.g., `10.0.0.0/16`) — shown in the IPv4 CIDR column
-5. Choose **Subnets** in the left navigation
-6. Filter by your VPC ID
-7. Record at least **two subnet IDs** that are in **different Availability Zones**
-   (check the "Availability Zone" column — you need subnets in at least 2 different AZs)
+**Find that VPC's ID — programmatically, not from the console.** The SageMaker console does
+*not* surface a Unified Studio domain's VPC the way it does for a classic domain (a VpcOnly
+Unified Studio domain often shows no VPC at all in `describe-domain` output), so the old
+"Domains → Network → VPC" console lookup does not work here. Instead, run this from your
+JupyterLab terminal (after Step 1), which queries the domain directly:
 
-> To check which VPC Studio uses: SageMaker console → Domains → your domain → look for
-> "VPC" in the Network section.
+```bash
+# List your Studio domains, then read the VPC + subnets the domain runs in
+aws sagemaker list-domains --region us-east-1 \
+  --query 'Domains[].{Name:DomainName,Id:DomainId}' --output table
 
-### Option B — Build the foundation VPC first (Module 0)
+# Using the DomainId from above:
+aws sagemaker describe-domain --region us-east-1 --domain-id <your-domain-id> \
+  --query '{VpcId:VpcId,Subnets:SubnetIds}' --output json
+```
 
-If you are starting from a **clean account** or do not have a suitable VPC, build one with
-**[Module 0 — The Foundation Network](../00-foundation/)** *before* Module 1. Module 0
+Record the **VpcId** and the **SubnetIds** it prints (you need at least two in different
+AZs). Get the CIDR for that VPC with:
+
+```bash
+aws ec2 describe-vpcs --region us-east-1 --vpc-ids <your-vpc-id> \
+  --query 'Vpcs[0].CidrBlock' --output text
+```
+
+These are the exact `VpcId` / `SubnetIds` / `VpcCidr` you pass to Module 3. Because they are
+the VPC Studio already runs in, the load step in Module 3 reaches Neptune with no extra
+networking.
+
+### Path B — Build the foundation VPC first, and put Studio in it (clean-account alternative)
+
+If you are starting from a **clean account** with no Unified Studio VPC to share, build one
+with **[Module 0 — The Foundation Network](../00-foundation/)** *before* Module 1. Module 0
 deploys `agentic-semantic-layer/infrastructure/atlas-foundation.yaml` — a minimal VPC with
 two private subnets in **AgentCore-supported AZs** (it deliberately excludes `us-east-1b`,
 a constraint Workshop 2's agent runtimes depend on) — and outputs the exact
 `VpcId` / `PrivateSubnetIds` / `VpcCidr` you then paste into Module 3. The full teaching is
 in [`notebooks/00_foundation.ipynb`](../../../notebooks/00_foundation.ipynb).
 
-> **Honest status:** the foundation template is **dry-validated** (cfn-lint clean,
-> `validate-template` valid, change-set previewed) — config-verified, not yet proven by a
-> full clean-account run. If Option A applies to you, prefer it; Option B is the buildable
-> path when no suitable VPC exists.
+> **Honest status — Path B is dry-validated, not live-proven.** The foundation template is
+> `cfn-lint` clean, `validate-template` valid, and change-set previewed — config-verified.
+> But the **critical seam on this path has not been proven end to end**: you must also place
+> your Studio domain *into* this VPC (VpcOnly, in its two private subnets) so the kernel and
+> Neptune share it — and that Studio-into-the-foundation-VPC placement is the step the
+> authors did *not* run live. Path A (above) is the proven one. Treat Path B as the
+> structurally-sound clean-account design, and expect to confirm the Studio placement
+> yourself. The same VPC-sharing rule applies either way: the kernel must run in Neptune's
+> VPC.
 
 Either way, by the end of this step you have a **VpcId, a VpcCidr, and two subnet IDs in
-two different AZs** written down for Module 3.
+two different AZs** — the VPC your Studio kernel runs in — written down for Module 3.
 
 ---
 
@@ -304,7 +353,7 @@ Before starting Module 1, confirm:
 - [ ] `pip install` completed without errors
 - [ ] `python3 --version` shows 3.10 or higher
 - [ ] Bedrock test prints `Bedrock: OK` (or you've confirmed Anthropic access)
-- [ ] You have your VPC ID, CIDR, and two subnet IDs written down
+- [ ] You have the VPC ID, CIDR, and two subnet IDs **of the VPC your Studio kernel runs in** written down (Path A: discovered via `describe-domain`; Path B: the foundation VPC, with Studio placed into it)
 - [ ] You understand the cost (~$17/day for Neptune if left running)
 
 ---

@@ -41,14 +41,28 @@ preview, the output-contract cross-check).
 
 ## Why a bring-your-own foundation
 
-ATLAS does not ship a bespoke production VPC. The foundation the workshop authors run on is
-an existing SageMaker Studio VPC — a network that already happened to be there, which is the
-normal case in a real institution. So Module 0 does not templatize a specific ATLAS VPC
-(there isn't one); it builds the **equivalent minimal foundation** a customer needs when they
-do not already have a suitable VPC, at a clean CIDR, with the one non-obvious correctness
-constraint baked in. Every resource traces to a concrete Workshop 1 or Workshop 2
-requirement; nothing untraceable (no VPC endpoints, no Transit Gateway, no flow logs) is
-included. The notebook's traceability table shows each construct mapped to its consumer.
+ATLAS does not ship a bespoke production VPC. The foundation the workshop authors actually
+ran on was the VPC their **SageMaker Unified Studio** project created for itself — a network
+that already happened to be there, which is the normal case in a real institution. That is
+**Path A** in [Prerequisites Step 4](../00-prerequisites/), and it is the proven path: let
+Studio make its VPC, deploy Neptune into that same VPC, done.
+
+Module 0 is for the other case — **Path B, a clean account** with no Studio VPC to share. It
+does not templatize a specific ATLAS VPC (there isn't one); it builds the **equivalent
+minimal foundation** at a clean CIDR, with the one non-obvious correctness constraint baked
+in. Every resource traces to a concrete Workshop 1 or Workshop 2 requirement; nothing
+untraceable (no VPC endpoints, no Transit Gateway, no flow logs) is included. The notebook's
+traceability table shows each construct mapped to its consumer.
+
+> **The seam to close on Path B — and what it costs in honesty.** Building this VPC is only
+> half of Path B. The kernel that runs the load step must end up in *this* VPC too — so on a
+> clean account you must also stand up your Studio domain **VpcOnly, in these two private
+> subnets**, so Studio and Neptune share the network. The authors proved Path A (Studio's own
+> VPC + Neptune into it); they did **not** run the Path-B placement (Studio *into* the
+> foundation VPC) end to end. So treat that placement as the **unproven seam**: the template
+> is config-verified (see the honest-limit section below), but "create the foundation, then
+> put Studio in it" has not been live-proven as a sequence. If you have a Unified Studio VPC
+> already, prefer Path A.
 
 ## The AZ-exclusion lesson
 

@@ -72,6 +72,16 @@ aws cloudformation create-stack \
 
 Neptune serverless clusters take approximately 5–10 minutes to provision.
 
+> **Use the VPC your Studio kernel runs in — this is the #1 cause of a stuck load.** The
+> `VpcId` / `SubnetIds` above must be the VPC your notebook kernel runs inside (the one you
+> captured in [Prerequisites Step 4](../00-prerequisites/) — Path A: your Unified Studio
+> project's own VPC; Path B: the foundation VPC, with Studio placed into it). Neptune has no
+> public endpoint: a kernel in a *different* VPC cannot reach it on port 8182, and the bulk
+> load (cell 7) and SPARQL queries (cell 9) will hang or fail with a connection error and no
+> obvious cause. **If the load can't reach Neptune, the kernel and Neptune are in different
+> VPCs** — re-check that these parameters match your Studio kernel's VPC before debugging
+> anything else.
+
 ![CloudFormation stack creating](/static/images/03-step-01-cfn-creating.png)
 
 ### Step 2 — Open the notebook and retrieve endpoints
