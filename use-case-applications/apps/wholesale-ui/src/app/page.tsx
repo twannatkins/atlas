@@ -14,6 +14,8 @@ import { useQuery, useMutation } from "@apollo/client";
 import { DASHBOARD_QUERY } from "../graphql/queries";
 import { RESET_DEMO_ROUTINGS_MUTATION } from "../graphql/mutations";
 import { AskGraphPanel } from "../components/ask-graph-panel";
+import { SchemaGraphCard } from "../../../shared/ui/schema-graph-card";
+import { deriveSchemaHighlight, SchemaHighlightState } from "../../../shared/ui/schema-graph-highlight";
 import { AppShell, SignInGate } from "../../../shared/ui/chrome";
 import { useAuth } from "../../../shared/auth/use-auth";
 
@@ -31,6 +33,14 @@ export default function DashboardPage() {
     // like an empty book.
     notifyOnNetworkStatusChange: true,
   });
+
+  // Increment-2 overlay: the schema graph highlights the part of the model the LAST real
+  // askGraph answer traversed (deterministically derived from the real templateId/SPARQL —
+  // never fabricated). Held here so the panel (below) can drive the adjacent graph (above).
+  const [schemaHighlight, setSchemaHighlight] = useState<SchemaHighlightState | null>(null);
+  const onAskResult = useCallback((res: unknown) => {
+    setSchemaHighlight(deriveSchemaHighlight(res as Parameters<typeof deriveSchemaHighlight>[0]));
+  }, []);
 
   // Workshop Reset — removes the demo-created routings so the walkthrough can be re-run.
   const [resetDemo] = useMutation(RESET_DEMO_ROUTINGS_MUTATION);
@@ -79,8 +89,15 @@ export default function DashboardPage() {
       </div>
       {resetMsg && <p className="card-note" style={{ marginBottom: 12 }}>{resetMsg}</p>}
 
-      {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions */}
-      <AskGraphPanel />
+      {/* The model — the loaded ATLAS ontology as a node-link diagram, above the asking
+          surface. Static (the schema is the same for everyone); loaded-schema visual
+          treatment (no live pill). Built to later accept highlight state (Increment 2). */}
+      <SchemaGraphCard perspective="wholesale" highlight={schemaHighlight} />
+
+      {/* Ask the graph (#2) — real, template-bounded NL query with suggested questions.
+          onAskResult lifts the real result so the schema graph above highlights the path the
+          query traversed (the panel's own behaviour is unchanged). */}
+      <AskGraphPanel onResult={onAskResult} />
 
       {loading && <p className="loading-line">Loading your book… (first load may take a few seconds while the query service warms up)</p>}
 

@@ -24,7 +24,20 @@ interface Turn {
   sparql?: string;
 }
 
-export function ConversationPanel({ personaClaim }: { clientUri?: string; personaClaim: string }) {
+/**
+ * onResult (optional) lifts the REAL converse result (status + sparql + rows) up to the
+ * page so the adjacent Schema-graph card can highlight the part of the model the query
+ * traversed. converse returns no templateId, so the page matches by SPARQL signature
+ * (deriveSchemaHighlightFromConverse). The panel's own behaviour is unchanged.
+ */
+export function ConversationPanel({
+  personaClaim,
+  onResult,
+}: {
+  clientUri?: string;
+  personaClaim: string;
+  onResult?: (res: { status?: string | null; sparql?: string | null; result?: unknown } | null) => void;
+}) {
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   // A per-mount session id satisfies the agent contract. It does NOT enable multi-turn
@@ -55,14 +68,17 @@ export function ConversationPanel({ personaClaim }: { clientUri?: string; person
           ...prev,
           { question: text, status: r?.status ?? "query_error", rows, sparql: r?.sparql ?? undefined },
         ]);
+        // Lift the real result so the adjacent schema graph can highlight the traversal.
+        if (onResult) onResult(r ? { status: r.status, sparql: r.sparql, result: raw } : null);
       } catch {
         setTurns((prev) => [
           ...prev,
           { question: text, status: "query_error", rows: [] },
         ]);
+        if (onResult) onResult(null);
       }
     },
-    [converse, sessionId],
+    [converse, sessionId, onResult],
   );
 
   return (

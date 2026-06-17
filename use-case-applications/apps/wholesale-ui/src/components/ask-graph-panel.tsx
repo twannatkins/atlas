@@ -14,11 +14,17 @@
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useQuery, useLazyQuery } from "@apollo/client";
 import { ASK_GRAPH_QUERY, SUGGESTED_QUESTIONS_QUERY } from "../graphql/queries";
 
-export function AskGraphPanel() {
+/**
+ * onResult (optional) lifts the REAL askGraph result up to the page so the adjacent
+ * Schema-graph card can highlight the part of the model the query traversed. The panel's
+ * own behaviour is unchanged — it still owns and renders the answer exactly as before;
+ * this only mirrors the result outward. Passing nothing keeps the panel standalone.
+ */
+export function AskGraphPanel({ onResult }: { onResult?: (res: unknown) => void } = {}) {
   const [question, setQuestion] = useState("");
   const { data: sq } = useQuery(SUGGESTED_QUESTIONS_QUERY);
   const [run, { data, loading }] = useLazyQuery(ASK_GRAPH_QUERY, {
@@ -27,6 +33,11 @@ export function AskGraphPanel() {
 
   const suggestions: string[] = sq?.suggestedQuestions ?? [];
   const res = data?.askGraph;
+
+  // Mirror the real result outward (does not alter the panel's own rendering below).
+  useEffect(() => {
+    if (onResult) onResult(res ?? null);
+  }, [res, onResult]);
 
   const ask = useCallback(
     (q: string) => {

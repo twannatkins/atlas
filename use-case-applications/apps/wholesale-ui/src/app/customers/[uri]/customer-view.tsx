@@ -15,9 +15,11 @@ import { useSignals } from "../../../hooks/use-signals";
 import { useAuth } from "../../../../../shared/auth/use-auth";
 import { useEntityUri } from "../../../../../shared/auth/use-entity-uri";
 import { AppShell } from "../../../../../shared/ui/chrome";
+import { SemanticGroundingCard } from "../../../../../shared/ui/semantic-grounding-card";
 import { Entity360 } from "../../../components/entity-360";
 import { SignalCard } from "../../../components/signal-card";
 import { HouseholdStrip } from "../../../components/household-strip";
+import { ProvenanceBadge } from "../../../components/provenance-badge";
 import { CapabilityCards } from "../../../components/capability-cards";
 import { ComplianceBanner } from "../../../components/compliance-banner";
 
@@ -73,6 +75,32 @@ export default function CustomerPage() {
           ) : undefined
         }
       >
+        {/* Semantic grounding — the FIBO-aligned model THIS customer instantiates, rendered
+            from the data CUSTOMER_360_QUERY already fetched (no new query). Placed first so the
+            ontology grounding frames the cards below it. The first signal's provenance is passed
+            as the SHACL-shape attribution slot (reusing this app's ProvenanceBadge). */}
+        <SemanticGroundingCard
+          perspective="wholesale"
+          customerLabel={customer.label}
+          hasAccounts={!!(customer.accounts && customer.accounts.length > 0)}
+          accountCount={customer.accounts?.length}
+          hasHousehold={!!customer.household}
+          householdMemberCount={customer.household?.members?.length}
+          hasSignals={signals.length > 0}
+          signalCount={signals.length}
+          hasAdvisory={hasActiveCoverage}
+          advisorLabel={relationships.find((r: any) => r.isActive)?.advisor?.label}
+          signalProvenance={
+            signals[0]?.provenance ? (
+              <ProvenanceBadge
+                validatedBy={signals[0].provenance.validatedBy}
+                derivedFrom={signals[0].provenance.derivedFrom}
+                generatedBy={signals[0].provenance.generatedBy}
+              />
+            ) : undefined
+          }
+        />
+
         {/* Compliance banner — illustrative (marked "Example"): no per-entity compliance
             state exists to drive it (hasComplianceHold undefined + never persisted; see
             ComplianceBanner's illustrative prop doc + 04a). Do NOT wire to a fabricated field. */}

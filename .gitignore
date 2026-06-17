@@ -35,3 +35,8 @@ tsconfig.tsbuildinfo
 .ruff_cache/
 delivery-plan/
 .env.local
+.env*.local
+# env/config backups — never commit (they carry account-specific endpoints; the .f-bak
+# files were the F-account-endpoint landmine — keep them out of history)
+*.f-bak
+*.f-orig

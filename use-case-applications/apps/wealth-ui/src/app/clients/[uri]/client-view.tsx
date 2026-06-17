@@ -16,10 +16,12 @@ import { CLIENT_360_QUERY, TAKE_ON_CLIENT_MUTATION } from "../../../graphql/quer
 import { useAuth } from "../../../../../shared/auth/use-auth";
 import { useEntityUri } from "../../../../../shared/auth/use-entity-uri";
 import { AppShell } from "../../../../../shared/ui/chrome";
+import { SemanticGroundingCard } from "../../../../../shared/ui/semantic-grounding-card";
 import { CoverageStrip } from "../../../components/coverage-strip";
 import { ConversationPanel } from "../../../components/conversation-panel";
 import { SignalCard } from "../../../components/signal-card";
 import { HouseholdStrip } from "../../../components/household-strip";
+import { ProvenanceBadge } from "../../../components/provenance-badge";
 
 const NAV = [
   { href: "/", label: "My clients" },
@@ -101,6 +103,30 @@ export default function ClientPage() {
           </div>
         </div>
       </div>
+
+      {/* Semantic grounding — the SAME shared card / shared ontology as the Wholesale UI,
+          the advisor's-side framing (advisesCustomer). Rendered from data CLIENT_360_QUERY
+          already fetches (no new query). The wealth query does not select accounts, so the
+          Account row honestly does not render here — nothing is invented to fill it. */}
+      <SemanticGroundingCard
+        perspective="wealth"
+        customerLabel={client.label}
+        hasHousehold={!!client.household}
+        householdMemberCount={client.household?.members?.length}
+        hasSignals={signals.length > 0}
+        signalCount={signals.length}
+        hasAdvisory={rels.some((r: any) => r.isActive)}
+        advisorLabel={rels.find((r: any) => r.isActive)?.advisor?.label}
+        signalProvenance={
+          signals[0]?.provenance ? (
+            <ProvenanceBadge
+              validatedBy={signals[0].provenance.validatedBy}
+              derivedFrom={signals[0].provenance.derivedFrom}
+              generatedBy={signals[0].provenance.generatedBy}
+            />
+          ) : undefined
+        }
+      />
 
       {/* "New client" banner — shows while routed-to-you AND not-yet-taken-on; the
           Take-on button writes a real atlas:takenOnAt fact that clears it (not a timer). */}
