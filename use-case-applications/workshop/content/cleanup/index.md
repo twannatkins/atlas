@@ -50,9 +50,70 @@ Expected output (after the stack is destroyed):
 ✅  AtlasWorkshop2: destroyed
 ```
 
+If instead it fails on the VPC's subnets or security groups with a *"has a dependent
+object"* error, that is the AgentCore-ENI drain — see *"If the destroy stalls on the VPC"*
+just below; it is expected and recoverable.
+
 Destroying `AtlasWorkshop2` removes the Cognito user pool, the AppSync API, the
 CloudFront distributions, the ECS/Ontop service, and the AgentCore runtimes + Memory
 store with it — they are all resources *within* that one stack, not separate stacks.
+
+### If the destroy stalls on the VPC — this is expected, not broken
+
+On many teardowns the `cdk destroy` will **not** finish cleanly on the first pass. It
+deletes almost everything, then fails on the VPC's security groups and private subnets
+with a *"has a dependent object"* / *"resource ... is in use"* error. **This is expected
+behavior, not a broken teardown — here is why and how to finish it.**
+
+When the AgentCore runtimes are deleted, AWS does not immediately remove the
+service-managed elastic network interfaces (ENIs) it created for them in your VPC. These
+are interface-type `agentic_ai`, owned by `amazon-aws` — and they can take **up to ~1 hour
+to drain** after the runtimes are gone. While they linger, they hold the subnets and
+security groups, so those (and the VPC) cannot be deleted.
+
+**You cannot force them out, and you should not try.** AWS blocks customer detach/delete of
+these interfaces: `detach-network-interface` returns `OperationNotPermitted` (the
+`ela-attach` attachment is not customer-managed), and `delete-network-interface` returns
+*"in use"*. Only AWS's own asynchronous cleanup releases them. Do **not** force-delete
+network interfaces blind.
+
+The working pattern is to **complete the stack deletion around the stuck resources, then
+clean them up once AWS releases the ENIs**:
+
+1. **Finish the stack deletion now** by retaining the ENI-blocked resources. In the
+   [CloudFormation console](https://console.aws.amazon.com/cloudformation/), on the failed
+   `AtlasWorkshop2` delete, choose **Delete** again and **select the stuck security
+   group(s) / subnet(s) to retain** when prompted (CLI equivalent:
+   `aws cloudformation delete-stack --stack-name AtlasWorkshop2
+   --retain-resources <LogicalId> [<LogicalId> ...]`). The stack reaches
+   `DELETE_COMPLETE`, and — importantly — **the billable resources (AgentCore, Ontop,
+   AppSync, CloudFront) are already gone, so retaining a few free ENIs/SGs/subnets does not
+   cost anything.** Retaining stops the teardown from being held hostage to the ~1-hour
+   drain.
+2. **Wait for the ENIs to drain (~1 hour).** Check with:
+
+   ```bash
+   aws ec2 describe-network-interfaces --region us-east-1 \
+       --filters Name=vpc-id,Values=<your-vpc-id> \
+       --query "NetworkInterfaces[?InterfaceType=='agentic_ai'].[NetworkInterfaceId,Status]" \
+       --output table
+   ```
+
+   When this returns empty, AWS has released them.
+3. **Delete the orphaned subnets, security groups, and VPC by hand** (only after the ENIs
+   are gone — the deletes that failed before will now succeed):
+
+   ```bash
+   aws ec2 delete-subnet         --subnet-id <subnet-id>   --region us-east-1
+   aws ec2 delete-security-group --group-id  <sg-id>       --region us-east-1
+   aws ec2 delete-vpc            --vpc-id    <vpc-id>       --region us-east-1
+   ```
+
+> **Note — Path A (shared Studio VPC):** if you deployed Neptune into your *existing*
+> Unified Studio VPC (Prerequisites Step 4, Path A), that VPC is **not** yours to delete —
+> it belongs to Studio. Only the WS2-specific security groups/ENIs need to drain; leave the
+> VPC and its subnets alone. The hand-cleanup above applies to the **clean-account Path B**
+> case, where the WS0 foundation VPC was built for the workshop and is yours to remove.
 
 ---
 
